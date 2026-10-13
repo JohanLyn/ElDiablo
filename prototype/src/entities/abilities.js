@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { SKILLS, skillCoef } from '../game/skills.js';
 import { rollDamage } from '../game/stats.js';
 import { inCone, angleDelta, distPointSegment } from '../core/util.js';
+import { makeJavelinMesh } from '../fx/models.js';
 
 // Combo for Sickle Strike: [duration, hit moment 0..1, coef mult, reach, half-arc, knockback]
 const COMBO = [
@@ -26,12 +27,6 @@ export class Abilities {
     this.javelins = [];
     this.bolts = [];
     this.leap = null;
-    this.javGeo = new THREE.CylinderGeometry(0.06, 0.06, 1.8, 6);
-    this.javGeo.rotateX(Math.PI / 2);
-    this.javMat = new THREE.MeshBasicMaterial({ color: 0x7fb2ff });
-    this.boltMat = new THREE.MeshBasicMaterial({ color: 0xcfeeff, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
-    this.boltGeo = new THREE.CylinderGeometry(0.12, 0.25, 14, 6);
-    this.boltGeo.translate(0, 7, 0);
   }
 
   get pyreActive() { return this.pyre > 0; }
@@ -264,7 +259,7 @@ export class Abilities {
     const spreads = p.stats.powers.has('inanna') ? [-0.22, 0, 0.22] : [0];
     for (const s of spreads) {
       const a = p.facing + s;
-      const mesh = new THREE.Mesh(this.javGeo, this.javMat);
+      const mesh = makeJavelinMesh(); // glowing lapis spear; trail and impact come from src/fx/vfx.js
       mesh.position.set(p.pos.x + Math.sin(a) * 0.8, p.pos.y + 1.2, p.pos.z + Math.cos(a) * 0.8);
       mesh.rotation.y = a;
       this.scene.add(mesh);
@@ -281,7 +276,6 @@ export class Abilities {
       j.mesh.position.x += j.vx * dt;
       j.mesh.position.z += j.vz * dt;
       j.life -= dt;
-      if (Math.random() < 0.6) g.fx.burst(j.mesh.position, 0x5d95ff, 1, 0.5, { up: 0, life: 0.3, gravity: 0 });
       for (const e of g.enemies.list) {
         if (!e.alive || e.spawning > 0 || j.hit.has(e)) continue;
         const r = distPointSegment(e.pos.x, e.pos.z, ox, oz, j.mesh.position.x, j.mesh.position.z);
@@ -379,22 +373,10 @@ export class Abilities {
     }
   }
 
-  lightning(x, y, z) {
-    const mesh = new THREE.Mesh(this.boltGeo, this.boltMat.clone());
-    mesh.position.set(x, y, z);
-    this.scene.add(mesh);
-    this.bolts.push({ mesh, t: 0 });
-  }
+  // The bolt itself (jagged ribbons, scorch, light) is drawn by src/fx/vfx.js from the 'lightning' event.
+  lightning() {}
 
-  updateBolts(dt) {
-    for (let i = this.bolts.length - 1; i >= 0; i--) {
-      const b = this.bolts[i];
-      b.t += dt;
-      b.mesh.material.opacity = Math.max(0, 1 - b.t / 0.25);
-      b.mesh.scale.x = b.mesh.scale.z = 1 + Math.random() * 0.6;
-      if (b.t > 0.25) { this.scene.remove(b.mesh); b.mesh.material.dispose(); this.bolts.splice(i, 1); }
-    }
-  }
+  updateBolts() {}
 
   cast_aegis(g) {
     const p = g.player;

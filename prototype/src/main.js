@@ -21,6 +21,7 @@ import { loadSave, writeSave, clearSave, encodeBytes, decodeBytes } from './game
 import { Hud } from './ui/hud.js';
 import { UI } from './ui/ui.js';
 import { Fog, FOG_RES } from './ui/mapdraw.js';
+import { Vfx } from './fx/vfx.js';
 
 export const VERSION = '0.3.0-alpha';
 
@@ -190,6 +191,7 @@ function boot() {
     },
   };
   g.interactions = new Interactions(g);
+  g.vfx = new Vfx(g);
   const ui = new UI(g);
   g.ui = ui;
   window.__game = g; // handy for debugging in the console and for automated smoke tests
@@ -257,6 +259,7 @@ function boot() {
       if (saveTimer > 20 && !player.dead) { saveTimer = 0; g.save(); }
     }
     fx.update(g.started && !ui.open ? realDt : 0);
+    g.vfx.update(g.started && !ui.open ? realDt : 0);
     world.update(realDt, performance.now() / 1000, player.pos);
     rig.update(realDt, player.pos, player.vel, fx);
     loot.updateLabels(g, camera, g.highlightedLoot);

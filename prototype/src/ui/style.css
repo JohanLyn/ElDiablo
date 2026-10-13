@@ -30,8 +30,8 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; display: blo
 kbd { font-family: var(--font-body); font-size: 11px; font-weight: 700; padding: 1px 5px; border-radius: 4px; background: #2a2024; border: 1px solid var(--edge); color: var(--gold-hi); }
 body[data-device="pad"] .kbm, body:not([data-device="pad"]) .pad { display: none !important; }
 
-.dmg { position: absolute; left: 0; top: 0; font: 800 17px var(--font-display); text-shadow: 0 2px 3px #000, 0 0 6px #000; white-space: nowrap; will-change: transform; }
-.dmg.big { font-size: 24px; }
+.dmg { position: absolute; left: 0; top: 0; font: 800 18px var(--font-display); letter-spacing: 0.02em; -webkit-text-stroke: 0.6px rgba(0, 0, 0, 0.85); paint-order: stroke fill; text-shadow: 0 2px 0 #000, 0 0 8px rgba(0, 0, 0, 0.9), 0 0 14px currentColor; white-space: nowrap; will-change: transform; }
+.dmg.big { font-size: 30px; font-weight: 900; text-shadow: 0 2px 0 #000, 0 0 10px rgba(0, 0, 0, 0.9), 0 0 18px #ff9a1a, 0 0 32px rgba(255, 170, 40, 0.8); }
 .loot-label { position: absolute; left: 0; top: 0; padding: 2px 8px; font-size: 13px; font-weight: 700; white-space: nowrap; background: rgba(10, 6, 8, 0.82); border: 1px solid rgba(255,255,255,0.12); border-radius: 3px; text-shadow: 0 1px 2px #000; }
 .loot-label.hl { border-color: var(--gold-hi); box-shadow: 0 0 10px rgba(243, 214, 138, 0.5); }
 .r-common { color: var(--r-common); } .r-magic { color: var(--r-magic); } .r-rare { color: var(--r-rare); } .r-legendary { color: var(--r-legendary); }

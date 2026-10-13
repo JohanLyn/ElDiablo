@@ -6,6 +6,8 @@ import { monsterLevelFor, monsterLifeMult, monsterDamageMult, monsterXp } from '
 import { REGIONS, ROSTER, AQRABU, PLAY_LIMIT, TOWN, WAYPOINTS, flatSpots } from '../world/layout.js';
 import { regionAt, roadDistance } from '../world/terrain.js';
 import { DUNGEON_SPOTS } from '../world/dungeon.js';
+import { getTelegraphs, styleForColor } from '../fx/telegraph.js';
+import { makeEnemyBolt } from '../fx/models.js';
 
 // ai: melee = chase + telegraphed arc, brute = slow chase + ground slam,
 // ranged = keep distance + bolt, caster = keep distance + delayed ground blast.
@@ -114,12 +116,6 @@ export class EnemyManager {
     this.projectiles = [];
     this.hazards = [];
     this.camps = [];
-    this.boltGeo = new THREE.SphereGeometry(0.22, 8, 6);
-    this.boltMat = new THREE.MeshBasicMaterial({ color: 0xff5a3a });
-    this.hazardDisc = new THREE.CircleGeometry(1, 32);
-    this.hazardDisc.rotateX(-Math.PI / 2);
-    this.hazardRing = new THREE.RingGeometry(0.94, 1, 40);
-    this.hazardRing.rotateX(-Math.PI / 2);
     this.generateCamps();
   }
 
@@ -277,21 +273,15 @@ export class EnemyManager {
   }
 
   // ---- hazards and projectiles ---------------------------------------------------------
+  // Ground danger zone. The visual is a pooled shader mesh (src/fx/telegraph.js)
+  // that fills out to its rim as the strike approaches; `group` is that mesh.
   hazard({ x, z, r, delay, dmg, color = 0xff2a2a, level = 1, onHit = null }) {
-    const group = new THREE.Group();
-    const fillMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.15, depthWrite: false, blending: THREE.AdditiveBlending });
-    const ringMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending });
-    const fill = new THREE.Mesh(this.hazardDisc, fillMat);
-    const ring = new THREE.Mesh(this.hazardRing, ringMat);
-    ring.scale.setScalar(r);
-    group.add(fill, ring);
-    group.position.set(x, 0, z);
-    this.scene.add(group);
-    this.hazards.push({ x, z, r, delay, t: 0, dmg, color, level, group, fill, onHit });
+    const group = getTelegraphs(this.scene).zone(x, z, r, styleForColor(color));
+    this.hazards.push({ x, z, r, delay, t: 0, dmg, color, level, group, fitted: false, onHit });
   }
 
   fire(from, facing, speed, damage, level) {
-    const mesh = new THREE.Mesh(this.boltGeo, this.boltMat);
+    const mesh = makeEnemyBolt();
     mesh.position.set(from.x + Math.sin(facing) * 0.8, from.y + 1.1, from.z + Math.cos(facing) * 0.8);
     this.scene.add(mesh);
     this.projectiles.push({ mesh, pos: mesh.position, vx: Math.sin(facing) * speed, vz: Math.cos(facing) * speed, damage, level, life: 2.5 });
@@ -331,9 +321,8 @@ export class EnemyManager {
       const h = this.hazards[i];
       h.t += dt;
       const k = Math.min(1, h.t / h.delay);
-      h.fill.scale.setScalar(Math.max(0.05, k) * h.r);
-      h.fill.material.opacity = 0.12 + k * 0.3;
-      h.group.position.y = g.world.heightAt(h.x, h.z) + 0.06;
+      if (!h.fitted) { h.fitted = true; getTelegraphs(this.scene).conform(h.group, h.x, h.z, h.r, g.world.heightAt); }
+      h.group.material.uniforms.uT.value = k;
       if (h.t >= h.delay) {
         if (!p.dead && Math.hypot(p.pos.x - h.x, p.pos.z - h.z) < h.r + 0.3) {
           if (p.takeDamage(h.dmg, g, h.level)) h.onHit?.();
@@ -541,17 +530,18 @@ export class EnemyManager {
     }
   }
 
-  // Telegraph meshes (one per enemy, created lazily).
+  // Telegraph meshes (one per enemy, created lazily from the shared pool).
   telegraph(e, kind) {
     if (!e.tele || e.tele.userData.kind !== kind) {
       if (e.tele) this.scene.remove(e.tele);
-      const geo = kind === 'arc' ? new THREE.CircleGeometry(1, 28, -0.9, 1.8) : new THREE.PlaneGeometry(0.5, 1);
-      e.tele = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff2a2a, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
-      e.tele.rotation.x = -Math.PI / 2;
+      const tg = getTelegraphs(this.scene);
+      e.tele = kind === 'arc' ? tg.cone(e.boss ? 'void' : 'fire') : tg.lane('poison');
       e.tele.userData.kind = kind;
-      this.scene.add(e.tele);
-      const dispose = e.dispose.bind(e);
-      e.dispose = (scene) => { dispose(scene); scene.remove(e.tele); };
+      if (!e.teleWrapped) {
+        e.teleWrapped = true;
+        const dispose = e.dispose.bind(e);
+        e.dispose = (scene) => { dispose(scene); scene.remove(e.tele); };
+      }
     }
     e.tele.visible = true;
     return e.tele;
@@ -559,18 +549,24 @@ export class EnemyManager {
 
   showArc(e, g, k, length) {
     const t = this.telegraph(e, 'arc');
-    t.material.opacity = 0.15 + k * 0.45;
-    t.position.set(e.pos.x, e.pos.y + 0.06, e.pos.z);
-    t.rotation.z = e.facing - Math.PI / 2;
-    t.scale.setScalar(Math.max(0.1, k) * length);
+    t.position.set(e.pos.x, e.pos.y, e.pos.z);
+    t.rotation.y = e.facing;
+    t.scale.set(length, 1, length);
+    const u = t.material.uniforms;
+    u.uScale.value = length;
+    u.uT.value = k;
   }
 
   showLine(e, g, k, length) {
     const t = this.telegraph(e, 'line');
-    t.material.opacity = 0.15 + k * 0.45;
-    t.scale.set(0.3 + k * 0.4, length, 1);
-    t.position.set(e.pos.x + Math.sin(e.facing) * length / 2, e.pos.y + 0.06, e.pos.z + Math.cos(e.facing) * length / 2);
-    t.rotation.z = e.facing;
+    const half = 0.4;
+    t.position.set(e.pos.x, e.pos.y, e.pos.z);
+    t.rotation.y = e.facing;
+    t.scale.set(half, 1, length);
+    const u = t.material.uniforms;
+    u.uScale.value = half;
+    u.uLen.value = length;
+    u.uT.value = k;
   }
 
   hideArc(e) { if (e.tele) e.tele.visible = false; }

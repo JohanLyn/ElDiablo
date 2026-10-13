@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { generateItem, rollRarity, RARITY } from './items.js';
 import { Rng } from '../core/rng.js';
+import { makePillar, makePillarMaterial } from '../fx/beams.js';
+import { RARITY_FX } from '../fx/rarity.js';
 
 const LABEL_RANGE = 16;
 
@@ -18,10 +20,13 @@ export class Loot {
       jewel: new THREE.TorusGeometry(0.22, 0.07, 6, 12),
       gold: new THREE.CylinderGeometry(0.16, 0.16, 0.06, 10),
       orb: new THREE.SphereGeometry(0.22, 10, 8),
-      beam: new THREE.CylinderGeometry(0.18, 0.18, 9, 8, 1, true),
     };
-    this.goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc44, metalness: 0.9, roughness: 0.25, emissive: 0x443300 });
-    this.orbMat = new THREE.MeshBasicMaterial({ color: 0xff3a4a });
+    this.goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc44, metalness: 0.9, roughness: 0.25, emissive: 0x8a6000 });
+    this.beamMats = {
+      rare: makePillarMaterial(0xffd23a, 0xfff6c0, 0.9),
+      legendary: makePillarMaterial(0xff6a14, 0xffe2b0, 1.25, 1),
+    };
+    this.orbMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff3a4a).multiplyScalar(1.8) });
   }
 
   // ---- drop tables -----------------------------------------------------------
@@ -54,7 +59,7 @@ export class Loot {
   dropItem(item, pos, g) {
     const kindGeo = item.kind === 'weapon' ? this.geos.weapon : item.kind === 'ring' || item.kind === 'amulet' ? this.geos.jewel : this.geos.armor;
     const color = new THREE.Color(RARITY[item.rarity].color);
-    const mesh = new THREE.Mesh(kindGeo, new THREE.MeshStandardMaterial({ color, emissive: color.clone().multiplyScalar(0.35), metalness: 0.5, roughness: 0.4 }));
+    const mesh = new THREE.Mesh(kindGeo, new THREE.MeshStandardMaterial({ color, emissive: color.clone().multiplyScalar(item.rarity === 'common' ? 0.2 : 0.55), metalness: 0.5, roughness: 0.4 }));
     const a = this.rng.float(0, Math.PI * 2), r = this.rng.float(0.8, 2.4);
     const x = pos.x + Math.cos(a) * r, z = pos.z + Math.sin(a) * r;
     const target = new THREE.Vector3(x, g.world.heightAt(x, z), z);
@@ -64,8 +69,11 @@ export class Loot {
     this.scene.add(mesh);
     let beam = null;
     if (item.rarity === 'rare' || item.rarity === 'legendary') {
-      beam = new THREE.Mesh(this.geos.beam, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
-      beam.position.copy(target).setY(target.y + 4.5);
+      const fx = RARITY_FX[item.rarity];
+      beam = makePillar(this.beamMats[item.rarity], item.rarity === 'legendary' ? 0.55 : 0.36, fx.beam);
+      beam.position.copy(target);
+      beam.userData.grow = 0;
+      beam.scale.y = 0.01; // rises when the item lands
       this.scene.add(beam);
     }
     const label = document.createElement('div');
@@ -97,7 +105,16 @@ export class Loot {
       const k = L.t;
       L.mesh.position.lerpVectors(L.from, L.pos, k);
       L.mesh.position.y = L.from.y + (L.pos.y + 0.35 - L.from.y) * k + Math.sin(k * Math.PI) * 1.5;
-      L.mesh.rotation.y += dt * 1.5;
+      if (k >= 1) {
+        // Landing: a couple of damped bounces, then a gentle hover.
+        L.b = (L.b ?? 0) + dt;
+        const bounce = Math.abs(Math.sin(L.b * 7.5)) * 0.55 * Math.exp(-L.b * 4.2);
+        L.mesh.position.y = L.pos.y + 0.35 + bounce + Math.sin(g.time * 2 + L.pos.x) * 0.05 * Math.min(1, L.b);
+        L.mesh.scale.y = 1 - Math.max(0, 0.25 - L.b * 1.2) * 0.8 * (bounce < 0.05 ? 1 : 0);
+        if (L.beam) { const full = RARITY_FX[L.item.rarity].beam; L.beam.scale.y = Math.max(0.01, full * Math.min(1, L.b * 3.5)); }
+      }
+      L.mesh.rotation.y += dt * (k >= 1 ? 1.2 : 6);
+      if (L.item.rarity !== 'common') L.mesh.material.emissiveIntensity = 0.8 + Math.sin(g.time * 3 + L.pos.z) * 0.25;
     }
     for (let i = this.pickups.length - 1; i >= 0; i--) {
       const o = this.pickups[i];
