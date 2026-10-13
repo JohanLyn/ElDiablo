@@ -113,7 +113,7 @@ function patchTerrainMaterial(material, env) {
         vec2 cq = gp * 0.075 + vec2(vnoise(gp * 0.09), vnoise(gp * 0.09 + 9.0)) * 1.1;
         float crackV = crackEdge(cq);
         float crackMask = smoothstep(0.42, 0.66, vnoise(gp * 0.03 + 21.0) + n2 * 0.25);
-        float crack = (1.0 - smoothstep(0.0, 0.02, crackV)) * crackMask * wA * (1.0 - roadK);
+        float crack = (1.0 - smoothstep(0.0, 0.011, crackV)) * crackMask * wA * (1.0 - roadK);
         diffuseColor.rgb *= 1.0 - 0.55 * (1.0 - smoothstep(0.0, 0.14, crackV)) * crackMask * wA;
         float crackPulse = 0.95 + 0.4 * sin(uTime * 1.3 + n2 * 12.0);
       `)
@@ -129,7 +129,7 @@ function patchTerrainMaterial(material, env) {
           normal = normalize(normal + (viewMatrix * vec4(dW, 0.0)).xyz);
         }`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-        totalEmissiveRadiance += vec3(0.62, 0.16, 1.0) * crack * crackPulse;`)
+        totalEmissiveRadiance += vec3(0.62, 0.16, 1.0) * crack * crackPulse * 0.4;`)
       .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
         reflectedLight.directDiffuse *= cloudSh;
         reflectedLight.directSpecular *= cloudSh;`);

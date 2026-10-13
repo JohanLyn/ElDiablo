@@ -267,7 +267,8 @@ export class UI {
           { label: 'Not yet', run: () => {} },
         ];
       } else {
-        text = q.active ? `${q.active.intro}\n\nYour potions are restored.` : 'Neti has fallen and the First Gate stands open. The other six will not wait forever, Gatewalker. Your potions are restored.';
+        text = q.active?.id === 'q0' ? 'A stranger with a bound spirit? The gods are not finished with us, then. The caravan on the north road is still under attack. Help them, Gatewalker, then come back to me.'
+          : q.active ? `${q.active.intro}\n\nYour potions are restored.` : 'Neti has fallen and the First Gate stands open. The other six will not wait forever, Gatewalker. Your potions are restored.';
         const cost = 150 + p.potionLevel * 250;
         options = [];
         if (p.potionLevel < 3) {

@@ -5,8 +5,9 @@ import { part, merge } from '../world/models.js';
 
 // Scripted beats of the opening: the burning caravan on the south road, plus
 // "first time" loot guarantees that make the first minutes rewarding.
-export const START = { x: 1, z: 194 };
-export const CARAVAN = { x: -3, z: 187 };
+// North road, just outside Eridu's north gate (the hero walks south into town after).
+export const START = { x: 1, z: 95 };
+export const CARAVAN = { x: 2, z: 103 };
 
 const WAVES = [
   ['utukku', 'utukku', 'utukku'],
@@ -33,8 +34,16 @@ export class Story {
     this.wave = 0;
     this.nextWaveIn = 1.2;
     this.waveEnemies = [];
+    // Keep the opening clean: camps near the caravan sleep until later.
+    for (const c of g.enemies.camps) {
+      if (Math.hypot(c.x - CARAVAN.x, c.z - CARAVAN.z) < 34) {
+        if (c.state === 'active') g.enemies.despawnCamp(c);
+        c.state = 'cleared';
+        c.clearedAt = g.time;
+      }
+    }
     g.teleport(START.x, START.z);
-    g.player.facing = Math.PI;
+    g.player.facing = 0;
     this.caravan.visible = true;
   }
 
@@ -87,7 +96,7 @@ export class Story {
     this.wave = -1;
     g.flags.introDone = true;
     g.quests.notify({ type: 'event', id: 'ambush' });
-    g.hud.banner('The road is clear', 'quest', 'Eridu Outpost lies to the north');
+    g.hud.banner('The road is clear', 'quest', 'Eridu Outpost lies just to the south');
     g.save();
   }
 

@@ -40,8 +40,8 @@ const ATMOS_DEF = {
   },
   ashen: {
     horizon: 0x5b3b57, zenith: 0x1d1530, near: 22, far: 90, hemi: 0.85, sun: 1.3, sunColor: 0xffa588,
-    hemiSky: 0x8a6ab0, hemiGround: 0x2e1d33, fill: 0.5, fillColor: 0x7a56c8, cloud: 0.12, glow: 0.9,
-    grade: { shadow: 0x2d1450, highlight: 0xf0a0b0, split: 0.32, saturation: 0.98, contrast: 1.16 },
+    hemiSky: 0x7a6a90, hemiGround: 0x2e1d33, fill: 0.45, fillColor: 0x6a5a8a, cloud: 0.12, glow: 0.9,
+    grade: { shadow: 0x2a1a40, highlight: 0xf0c4b4, split: 0.18, saturation: 0.86, contrast: 1.12 },
   },
   dungeon: {
     horizon: 0x15101c, zenith: 0x0c0912, near: 26, far: 80, hemi: 1.25, sun: 0, sunColor: 0x8a7aff,

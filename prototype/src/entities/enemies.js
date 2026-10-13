@@ -397,7 +397,7 @@ export class EnemyManager {
       u.uDissolve.value = d;
       u.uBase.value = e.pos.y;
       e.flash = Math.max(0, e.flash - dt * 6);
-      e.mat.emissive.setRGB(e.flash, e.flash * 0.9, e.flash * 0.8);
+      e.mat.emissive.setRGB(e.flash * 0.55, e.flash * 0.45, e.flash * 0.35);
       if (d > 0.3 && !e.shadowOff) { e.shadowOff = true; e.group.userData.rig.setShadows(false); }
       driveEnemy(e, dt, g, 0);
       return;
@@ -461,7 +461,8 @@ export class EnemyManager {
     // Visuals
     e.group.rotation.y = e.facing;
     e.flash = Math.max(0, e.flash - dt * 6);
-    e.mat.emissive.setRGB(e.flash + (e.burn > 0 ? 0.25 : 0), e.flash * 0.9 + (e.burn > 0 ? 0.08 : 0), e.flash * 0.8 + (e.slow > 0 ? 0.3 : 0) + (e.vulnerable > 0 ? 0.15 : 0));
+    // Hit flash stays warm and partial so the silhouette still reads.
+    e.mat.emissive.setRGB(e.flash * 0.55 + (e.burn > 0 ? 0.25 : 0), e.flash * 0.45 + (e.burn > 0 ? 0.08 : 0), e.flash * 0.35 + (e.slow > 0 ? 0.3 : 0) + (e.vulnerable > 0 ? 0.15 : 0));
     // Far enemies animate at a third of the rate and drop their shadows.
     e.animDt = (e.animDt || 0) + dt;
     if (dist < 46 || ((e.id + (e.animTick = (e.animTick || 0) + 1)) % 3 === 0)) {

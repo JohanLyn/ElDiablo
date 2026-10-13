@@ -117,7 +117,7 @@ export function buildDungeon(scene, colliders) {
   scene.add(band, cap);
 
   // Floor runes: faint pulsing glyph rings.
-  const runeCells = [...floor].filter((key) => { const [gx, gz] = key.split(',').map(Number); return ((gx * 7 + gz * 13) % 9 + 9) % 9 === 0; });
+  const runeCells = [...floor].filter((key) => { const [gx, gz] = key.split(',').map(Number); return ((gx * 7 + gz * 13) % 23 + 23) % 23 === 0; });
   const runeMat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     uniforms: { uTime: getEnv().uTime },
@@ -129,7 +129,7 @@ export function buildDungeon(scene, colliders) {
         float ticks = smoothstep(0.12, 0.0, abs(fract(a * 8.0 / 3.14159) - 0.5) * 2.0 - 0.6) * smoothstep(0.82, 0.62, r) * smoothstep(0.55, 0.62, r);
         float star = smoothstep(0.035, 0.0, abs(abs(p.x) - abs(p.y)) * 0.7) * smoothstep(0.58, 0.2, r);
         float g = (ring + ticks * 0.8 + star * 0.8) * (0.5 + 0.35 * sin(uTime * 1.4 + r * 6.0));
-        gl_FragColor = vec4(vec3(0.55, 0.38, 1.0) * g * 0.9, 1.0);
+        gl_FragColor = vec4(vec3(0.55, 0.38, 1.0) * g * 0.38, 1.0);
       }`,
   });
   const runes = new THREE.InstancedMesh(new THREE.PlaneGeometry(2.6, 2.6).rotateX(-Math.PI / 2), runeMat, Math.max(1, runeCells.length));
