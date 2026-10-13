@@ -270,9 +270,8 @@ export function humanoid(A, rig, P) {
   const elIdle = P.elbowIdle ?? 0.25, elRun = P.elbowRun ?? 0.9;
   const shr = P.shoulderRaise ?? 0.02 * breath;
   const idleArmX = P.armIdle ?? 0.05;
-  B.shL.rotation.set(mix(idleArmX + 0.02 * breath, angR * ar * armL * 1.0, wL) * -1 * (wL > 0 ? 1 : 1), 0, (P.armSpread ?? 0.09) + shr);
-  B.shR.rotation.set(mix(idleArmX + 0.02 * breath, angL * ar * armR, wL) * -1, 0, -(P.armSpread ?? 0.09) - shr);
-  // idle values: positive idleArmX swings arms back slightly; loco values negative = forward
+  B.shL.rotation.set(0, 0, (P.armSpread ?? 0.09) + shr);
+  B.shR.rotation.set(0, 0, -(P.armSpread ?? 0.09) - shr);
   B.shL.rotation.x = mix(idleArmX + 0.02 * breath, -angR * ar * armL, wL);
   B.shR.rotation.x = mix(idleArmX + 0.02 * breath, -angL * ar * armR, wL);
   const elL = -(elIdle + (elRun - elIdle) * sp * wL) - 0.15 * Math.max(0, -B.shL.rotation.x);
@@ -281,7 +280,8 @@ export function humanoid(A, rig, P) {
   B.elR.rotation.x = elR * (P.elbowR ?? 1);
 
   // ---- action layers
-  if (P.spawn && A.mode === MODE.SPAWN) P.spawn(A, rig, P);
+  if (P.idle) P.idle(A, rig, 1 - wL, P);
+  if (A.mode === MODE.SPAWN) (P.spawn || defaultSpawn)(A, rig, P);
   if (A.wAtk > 0.002 && P.attack) P.attack(A, rig, A.wAtk, P);
   if (A.wCast > 0.002 && P.cast) P.cast(A, rig, A.wCast, P);
   if (A.wEvade > 0.002 && P.evade) P.evade(A, rig, A.wEvade, P);
@@ -300,6 +300,16 @@ function defaultDead(A, rig, P) {
   add(B.shnL, 1.3 * buck, 0, 0); add(B.shnR, 1.1 * buck, 0, 0);
   add(B.shL, 0.5 * d, 0, 0.3 * d); add(B.shR, 0.3 * d, 0, -0.3 * d);
   add(B.head, 0.4 * d * -dir, 0, 0);
-  rig.root.rotation.x += dir * -1.5 * smooth((A.deadK - 0.1) / 0.8) * -1;
+  rig.root.rotation.x += dir * 1.5 * smooth((A.deadK - 0.1) / 0.8);
   rig.root.position.y += 0.1 * d;
+}
+
+function defaultSpawn(A, rig, P) {
+  const B = rig.b;
+  const r = 1 - A.spawnK;
+  B.hips.position.y -= P.hipsY * 0.3 * r;
+  add(B.spine, 0.7 * r, 0, 0);
+  add(B.head, 0.4 * r, 0, 0);
+  add(B.thL, -0.5 * r, 0, 0); add(B.thR, -0.5 * r, 0, 0);
+  add(B.shnL, 0.9 * r, 0, 0); add(B.shnR, 0.9 * r, 0, 0);
 }

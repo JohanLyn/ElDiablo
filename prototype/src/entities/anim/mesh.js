@@ -13,6 +13,7 @@ const _q = new THREE.Quaternion();
 const _e = new THREE.Euler();
 const _s = new THREE.Vector3();
 const _c = new THREE.Color();
+const _v1 = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0), _q1 = new THREE.Quaternion(), _e1 = new THREE.Euler();
 
 function hash3(x, y, z) {
   const s = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453;
@@ -135,6 +136,16 @@ export class Builder {
   ico(bone, r, color, o) { return this.add(bone, shapes.ico(r, 0), color, o); }
   dodeca(bone, r, color, o) { return this.add(bone, shapes.dodeca(r), color, o); }
   octa(bone, r, color, o) { return this.add(bone, shapes.octa(r), color, o); }
+  // Tapered cylinder between two points (bone-local).
+  seg(bone, from, to, r0, r1, seg, color, o = {}) {
+    const dx = to[0] - from[0], dy = to[1] - from[1], dz = to[2] - from[2];
+    const len = Math.hypot(dx, dy, dz) || 1e-3;
+    _v1.set(dx / len, dy / len, dz / len);
+    _q1.setFromUnitVectors(_up, _v1);
+    _e1.setFromQuaternion(_q1);
+    const g = shapes.cyl(r1, r0, len, seg);
+    return this.add(bone, g, color, { ...o, x: (from[0] + to[0]) / 2, y: (from[1] + to[1]) / 2, z: (from[2] + to[2]) / 2, rx: _e1.x, ry: _e1.y, rz: _e1.z });
+  }
   build() {
     const geos = {};
     let tris = 0;
@@ -165,6 +176,8 @@ uniform float uHeight;
 uniform vec3 uTint;
 uniform float uGlow;
 uniform vec3 uShield;
+uniform float uFill;
+uniform float uRim;
 varying float vGlow;
 varying vec3 vMatP;
 varying vec3 vWP;
@@ -193,6 +206,8 @@ export function rigMaterial({ transparent = false, opacity = 1, tint = 0xffffff,
     uTint: { value: new THREE.Color(tint) },
     uGlow: { value: glow * emissiveBoost },
     uShield: { value: new THREE.Color(0x000000) },
+    uFill: { value: 0.16 },
+    uRim: { value: 0.45 },
   };
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, mat.userData.u);
@@ -222,6 +237,9 @@ export function rigMaterial({ transparent = false, opacity = 1, tint = 0xffffff,
         #else
           totalEmissiveRadiance += vColor * mix(vec3(1.0), uTint, vMatP.z) * vGlow * uGlow;
         #endif
+        totalEmissiveRadiance += diffuseColor.rgb * uFill;
+        float rimK = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 2.4);
+        totalEmissiveRadiance += diffuseColor.rgb * (1.0 + vMatP.x) * 1.5 * rimK * uRim;
         totalEmissiveRadiance += uEdge * dEdge * 3.2;
         totalEmissiveRadiance += uShield * step(0.55, vMatP.x);`);
   };
