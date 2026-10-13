@@ -34,12 +34,12 @@ export class Fog {
     return this.cells[j * FOG_RES + i] === 1;
   }
 
-  // Black-where-unexplored mask canvas.
+  // Lapis-deep-where-unexplored mask canvas.
   mask() {
     if (!this.dirty) return this.canvas;
     const img = this.ctx.createImageData(FOG_RES, FOG_RES);
     for (let k = 0; k < this.cells.length; k++) {
-      img.data[k * 4 + 3] = this.cells[k] ? 0 : 235;
+      if (!this.cells[k]) { img.data[k * 4] = 7; img.data[k * 4 + 1] = 14; img.data[k * 4 + 2] = 38; img.data[k * 4 + 3] = 238; }
     }
     this.ctx.putImageData(img, 0, 0);
     this.dirty = false;
@@ -53,16 +53,16 @@ export function drawMap(ctx, g, { cx, cz, scale, width, height, full = false, se
   const toX = (x) => width / 2 + (x - cx) * scale;
   const toY = (z) => height / 2 + (z - cz) * scale;
   ctx.save();
-  ctx.fillStyle = '#0a0608';
+  ctx.fillStyle = '#060c22';
   ctx.fillRect(0, 0, width, height);
 
   if (g.instance) {
     const { origin, rects, spots, pools = [] } = g.instance;
-    ctx.fillStyle = g.instance.id === 'cistern' ? '#2c3a3a' : '#3a3038';
+    ctx.fillStyle = g.instance.id === 'cistern' ? '#24506a' : '#3c3a5a';
     for (const [rx, rz, w, d] of rects) {
       ctx.fillRect(toX(origin.x + rx - w / 2), toY(origin.z + rz - d / 2), w * scale, d * scale);
     }
-    ctx.fillStyle = '#2a5a66';
+    ctx.fillStyle = '#2f7f9a';
     for (const [rx, rz, w, d] of pools) ctx.fillRect(toX(origin.x + rx - w / 2), toY(origin.z + rz - d / 2), w * scale, d * scale);
     icon(ctx, toX(spots.entry.x), toY(spots.entry.z + 3), 'exit', scale);
     if (g.interactions.exitPortal) icon(ctx, toX(spots.exit.x), toY(spots.exit.z), 'portal', scale);
@@ -71,11 +71,14 @@ export function drawMap(ctx, g, { cx, cz, scale, width, height, full = false, se
     const S = HALF * 2 * scale;
     ctx.drawImage(g.world.mapImage, toX(-HALF), toY(-HALF), S, S);
     ctx.drawImage(g.fog.mask(), toX(-HALF), toY(-HALF), S, S);
+    // a wash of lapis ties the terrain colours to the UI
+    ctx.fillStyle = 'rgba(14, 36, 96, 0.26)';
+    ctx.fillRect(toX(-HALF), toY(-HALF), S, S);
 
     if (full) {
       ctx.font = '600 13px Cinzel, serif';
       ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(243,214,138,0.75)';
+      ctx.fillStyle = 'rgba(246,210,122,0.85)';
       for (const [id, x, z] of [['sunfields', 0, 80], ['marsh', -125, -30], ['ruins', 125, -50], ['ashen', 0, -140]]) {
         ctx.fillText(`${REGIONS[id].name.toUpperCase()} · LV ${REGIONS[id].level}`, toX(x), toY(z));
       }
@@ -92,7 +95,7 @@ export function drawMap(ctx, g, { cx, cz, scale, width, height, full = false, se
       icon(ctx, toX(w.x), toY(w.z), w.discovered ? 'waypoint' : 'waypointOff', scale, selected === w);
       if (full && w.discovered) {
         ctx.font = '600 12px "Alegreya Sans", sans-serif';
-        ctx.fillStyle = selected === w ? '#f3d68a' : '#d8cdb4';
+        ctx.fillStyle = selected === w ? '#f6d27a' : '#efe6cf';
         ctx.fillText(w.name, toX(w.x), toY(w.z) + 18);
       }
     }
@@ -104,7 +107,7 @@ export function drawMap(ctx, g, { cx, cz, scale, width, height, full = false, se
       if (!e.alive || e.spawning > 0) continue;
       const dx = e.pos.x - g.player.pos.x, dz = e.pos.z - g.player.pos.z;
       if (dx * dx + dz * dz > 2500) continue;
-      ctx.fillStyle = e.boss ? '#c8a8ff' : e.elite || e.named ? '#f2d24b' : '#e5484f';
+      ctx.fillStyle = e.boss ? '#ffe3a8' : e.elite || e.named ? '#f6d84a' : '#e0683f';
       ctx.beginPath();
       ctx.arc(toX(e.pos.x), toY(e.pos.z), e.boss ? 5 : e.elite ? 3.5 : 2.2, 0, Math.PI * 2);
       ctx.fill();
@@ -126,8 +129,8 @@ export function drawMap(ctx, g, { cx, cz, scale, width, height, full = false, se
   const px = toX(g.player.pos.x), py = toY(g.player.pos.z);
   ctx.translate(px, py);
   ctx.rotate(-g.player.facing + Math.PI);
-  ctx.fillStyle = '#ffffff';
-  ctx.strokeStyle = '#000';
+  ctx.fillStyle = '#efe6cf';
+  ctx.strokeStyle = '#15100c';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(0, -7); ctx.lineTo(5, 6); ctx.lineTo(0, 3); ctx.lineTo(-5, 6); ctx.closePath();
@@ -140,36 +143,36 @@ function icon(ctx, x, y, kind, scale, selected = false) {
   ctx.save();
   ctx.translate(x, y);
   ctx.lineWidth = 1.5;
-  ctx.strokeStyle = '#000';
+  ctx.strokeStyle = '#15100c';
   const diamond = (r) => { ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(r, 0); ctx.lineTo(0, r); ctx.lineTo(-r, 0); ctx.closePath(); };
   switch (kind) {
     case 'waypoint': case 'waypointOff':
-      ctx.fillStyle = kind === 'waypoint' ? '#5d95ff' : '#4a4a5a';
+      ctx.fillStyle = kind === 'waypoint' ? '#6f98f5' : '#3a4468';
       diamond(s + 1); ctx.fill(); ctx.stroke();
-      if (selected) { ctx.strokeStyle = '#f3d68a'; ctx.lineWidth = 2.5; diamond(s + 6); ctx.stroke(); }
+      if (selected) { ctx.strokeStyle = '#f6d27a'; ctx.lineWidth = 2.5; diamond(s + 6); ctx.stroke(); }
       break;
     case 'shrine': case 'shrineUsed':
-      ctx.fillStyle = kind === 'shrine' ? '#8cff6a' : '#555';
+      ctx.fillStyle = kind === 'shrine' ? '#5fe0c0' : '#4a5470';
       ctx.beginPath(); ctx.arc(0, 0, s - 1, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       break;
     case 'chest':
-      ctx.fillStyle = '#d6a740'; ctx.fillRect(-s + 1, -s + 2, (s - 1) * 2, (s - 2) * 2); ctx.strokeRect(-s + 1, -s + 2, (s - 1) * 2, (s - 2) * 2);
+      ctx.fillStyle = '#e8c86a'; ctx.fillRect(-s + 1, -s + 2, (s - 1) * 2, (s - 2) * 2); ctx.strokeRect(-s + 1, -s + 2, (s - 1) * 2, (s - 2) * 2);
       break;
     case 'event':
-      ctx.strokeStyle = '#ff6a5a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, s + 1, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = '#ff7a52'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, s + 1, 0, Math.PI * 2); ctx.stroke();
       break;
     case 'dungeon':
-      ctx.fillStyle = '#9a6bff'; ctx.beginPath(); ctx.moveTo(-s - 1, s); ctx.lineTo(-s - 1, -2); ctx.arc(0, -2, s + 1, Math.PI, 0); ctx.lineTo(s + 1, s); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#d99a5e'; ctx.beginPath(); ctx.moveTo(-s - 1, s); ctx.lineTo(-s - 1, -2); ctx.arc(0, -2, s + 1, Math.PI, 0); ctx.lineTo(s + 1, s); ctx.closePath(); ctx.fill(); ctx.stroke();
       break;
     case 'npc':
-      ctx.fillStyle = '#f2d24b'; ctx.beginPath(); ctx.arc(0, 0, 3.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#efe6cf'; ctx.beginPath(); ctx.arc(0, 0, 3.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       break;
     case 'portal': case 'exit':
-      ctx.strokeStyle = '#7fb2ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, 0, s - 1, s + 2, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = '#9fc0ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, 0, s - 1, s + 2, 0, 0, Math.PI * 2); ctx.stroke();
       break;
     case 'quest':
-      ctx.fillStyle = '#ffcc33'; diamond(s + 2); ctx.fill(); ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = '#000'; ctx.font = '800 10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('!', 0, 1);
+      ctx.fillStyle = '#f6d27a'; diamond(s + 2); ctx.fill(); ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#15100c'; ctx.font = '800 10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('!', 0, 1);
       break;
   }
   ctx.restore();

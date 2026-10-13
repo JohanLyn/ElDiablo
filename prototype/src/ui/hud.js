@@ -46,7 +46,7 @@ export class Hud {
     this.slotsEl.innerHTML = SLOT_BUTTONS.map((b, i) => `<div class="slot" data-i="${i}"><div class="icon"></div><div class="cdwrap"><div class="cd"></div></div><div class="cdt"></div><span class="charges"></span>${padGlyph(b.pad)}${keyGlyph(b.kbm)}</div>`).join('');
     this.slotEls = [...this.slotsEl.children];
     this.slotRefs = this.slotEls.map((el) => ({ el, icon: el.querySelector('.icon'), cd: el.querySelector('.cd'), cdt: el.querySelector('.cdt'), charges: el.querySelector('.charges') }));
-    $('potion').querySelector('.icon').innerHTML = skillIcon('potion', '#ff6a7a');
+    $('potion').querySelector('.icon').innerHTML = skillIcon('potion', '#ff8a6a');
     watchKbd($('tutorial'));
     this.refs = {
       lifeFill: this.lifeOrb.querySelector('.fill'), lifeText: this.lifeOrb.querySelector('span'),

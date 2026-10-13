@@ -2,9 +2,9 @@
 const cache = new Map();
 
 const LOOKS = {
-  ninsun: { robe: '#e8e0cc', trim: '#1d3b8c', skin: '#b9825a', hair: '#1a1210', headwear: 'crown', bg: ['#2a3c78', '#0e1430'] },
-  ubar: { robe: '#8a2a2a', trim: '#d6a740', skin: '#a8714a', hair: '#2a1a10', headwear: 'turban', beard: true, bg: ['#6a3a1a', '#1e0f08'] },
-  guard: { robe: '#5a4a3a', trim: '#9a9a9a', skin: '#b07a52', hair: '#1a1210', headwear: 'helm', beard: true, bg: ['#3a3a3a', '#101010'] },
+  ninsun: { robe: '#efe6cf', trim: '#3d6bd6', skin: '#b9825a', hair: '#15100c', headwear: 'crown', bg: ['#2d56b8', '#0b1a3e'] },
+  ubar: { robe: '#b8432c', trim: '#d9a441', skin: '#a8714a', hair: '#2a1a10', headwear: 'turban', beard: true, bg: ['#a56a38', '#2a1a0c'] },
+  guard: { robe: '#4a5878', trim: '#b9ad94', skin: '#b07a52', hair: '#15100c', headwear: 'helm', beard: true, bg: ['#2a4a8a', '#0a1228'] },
 };
 
 export function portrait(id, size = 132) {
@@ -53,7 +53,7 @@ export function portrait(id, size = 132) {
   if (L.headwear === 'crown') {
     g.fillStyle = L.hair; g.beginPath(); g.ellipse(66, 40, 23, 14, 0, Math.PI, 0); g.fill();
     g.fillRect(43, 40, 7, 34); g.fillRect(82, 40, 7, 34);
-    g.fillStyle = '#d6a740';
+    g.fillStyle = '#d9a441';
     g.beginPath(); g.moveTo(44, 36); for (let i = 0; i <= 6; i++) g.lineTo(44 + i * 7.3, i % 2 ? 22 : 32); g.lineTo(88, 36); g.closePath(); g.fill();
     g.fillStyle = L.trim; for (const x of [52, 66, 80]) { g.beginPath(); g.arc(x, 33, 2.6, 0, Math.PI * 2); g.fill(); }
   } else if (L.headwear === 'turban') {

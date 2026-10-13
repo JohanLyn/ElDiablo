@@ -7,31 +7,31 @@ export const MAX_RANK = 5;
 export const SKILLS = {
   strike: {
     name: 'Sickle Strike', category: 'Basic', unlock: 1, gain: 14, coef: 1.0, cooldown: 0,
-    color: '#e8c477', desc: 'A sweeping 3-hit combo. Generates 14 Anima per hit.',
+    color: '#e8b068', desc: 'A sweeping 3-hit combo. Generates 14 Anima per hit.',
   },
   javelin: {
     name: 'Lapis Javelin', category: 'Core', unlock: 2, cost: 28, coef: 1.9, cooldown: 0, range: 18,
-    color: '#5d95ff', desc: 'Hurl a lapis javelin that pierces every enemy in a line.',
+    color: '#8fb4ff', desc: 'Hurl a lapis javelin that pierces every enemy in a line.',
   },
   snap: {
     name: 'Tether Snap', category: 'Core', unlock: 3, cost: 35, coef: 2.6, cooldown: 0,
-    color: '#a98bff', desc: 'The Tether flares, striking everything along it. Its effect follows your Tether Aspect.',
+    color: '#6fd8c8', desc: 'The Tether flares, striking everything along it. Its effect follows your Tether Aspect.',
   },
   wings: {
     name: 'Wings of the Sedu', category: 'Mobility', unlock: 4, coef: 1.4, cooldown: 7, range: 9,
-    color: '#ffe6a8', desc: 'Leap forward on spirit wings and crash down, damaging and knocking back enemies.',
+    color: '#efe6cf', desc: 'Leap forward on spirit wings and crash down, damaging and knocking back enemies.',
   },
   storm: {
     name: 'Storm of Adad', category: 'Core', unlock: 6, cost: 45, coef: 1.5, cooldown: 4, range: 14,
-    color: '#8fd3ff', desc: 'Call 6 lightning strikes onto enemies around the target area.',
+    color: '#a9dcff', desc: 'Call 6 lightning strikes onto enemies around the target area.',
   },
   aegis: {
     name: 'Aegis of Nergal', category: 'Defensive', unlock: 8, coef: 0, cooldown: 16,
-    color: '#ffcf4a', desc: 'Raise a barrier absorbing 40% of your Maximum Life for 6 seconds.',
+    color: '#f6d27a', desc: 'Raise a barrier absorbing 40% of your Maximum Life for 6 seconds.',
   },
   pyre: {
     name: "Gibil's Pyre", category: 'Ultimate', unlock: 10, coef: 0.7, cooldown: 45,
-    color: '#ff7a2a', desc: 'For 8 seconds, your Tether burns and you pulse fire around you every half second.',
+    color: '#ff7a45', desc: 'For 8 seconds, your Tether burns and you pulse fire around you every half second.',
   },
 };
 
