@@ -21,6 +21,7 @@ import { loadSave, writeSave, clearSave, encodeBytes, decodeBytes } from './game
 import { Hud } from './ui/hud.js';
 import { UI } from './ui/ui.js';
 import { Fog, FOG_RES } from './ui/mapdraw.js';
+import { Audio as GameAudio } from './audio/audio.js';
 
 export const VERSION = '0.3.0-alpha';
 
@@ -192,6 +193,7 @@ function boot() {
   g.interactions = new Interactions(g);
   const ui = new UI(g);
   g.ui = ui;
+  g.audio = new GameAudio(g);
   window.__game = g; // handy for debugging in the console and for automated smoke tests
 
   function bindQuestEvents() {
@@ -229,6 +231,7 @@ function boot() {
       g.suppressInput = false;
     }
     ui.update(realDt);
+    g.audio.update(realDt);
 
     if (g.started && !ui.open) {
       const dt = fx.hitstop > 0 ? 0 : realDt;
