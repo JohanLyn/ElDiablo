@@ -1,3 +1,4 @@
+import { installSystem, webglAvailable, showNoWebGL } from './ui/system.js';
 import * as THREE from 'three';
 import { Renderer } from './core/render.js';
 import { Settings } from './core/settings.js';
@@ -31,6 +32,8 @@ export const VERSION = '0.3.0-alpha';
 const settings = new Settings();
 const events = new Events();
 const canvas = document.getElementById('game');
+// Friendly full-screen message instead of a crash when WebGL 2 is missing.
+if (!webglAvailable()) { showNoWebGL(); throw new Error('WebGL 2 is unavailable'); }
 const renderer = new Renderer(canvas, settings);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 400);
@@ -228,6 +231,7 @@ function boot() {
   g.story = new Story(g);
   g.tutorial = new Tutorial(g);
   g.audio = new GameAudio(g);
+  installSystem(g); // pause on blur, pad-disconnect prompt, UI scale + colour-blind hooks
   window.__game = g; // handy for debugging in the console and for automated smoke tests
   window.__itemScore = itemScore;
 

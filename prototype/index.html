@@ -3,9 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Gates of Kur</title>
+  <meta name="theme-color" content="#120c10" />
+  <title>The Seven Gates of Kur</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Alegreya+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;800&family=Alegreya+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/src/ui/style.css" />
 </head>
 <body data-device="kbm">
@@ -14,41 +16,81 @@
   <div id="numbers"></div>
 
   <div id="hud" hidden>
-    <div id="region"><b id="region-name"></b><span id="region-level"></span></div>
-    <div id="minimap-wrap"><canvas id="minimap" width="200" height="200"></canvas></div>
-    <div id="tracker"></div>
-    <div id="event" hidden></div>
-    <div id="target" hidden><div class="t-name"></div><div class="t-affixes"></div><div class="t-bar"><i></i></div></div>
-    <div id="bossbar" hidden><div class="b-name"></div><div class="b-bar"><i></i><span></span></div></div>
+    <!-- top right: minimap, region plate, quest tracker, world event -->
+    <div id="topright" class="grp">
+      <div id="minimap-wrap">
+        <canvas id="minimap" width="200" height="200"></canvas>
+        <div class="mm-shade"></div>
+        <div class="mm-bezel"></div>
+        <i class="mm-n">N</i>
+      </div>
+      <div id="region"><b id="region-name"></b><span id="region-level"></span></div>
+      <div id="tracker"></div>
+      <div id="event" hidden></div>
+    </div>
+
+    <!-- top centre: target frame and boss bar -->
+    <div id="topcenter" class="grp">
+      <div id="target" hidden>
+        <div class="t-name"></div>
+        <div class="t-affixes"></div>
+        <div class="t-bar"><b></b><i></i></div>
+      </div>
+      <div id="bossbar" hidden>
+        <div class="b-name"></div>
+        <div class="b-frame">
+          <span class="b-end l" data-orn="finial"></span>
+          <div class="b-bar"><b class="ghost"></b><i></i><u class="m60"></u><u class="m30"></u><span></span></div>
+          <span class="b-end r" data-orn="finial-r"></span>
+        </div>
+        <div class="b-sub"></div>
+      </div>
+    </div>
+
     <div id="banner"></div>
     <div id="notify"></div>
     <div id="feed"></div>
     <div id="prompt" hidden><kbd></kbd><span></span></div>
-    <div id="channel" hidden><span>Town Portal</span><i></i></div>
+    <div id="channel" hidden><span>Town Portal</span><div class="ch-bar"><i></i></div></div>
     <div id="tutorial" hidden></div>
 
-    <div id="bottom">
+    <div id="bottom" class="grp">
       <div id="buffs"></div>
       <div id="bar">
-        <div class="orb life" id="life-orb"><div class="fill"></div><div class="barrier"></div><span></span></div>
+        <div class="orb life" id="life-orb">
+          <div class="orb-well"><div class="ghost"></div><div class="fill"></div><div class="barrier"></div><div class="glass"></div></div>
+          <div class="orb-rim"></div>
+          <span></span><small>Life</small>
+        </div>
         <div id="center">
+          <div class="plate-gem" data-orn="rosette"></div>
           <div id="slots-row">
-            <div id="potion" class="slot potion"><div class="icon"></div><b class="count"></b><kbd class="pad">LB</kbd><kbd class="kbm">Q</kbd></div>
+            <div id="potion" class="slot potion"><div class="icon"></div><b class="count"></b><kbd class="pad gp gp-bump">LB</kbd><kbd class="kbm key">Q</kbd></div>
+            <div class="plate-sep"></div>
             <div id="skill-slots"></div>
-            <div id="aspect" class="slot aspect"><div class="gem"></div><kbd class="pad">◀▶</kbd><kbd class="kbm">R</kbd></div>
+            <div class="plate-sep"></div>
+            <div id="aspect" class="slot aspect"><div class="gem"></div><kbd class="pad gp gp-text">◀ ▶</kbd><kbd class="kbm key">R</kbd></div>
           </div>
-          <div id="xp"><i></i></div>
+          <div id="xpwrap"><div id="xp-lvl"></div><div id="xp"><i></i></div></div>
           <div id="xp-text"></div>
         </div>
-        <div class="orb anima" id="anima-orb"><div class="fill"></div><span></span></div>
+        <div class="orb anima" id="anima-orb">
+          <div class="orb-well"><div class="ghost"></div><div class="fill"></div><div class="glass"></div></div>
+          <div class="orb-rim"></div>
+          <span></span><small>Anima</small>
+        </div>
       </div>
     </div>
-    <div id="hint"><span class="pad">Start: inventory · Back: map · D-pad ▲: town portal</span><span class="kbm">I inventory · K skills · M map · T town portal · E interact</span></div>
+    <div id="hint" class="grp">
+      <span class="pad"><b><kbd class="pad gp gp-small">Start</kbd> pause</b><b><kbd class="pad gp gp-small">Back</kbd> map</b><b><kbd class="pad gp gp-text">D-pad ▲</kbd> town portal</b></span>
+      <span class="kbm"><b><kbd class="kbm key">Esc</kbd> pause</b><b><kbd class="kbm key">I</kbd> inventory</b><b><kbd class="kbm key">M</kbd> map</b><b><kbd class="kbm key">T</kbd> town portal</b></span>
+    </div>
   </div>
 
-  <!-- Inventory / skills / quests / system -->
+  <!-- Inventory / skills / quests / settings / controls -->
   <div id="menu" class="overlay" hidden>
     <div class="menu-card">
+      <span class="mc-c tl" data-orn="corner"></span><span class="mc-c tr" data-orn="corner"></span><span class="mc-c bl" data-orn="corner"></span><span class="mc-c br" data-orn="corner"></span>
       <div id="menu-tabs"></div>
       <div id="menu-body"></div>
       <div id="menu-help"></div>
@@ -57,10 +99,50 @@
 
   <div id="map" class="overlay" hidden>
     <div class="map-card">
-      <div class="map-head"><b>The Land Before Kur</b><span id="map-help"></span></div>
-      <canvas id="map-canvas" width="660" height="660"></canvas>
+      <div class="map-head"><span class="mh-orn" data-orn="rosette-s"></span><b>The Land Before Kur</b><span class="mh-orn" data-orn="rosette-s"></span></div>
+      <div class="map-help-row"><span id="map-help"></span></div>
+      <div class="map-frame">
+        <span class="mc-c tl" data-orn="corner"></span><span class="mc-c tr" data-orn="corner"></span><span class="mc-c bl" data-orn="corner"></span><span class="mc-c br" data-orn="corner"></span>
+        <canvas id="map-canvas" width="660" height="660"></canvas>
+      </div>
       <div id="map-info"></div>
     </div>
+  </div>
+
+  <!-- Pause menu (Esc / Start) -->
+  <div id="pause" class="overlay" hidden>
+    <div class="pause-card">
+      <span class="mc-c tl" data-orn="corner"></span><span class="mc-c tr" data-orn="corner"></span><span class="mc-c bl" data-orn="corner"></span><span class="mc-c br" data-orn="corner"></span>
+      <div id="pause-reason" hidden></div>
+      <div class="p-sigil" data-orn="rosette-l"></div>
+      <h2 id="pause-title">Paused</h2>
+      <div id="pause-sub"></div>
+      <div class="p-divider" data-orn="divider"></div>
+      <div id="pause-options"></div>
+      <div id="pause-help"></div>
+    </div>
+  </div>
+
+  <div id="credits" class="overlay" hidden>
+    <div class="pause-card credits-card">
+      <span class="mc-c tl" data-orn="corner"></span><span class="mc-c tr" data-orn="corner"></span><span class="mc-c bl" data-orn="corner"></span><span class="mc-c br" data-orn="corner"></span>
+      <div class="p-sigil" data-orn="rosette-l"></div>
+      <h2>Credits</h2>
+      <div class="p-divider" data-orn="divider"></div>
+      <dl>
+        <dt>Design &amp; direction</dt><dd>JohanLyn</dd>
+        <dt>Development</dt><dd>Claude (Anthropic) with the ElDiablo team</dd>
+        <dt>Engine</dt><dd>three.js</dd>
+        <dt>Fonts</dt><dd>Cinzel, Alegreya Sans (Google Fonts, SIL OFL)</dd>
+        <dt>Art &amp; audio</dt><dd>All art and audio are procedurally generated</dd>
+      </dl>
+      <div class="credits-foot"><span class="cr-ver"></span></div>
+      <div class="plaque-row"><div class="btn plaque focus" id="credits-close"><span>Back</span></div></div>
+    </div>
+  </div>
+
+  <div id="pad-lost" hidden>
+    <div class="pl-card"><b>Controller disconnected</b><span>Reconnect it, or press any key to continue with keyboard &amp; mouse.</span></div>
   </div>
 
   <div id="dialog" hidden>
@@ -68,32 +150,49 @@
     <div class="d-name"></div>
     <div class="d-text"></div>
     <div class="d-options"></div>
+    <div class="d-more"></div>
   </div>
 
   <div id="title" class="overlay">
+    <div class="title-fx" id="title-embers"></div>
     <div class="title-card">
-      <div class="t-eyebrow">ElDiablo · prototype v2</div>
-      <h1>The Seven Gates of Kur</h1>
-      <p class="t-lede">The First Gate of the underworld has cracked. Gallu, scorpion-men and stone-born Asag spill across the plains of Eridu. Take up the Tether, bind your sedu spirit, and descend.</p>
+      <div class="t-sigil" data-orn="rosette-l"></div>
+      <div class="t-eyebrow">The First Gate has cracked</div>
+      <h1><span class="h-the">The</span><span class="h-main">Seven Gates</span><span class="h-of">of Kur</span></h1>
+      <div class="t-gates" data-orn="gates"></div>
+      <p class="t-lede">Gallu, scorpion-men and stone-born Asag spill across the plains of Eridu. Take up the Tether, bind your sedu spirit, and descend.</p>
       <div id="title-options"></div>
-      <p class="t-foot"><span class="pad">Controller detected · A to choose</span><span class="kbm">Arrow keys + Enter, or click · a controller works too</span></p>
     </div>
+    <p class="t-foot"><span class="pad"><kbd class="pad gp gp-a">A</kbd> choose</span><span class="kbm">Arrow keys + <kbd class="kbm key">Enter</kbd>, or click · a controller works too</span></p>
+    <div class="t-corner l"><span class="t-credit">A game by JohanLyn · Built with three.js</span></div>
+    <div class="t-corner r"><span class="t-version" id="t-version"></span></div>
   </div>
 
   <div id="intro" class="overlay" hidden>
+    <div class="bar top"></div>
     <div class="intro-lines"></div>
-    <div class="intro-skip"><span class="pad">A</span><span class="kbm">Enter</span> skip</div>
+    <div class="bar bottom"></div>
+    <div class="intro-skip"><kbd class="pad gp gp-a">A</kbd><kbd class="kbm key key-wide">Enter</kbd> skip</div>
   </div>
 
   <div id="death" class="overlay" hidden>
     <div class="title-card small">
+      <div class="t-sigil" data-orn="rosette-l"></div>
       <h1 class="red">You Have Fallen</h1>
+      <div class="p-divider" data-orn="divider"></div>
       <p class="t-lede">Your sedu spirit carries you back to the last waypoint you touched.</p>
-      <div class="start"><span class="pad">Press A to rise again</span><span class="kbm">Press Enter or click to rise again</span></div>
+      <div class="start"><span class="pad"><kbd class="pad gp gp-a">A</kbd> rise again</span><span class="kbm"><kbd class="kbm key key-wide">Enter</kbd> or click to rise again</span></div>
     </div>
   </div>
 
-  <div id="loading">Raising the land before Kur…</div>
+  <div id="loading">
+    <div class="ld-card">
+      <div class="ld-spin"><i></i></div>
+      <div class="ld-title">The Seven Gates of Kur</div>
+      <div class="ld-sub">Raising the land before Kur…</div>
+      <div class="ld-bar"><i></i></div>
+    </div>
+  </div>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
