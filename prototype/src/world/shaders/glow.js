@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { getEnv, NOISE_GLSL } from './common.js';
+import { FOG_GLSL, fogUniforms } from './fog.js';
 
 // Soft additive light halos (lanterns, braziers, rune glints) as a single Points
 // draw call, plus instanced billboard flames driven by a noise shader.
@@ -27,16 +28,18 @@ export function createGlow(items, { opacity = 0.55 } = {}) {
     transparent: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
-    uniforms: { uTime: env.uTime, uPx: env.uPxScale, uOpacity: { value: opacity } },
+    uniforms: { uTime: env.uTime, uPx: env.uPxScale, uLantern: env.uLanternK, uOpacity: { value: opacity }, ...fogUniforms() },
     vertexShader: /* glsl */`
-      uniform float uTime, uPx; attribute vec3 aColor; attribute float aSize; attribute vec2 aPh;
+      uniform float uTime, uPx, uLantern; attribute vec3 aColor; attribute float aSize; attribute vec2 aPh;
       varying vec3 vCol; varying float vA;
+      ${FOG_GLSL}
       void main() {
         float f = 1.0 + aPh.y * (sin(uTime * 9.0 + aPh.x) * 0.5 + sin(uTime * 14.3 + aPh.x * 2.1) * 0.5);
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
         gl_Position = projectionMatrix * mv;
         gl_PointSize = clamp(aSize * f * uPx / -mv.z, 2.0, 220.0);
-        vCol = aColor * f; vA = 1.0;
+        // Halos swell at dusk and night, and sink into fog with distance.
+        vCol = aColor * f * mix(0.3, 1.1, uLantern) * kurTransmit((modelMatrix * vec4(position, 1.0)).xyz); vA = 1.0;
       }`,
     fragmentShader: /* glsl */`
       uniform float uOpacity; varying vec3 vCol; varying float vA;
@@ -65,15 +68,17 @@ export function createFlames(positions, { scale = 1, colors = [0xfff2c0, 0xff9a3
     blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide,
     uniforms: {
-      uTime: env.uTime, uIntensity: { value: intensity },
+      uTime: env.uTime, uIntensity: { value: intensity }, ...fogUniforms(),
       uC0: { value: new THREE.Color(colors[0]) }, uC1: { value: new THREE.Color(colors[1]) }, uC2: { value: new THREE.Color(colors[2]) },
     },
     vertexShader: /* glsl */`
-      varying vec2 vUv; varying float vSeed;
+      varying vec2 vUv; varying float vSeed; varying float vT;
+      ${FOG_GLSL}
       void main() {
         vUv = uv;
         mat4 m = modelMatrix * instanceMatrix;
         vec3 org = vec3(m[3]);
+        vT = kurTransmit(org);
         float h = length(vec3(m[1]));
         vSeed = org.x * 0.37 + org.z * 0.61;
         vec4 mv = viewMatrix * vec4(org, 1.0);
@@ -83,7 +88,7 @@ export function createFlames(positions, { scale = 1, colors = [0xfff2c0, 0xff9a3
       }`,
     fragmentShader: /* glsl */`
       uniform float uTime, uIntensity; uniform vec3 uC0, uC1, uC2;
-      varying vec2 vUv; varying float vSeed;
+      varying vec2 vUv; varying float vSeed; varying float vT;
       ${NOISE_GLSL}
       void main() {
         vec2 p = vec2((vUv.x - 0.5) * 2.0, vUv.y);
@@ -97,7 +102,7 @@ export function createFlames(positions, { scale = 1, colors = [0xfff2c0, 0xff9a3
         float heat = clamp(a * 1.4 - p.y * 0.5 + n * 0.25, 0.0, 1.0);
         vec3 col = mix(uC2, uC1, smoothstep(0.1, 0.55, heat));
         col = mix(col, uC0, smoothstep(0.55, 0.95, heat));
-        gl_FragColor = vec4(col * a * uIntensity, 1.0);
+        gl_FragColor = vec4(col * a * uIntensity * vT, 1.0);
       }`,
   });
   const mesh = new THREE.InstancedMesh(geo, mat, Math.max(1, n));

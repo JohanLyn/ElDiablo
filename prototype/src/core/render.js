@@ -22,6 +22,9 @@ const GradeShader = {
     uVignette: { value: 0.32 },
     uGrain: { value: 0.035 },
     uHurt: { value: 0 },
+    uCA: { value: 0 },
+    uDirt: { value: 0 },
+    uAspect: { value: 1.6 },
     uFlash: { value: new THREE.Vector4(1, 1, 1, 0) },
   },
   vertexShader: /* glsl */`
@@ -29,13 +32,24 @@ const GradeShader = {
     void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */`
     uniform sampler2D tDiffuse;
-    uniform float uTime, uSplit, uContrast, uSaturation, uVignette, uGrain, uHurt;
+    uniform float uTime, uSplit, uContrast, uSaturation, uVignette, uGrain, uHurt, uCA, uDirt, uAspect;
     uniform vec3 uShadowTint, uHighlightTint;
     uniform vec4 uFlash;
     varying vec2 vUv;
     float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+    float vn(vec2 p) {
+      vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+    }
     void main() {
       vec4 c = texture2D(tDiffuse, vUv);
+      vec2 d0 = vUv - 0.5;
+      // Lateral chromatic aberration, growing toward the corners (High / Ultra).
+      if (uCA > 0.0) {
+        vec2 off = d0 * dot(d0, d0) * uCA * 0.018;
+        c.r = texture2D(tDiffuse, vUv + off).r;
+        c.b = texture2D(tDiffuse, vUv - off).b;
+      }
       vec3 col = c.rgb;
       float l = dot(col, vec3(0.299, 0.587, 0.114));
       // Split toning: cool shadows, warm highlights.
@@ -48,6 +62,14 @@ const GradeShader = {
       col *= 1.0 - uVignette * smoothstep(0.08, 0.55, r);
       // Low-life pulse at the screen edges.
       col = mix(col, vec3(0.55, 0.02, 0.04), uHurt * smoothstep(0.12, 0.5, r));
+      // Lens dirt: smudges and specks that only show where light blooms hard.
+      if (uDirt > 0.0) {
+        vec2 q = vUv * vec2(uAspect, 1.0);
+        float dirt = smoothstep(0.52, 0.9, vn(q * 3.1 + 2.0) * 0.6 + vn(q * 9.0) * 0.25 + vn(q * 23.0 + 5.0) * 0.15);
+        dirt += smoothstep(0.93, 0.985, vn(q * 38.0)) * 0.6;
+        float bright = smoothstep(0.62, 1.0, l2);
+        col += mix(vec3(1.0), col, 0.5) * dirt * bright * bright * uDirt * 0.16;
+      }
       col = mix(col, uFlash.rgb, uFlash.a);
       col += (hash(vUv * 1000.0 + uTime) - 0.5) * uGrain;
       gl_FragColor = vec4(clamp(col, 0.0, 1.0), c.a);
@@ -100,6 +122,7 @@ export class Renderer {
     this.webgl = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     this.webgl.toneMapping = THREE.ACESFilmicToneMapping;
     this.webgl.toneMappingExposure = 1.0;
+    this.lens = false;
     this.webgl.shadowMap.type = THREE.PCFShadowMap;
     this.grade = new ShaderPass(GradeShader);
     this.flash = 0;
@@ -141,6 +164,7 @@ export class Renderer {
     c.addPass(this.grade);
     c.addPass(q.aa === 'smaa' ? new SMAAPass() : new FXAAPass());
     this.composer = c;
+    this.lens = !!q.lens;
     this.resize();
     // Shadow-casting lights must rebuild their maps at the new size.
     this.scene?.traverse((o) => {
@@ -157,6 +181,7 @@ export class Renderer {
     this.webgl.setSize(w, h, false);
     this.composer?.setSize(w, h);
     if (this.camera) { this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); }
+    this.grade.uniforms.uAspect.value = w / h;
   }
 
   // Brief full-screen flash (legendary drops, level ups, boss phases).
@@ -211,6 +236,21 @@ export class Renderer {
     if (split !== undefined) u.uSplit.value = split;
     if (saturation !== undefined) u.uSaturation.value = saturation;
     if (contrast !== undefined) u.uContrast.value = contrast;
+  }
+
+  // Per-frame mood from the day cycle and region (world.js): bloom, vignette,
+  // grain and lens effects. Cheap uniform writes only; no passes are added or removed.
+  setMood({ bloom, bloomThr, bloomRad, vign, grain, ca }) {
+    const u = this.grade.uniforms;
+    if (this.bloom) {
+      this.bloom.strength = bloom;
+      this.bloom.threshold = bloomThr;
+      this.bloom.radius = bloomRad;
+    }
+    u.uVignette.value = vign;
+    u.uGrain.value = grain;
+    u.uCA.value = this.lens ? ca : 0;
+    u.uDirt.value = this.lens ? Math.min(1, bloom * 1.1) : 0;
   }
 
   get info() { return this.webgl.info; }

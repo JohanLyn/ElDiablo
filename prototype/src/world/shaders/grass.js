@@ -50,14 +50,19 @@ function tuftGeometry() {
     const w = 0.075;
     const rings = [[0, w, 0], [0.55, w * 0.75, 0.4], [1, 0, 1]];
     const start = pos.length / 3;
+    // Face normal of the (flat) blade: across the width direction and along its lean,
+    // pointing outward from the tuft so the two sides shade differently with the sun.
+    const T = new THREE.Vector3(lx * 0.55, h, lz * 0.55).normalize();
+    const nrm = new THREE.Vector3(dx, 0, dz).cross(T).normalize();
+    if (nrm.x * Math.sin(a) + nrm.z * Math.cos(a) < 0) nrm.negate();
     for (const [t, ww, lt] of rings) {
       const bx = ox + lx * lt * lt * h, bz = oz + lz * lt * lt * h;
       if (ww > 0) {
         pos.push(bx - dx * ww, t * h, bz - dz * ww, bx + dx * ww, t * h, bz + dz * ww);
-        for (let s = 0; s < 2; s++) { const c = base.clone().lerp(tip, t); col.push(c.r, c.g, c.b); nor.push(0, 1, 0); }
+        for (let s = 0; s < 2; s++) { const c = base.clone().lerp(tip, t); col.push(c.r, c.g, c.b); nor.push(nrm.x, nrm.y, nrm.z); }
       } else {
         pos.push(bx, t * h, bz);
-        const c = base.clone().lerp(tip, t); col.push(c.r, c.g, c.b); nor.push(0, 1, 0);
+        const c = base.clone().lerp(tip, t); col.push(c.r, c.g, c.b); nor.push(nrm.x, nrm.y, nrm.z);
       }
     }
     idx.push(start, start + 1, start + 2, start + 1, start + 3, start + 2, start + 2, start + 3, start + 4);
@@ -83,14 +88,17 @@ export class Grass {
       shader.uniforms.uTime = env.uTime;
       shader.uniforms.uWind = env.uWind;
       shader.uniforms.uPlayer = env.uPlayer;
+      shader.uniforms.uSunColor = env.uSunColor;
+      shader.uniforms.uDusk = env.uDusk;
       shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nuniform float uTime; uniform vec2 uWind; uniform vec3 uPlayer;')
+        .replace('#include <common>', '#include <common>\nuniform float uTime; uniform vec2 uWind; uniform vec3 uPlayer; varying float vTip;')
         .replace('#include <project_vertex>', `
           vec4 iOrigin = modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
           vec4 wpos = modelMatrix * instanceMatrix * vec4(transformed, 1.0);
           float dd = length(iOrigin.xz - uPlayer.xz);
           float fade = 1.0 - smoothstep(${(RADIUS * 0.72).toFixed(1)}, ${(RADIUS * 0.98).toFixed(1)}, dd);
           wpos.xyz = iOrigin.xyz + (wpos.xyz - iOrigin.xyz) * fade;
+          vTip = clamp(transformed.y / 0.7, 0.0, 1.0);
           float bend = transformed.y * transformed.y * 2.4;
           float gust = sin(iOrigin.x * 0.33 + iOrigin.z * 0.21 + uTime * 1.6) * 0.65 + sin(iOrigin.x * 0.9 - iOrigin.z * 0.7 + uTime * 3.3) * 0.25
                      + sin(iOrigin.x * 0.07 + uTime * 0.5) * 0.4;
@@ -98,11 +106,20 @@ export class Grass {
           wpos.y -= abs(gust) * bend * 0.04;
           vec4 mvPosition = viewMatrix * wpos;
           gl_Position = projectionMatrix * mvPosition;`);
-      shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_begin>', `
-        vec3 normal = normalize(vNormal);
-        vec3 nonPerturbedNormal = normal;`);
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying float vTip; uniform vec3 uSunColor; uniform float uDusk;')
+        .replace('#include <normal_fragment_begin>', `
+          // Blade normal (facing the viewer) bent toward up: blades shade with the sun
+          // yet keep the soft, rounded look of a meadow.
+          vec3 nB = normalize(vNormal) * (gl_FrontFacing ? 1.0 : -1.0);
+          vec3 nUp = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+          vec3 normal = normalize(mix(nB, nUp, 0.45));
+          vec3 nonPerturbedNormal = normal;`)
+        .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+          // Low sun shining through the blade tips (golden hour / dawn).
+          totalEmissiveRadiance += diffuseColor.rgb * uSunColor * (pow(vTip, 1.6) * uDusk * 0.5);`);
     };
-    material.customProgramCacheKey = () => 'grass-v1';
+    material.customProgramCacheKey = () => 'grass-v2';
     const count = N * N * this.K;
     this.mesh = new THREE.InstancedMesh(tuftGeometry(), material, count);
     this.mesh.frustumCulled = false;
