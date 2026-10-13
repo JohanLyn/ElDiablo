@@ -313,7 +313,7 @@ function boot() {
     // g.simDriven: an external harness (e2e bot) calls g.simulate itself.
     if (g.started && !ui.open && !g.simDriven) g.simulate(realDt);
     fx.update(g.started && !ui.open ? realDt : 0);
-    world.update(realDt, performance.now() / 1000, player.pos);
+    world.update(realDt, performance.now() / 1000, player.pos, renderer);
     rig.update(realDt, player.pos, player.vel, fx);
     loot.updateLabels(g, camera, g.highlightedLoot);
     if (g.started) hud.update(realDt, g);
