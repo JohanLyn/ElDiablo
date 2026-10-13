@@ -39,9 +39,10 @@ export class Loot {
     for (let i = 0; i < items; i++) {
       // Neti and the Cistern's guardian each drop a guaranteed Legendary the first time.
       const flag = enemy.boss ? 'netiLegendary' : enemy.named?.legendaryFlag;
-      const rarity = flag && i === 0 && !g.flags[flag] ? 'legendary' : rollRarity(this.rng, { magicFind: mf, minRarity });
-      if (flag && i === 0) g.flags[flag] = true;
-      this.dropItem(generateItem({ ilvl: lvl, rarity, rng: this.rng }), pos, g);
+      const guaranteed = flag && i === 0 && !g.flags[flag];
+      const item = generateItem({ ilvl: lvl, rarity: guaranteed ? 'legendary' : rollRarity(this.rng, { magicFind: mf, minRarity, ilvl: lvl }), rng: this.rng });
+      if (guaranteed) item.firstClearFlag = flag; // set on pickup (interact.js)
+      this.dropItem(item, pos, g);
     }
     if (enemy.boss || enemy.named || enemy.elite || this.rng.chance(0.4)) {
       const piles = enemy.boss ? 8 : enemy.elite || enemy.named ? 3 : 1;
@@ -53,7 +54,7 @@ export class Loot {
   dropChest(tier, pos, g, ilvl) {
     const n = tier === 3 ? 4 : tier === 2 ? 3 : 2;
     const minRarity = tier >= 2 ? 'magic' : 'common';
-    for (let i = 0; i < n; i++) this.dropItem(generateItem({ ilvl, rarity: rollRarity(this.rng, { magicFind: tier, minRarity }), rng: this.rng }), pos, g);
+    for (let i = 0; i < n; i++) this.dropItem(generateItem({ ilvl, rarity: rollRarity(this.rng, { magicFind: tier, minRarity, ilvl }), rng: this.rng }), pos, g);
     for (let i = 0; i < tier + 1; i++) this.dropGold(Math.round(this.rng.float(6, 14) * ilvl), pos, g);
     if (tier >= 2) this.dropOrb(pos, g);
   }

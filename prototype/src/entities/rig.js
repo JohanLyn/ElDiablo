@@ -1,9 +1,12 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { damp, angleDelta } from '../core/util.js';
 
-// Lightweight procedural skeleton: nested Groups ("bones") with merged low-poly
-// meshes attached, plus an Animator that blends procedural poses from gameplay
-// state every frame. No allocations in the update path.
+// Lightweight procedural skeleton: nested Bones with rigid low-poly parts, plus an
+// Animator that blends procedural poses from gameplay state every frame. All parts
+// are merged into ONE skinned mesh (each vertex follows a single bone), so a whole
+// character costs one draw call (plus one for its shadow) however many bones it has.
+// No allocations in the update path.
 //
 // Conventions (character space): +Z forward, +Y up, the character's LEFT is +X.
 // Limb meshes hang down -Y from their bone origin, so for a limb bone
@@ -44,7 +47,7 @@ export class Rig {
     this.meshes = [];
     this.rest = {};
     for (const [name, parent, x, y, z] of def.bones) {
-      const grp = new THREE.Group();
+      const grp = new THREE.Bone();
       grp.name = name;
       grp.position.set(x, y, z);
       (parent ? this.b[parent] : this.root).add(grp);
@@ -53,13 +56,28 @@ export class Rig {
       this.list.push(grp);
     }
     if (def.orders) for (const [n, o] of Object.entries(def.orders)) this.b[n].rotation.order = o;
-    for (const [bone, geo] of Object.entries(def.geos)) {
-      if (!this.b[bone]) throw new Error(`rig: no bone ${bone}`);
-      const m = new THREE.Mesh(geo, material);
-      m.castShadow = true;
-      this.b[bone].add(m);
-      this.meshes.push(m);
+    // Bake every part into rest-pose rig space, tagged with its bone. Rigs built
+    // from the same def share the result.
+    this.root.updateMatrixWorld(true); // bind() below reads the rest-pose bone matrices
+    let merged = def.skinned;
+    if (!merged) {
+      const parts = [];
+      for (const [bone, geo] of Object.entries(def.geos)) {
+        if (!this.b[bone]) throw new Error(`rig: no bone ${bone}`);
+        parts.push(rigidPart(geo, this.b[bone].matrixWorld, this.list.indexOf(this.b[bone])));
+      }
+      merged = def.skinned = mergeGeometries(parts, false);
+      for (const p of parts) p.dispose();
+      merged.computeBoundingSphere();
     }
+    const mesh = new THREE.SkinnedMesh(merged, material);
+    mesh.castShadow = true;
+    this.root.add(mesh);
+    mesh.bind(new THREE.Skeleton(this.list));
+    // Poses move limbs well outside the rest shape; cull with a roomier sphere.
+    mesh.boundingSphere = merged.boundingSphere.clone();
+    mesh.boundingSphere.radius *= 1.5;
+    this.meshes.push(mesh);
   }
 
   reset() {
@@ -69,6 +87,20 @@ export class Rig {
   }
 
   setShadows(on) { for (const m of this.meshes) m.castShadow = on; }
+
+  // Frees the per-rig bone texture (the geometry is shared and stays).
+  dispose() { for (const m of this.meshes) m.skeleton.dispose(); }
+}
+
+// A copy of `geo` moved into rig space, every vertex bound fully to bone `index`.
+function rigidPart(geo, matrix, index) {
+  const g = geo.clone().applyMatrix4(matrix);
+  const n = g.attributes.position.count;
+  const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+  for (let i = 0; i < n; i++) { si[i * 4] = index; sw[i * 4] = 1; }
+  g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
+  g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+  return g;
 }
 
 // ---------------------------------------------------------------------------------

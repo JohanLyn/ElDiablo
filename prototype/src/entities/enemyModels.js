@@ -786,6 +786,8 @@ function auraFor(color) {
   return a;
 }
 
+let orbParts = null; // Lilitu orb meshes, shared by every Lilitu
+
 // Returns a Group (at the enemy position) holding the rig. userData:
 //   mat (material whose .emissive is flashed), anim, rig, orb, gold, height
 export function makeEnemyModel(type, color, opts = {}) {
@@ -807,9 +809,12 @@ export function makeEnemyModel(type, color, opts = {}) {
   g.userData.height = HEIGHT[type];
   g.userData.type = type;
   if (type === 'lilitu') {
-    const orbMat = new THREE.MeshBasicMaterial({ color: 0xb860ff });
-    const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.17, 1), orbMat);
-    const halo = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 6), new THREE.MeshBasicMaterial({ color: 0x8a3dff, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false }));
+    const O = (orbParts ??= {
+      geo: new THREE.IcosahedronGeometry(0.17, 1), mat: new THREE.MeshBasicMaterial({ color: 0xb860ff }),
+      haloGeo: new THREE.SphereGeometry(0.3, 8, 6), haloMat: new THREE.MeshBasicMaterial({ color: 0x8a3dff, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false }),
+    });
+    const orb = new THREE.Mesh(O.geo, O.mat);
+    const halo = new THREE.Mesh(O.haloGeo, O.haloMat);
     orb.add(halo);
     rig.b.orb.add(orb);
     rig.orbMesh = orb;

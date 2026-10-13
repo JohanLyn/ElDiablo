@@ -213,7 +213,8 @@ export function rigMaterial({ transparent = false, opacity = 1, tint = 0xffffff,
     Object.assign(sh.uniforms, mat.userData.u);
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', `#include <common>\n${VERT_HEAD}`)
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGlow = aGlow; vMatP = aMat; vWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGlow = aGlow; vMatP = aMat;')
+      .replace('#include <skinning_vertex>', '#include <skinning_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>\n${FRAG_HEAD}`)
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>

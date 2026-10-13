@@ -15,6 +15,8 @@ export class Interactions {
     this.portal = null; // { mesh, returnTo }
     this.exitPortal = null;
     this.ritual = { state: 'idle', time: 0, kills: 0, goal: 20, spawnTimer: 0, cooldown: 0, enemies: new Set() };
+    this.exitGeo = new THREE.TorusGeometry(1.4, 0.35, 8, 24);
+    this.townGeo = new THREE.TorusGeometry(1.2, 0.3, 8, 24);
     this.portalMat = new THREE.MeshBasicMaterial({ color: 0x5d95ff, transparent: true, opacity: 0.7, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
   }
 
@@ -60,14 +62,17 @@ export class Interactions {
 
     // Discover waypoints by walking near them.
     for (const w of g.world.waypoints) {
-      if (!w.discovered && Math.hypot(p.pos.x - w.x, p.pos.z - w.z) < 7) {
+      if (Math.hypot(p.pos.x - w.x, p.pos.z - w.z) >= 7) continue;
+      p.lastWaypoint = w.id;
+      // Re-reported on every visit (a no-op unless it is the active objective), so a
+      // waypoint found before its quest still completes it later.
+      g.quests.notify({ type: 'discover', id: w.id });
+      if (!w.discovered) {
         w.discovered = true;
         g.hud.banner(`Waypoint discovered: ${w.name}`, 'waypoint');
         g.events.emit('waypoint', { id: w.id });
-        g.quests.notify({ type: 'discover', id: w.id });
         g.save();
       }
-      if (Math.hypot(p.pos.x - w.x, p.pos.z - w.z) < 7) p.lastWaypoint = w.id;
     }
     for (const s of g.world.shrines) s.cooldown = Math.max(0, s.cooldown - dt);
     this.updateRitual(dt);
@@ -78,6 +83,8 @@ export class Interactions {
   pickUp(L) {
     const g = this.g;
     if (!g.player.addItem(L.item)) { g.hud.notify('Your inventory is full', 'warn'); return; }
+    // A guaranteed first-clear Legendary only counts once it is in the bag (ground loot isn't saved).
+    if (L.item.firstClearFlag) { g.flags[L.item.firstClearFlag] = true; delete L.item.firstClearFlag; g.save(); }
     g.loot.remove(L);
     g.events.emit('pickup', { kind: 'item', rarity: L.item.rarity, item: L.item });
     g.hud.feed(L.item.name, `r-${L.item.rarity}`);
@@ -108,10 +115,19 @@ export class Interactions {
   spawnExitPortal() {
     if (this.exitPortal || !this.g.instance) return;
     const spot = this.g.instance.spots.exit;
-    const m = new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.35, 8, 24), this.portalMat);
+    const m = new THREE.Mesh(this.exitGeo, this.portalMat);
     m.position.set(spot.x, 1.6, spot.z);
     this.g.scene.add(m);
     this.exitPortal = m;
+  }
+
+  // Forget everything from a previous run (new game / continue mid-session).
+  reset() {
+    this.removeTownPortal();
+    this.removeExitPortal();
+    this.cleanupEventEnemies(true);
+    Object.assign(this.ritual, { state: 'idle', time: 0, kills: 0, spawnTimer: 0, cooldown: 0 });
+    for (const s of this.g.world.shrines) s.cooldown = 0;
   }
 
   removeExitPortal() {
@@ -121,7 +137,7 @@ export class Interactions {
   // ---- town portal -------------------------------------------------------------------------
   createTownPortal(returnTo) {
     this.removeTownPortal();
-    const m = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.3, 8, 24), this.portalMat);
+    const m = new THREE.Mesh(this.townGeo, this.portalMat);
     m.position.set(TOWN.x + 2, 1.5, TOWN.z - 4);
     this.g.scene.add(m);
     this.portal = { mesh: m, returnTo: returnTo.clone() };

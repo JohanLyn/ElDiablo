@@ -78,8 +78,12 @@ function boot() {
       for (const w of world.waypoints) w.discovered = found.has(w.id);
       const opened = new Set(save?.chests ?? []);
       for (const c of world.chests) { c.opened = opened.has(c.id); c.model.userData.lid.rotation.x = c.opened ? -1.9 : 0; }
+      document.getElementById('pause').hidden = true;
+      g.timers.length = 0;
+      g.interactions.reset();
       for (const c of enemies.camps) if (c.state !== 'dormant') enemies.despawnCamp(c);
       enemies.clearDungeon();
+      enemies.clearStray();
       loot.clearAll();
       abilities.reset();
       g.started = true;
@@ -207,7 +211,15 @@ function boot() {
       g.timers.push({ t: 1.4, fn: () => ui.showDeath() });
     },
 
+    // Where the quest wants you; inside a dungeon, anything outside it points at the way out.
     questMarker() {
+      const m = g.questTarget();
+      if (!m || !g.instance || instanceAt(m.z) === g.instance) return m;
+      const portal = g.interactions.exitPortal?.position;
+      return portal ? { x: portal.x, z: portal.z } : { x: g.instance.spots.entry.x, z: g.instance.spots.entry.z + 3 };
+    },
+
+    questTarget() {
       const q = g.quests;
       if (q.done) return null;
       if (q.pending) { const n = world.npcs.find((x) => x.id === q.pending.giver); return { x: n.x, z: n.z }; }
@@ -230,7 +242,6 @@ function boot() {
       if (m === 'named-aqrabu') return { x: AQRABU.x, z: AQRABU.z };
       if (m === 'boss-neti' && g.instance?.id === 'ganzir') return INSTANCES.ganzir.spots.boss;
       if (m === 'cistern-entrance') return g.instance?.id === 'cistern' ? INSTANCES.cistern.spots.boss : INSTANCES.cistern.entrance;
-      if (g.instance) return g.instance.spots.entry; // wrong instance: head back out
       return INSTANCES.ganzir.entrance;
     },
   };

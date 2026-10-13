@@ -45,7 +45,9 @@ The first alpha. The v2 open-world prototype now looks, sounds and plays like a 
   - The XP needed per level is now 100 x L squared.
   - The Tether is weaker: a longer hit interval, lower damage per tick and a lower whip bonus cap.
   - Monsters have more life and hit harder.
-- Kill-quest markers point to the nearest camp that still has targets.
+- Kill-quest markers point to the nearest camp that still has targets. Inside a dungeon, a marker for something outside it points at the way out.
+- Legendaries no longer drop below item level 5, so the Cistern guardian's guaranteed Legendary is the first one. Elites have a little less life.
+- Performance: every hero and monster is now one skinned mesh instead of one mesh per bone, which cuts draw calls in busy fights by about 85% (744 to 110 in the Dune Ruins). Dungeon brazier lights are pooled, so the light count stays the same everywhere.
 
 ### Fixed
 - Audio: the music scheduler looks ahead correctly, audio timing no longer depends on frame rate, voice counts are capped per sound, and the Tether hum is balanced against the mix.

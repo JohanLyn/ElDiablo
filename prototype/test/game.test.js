@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Rng, fbm } from '../src/core/rng.js';
-import { generateItem, RARITY, sellValue, itemScore, startingWeapon, POWERS } from '../src/game/items.js';
+import { generateItem, RARITY, sellValue, itemScore, startingWeapon, POWERS, rollRarity, LEGENDARY_MIN_ILVL } from '../src/game/items.js';
 import { computeStats, xpToNext, armorReduction, rollDamage, monsterLevelFor, MAX_LEVEL } from '../src/game/stats.js';
 import { QuestLog, QUESTS } from '../src/game/quests.js';
 import { canRankUp, skillCoef, SKILLS } from '../src/game/skills.js';
@@ -117,4 +117,12 @@ test('event bus delivers and isolates handler errors', async () => {
   ev.emit('hit', { n: 2 });
   console.error = orig;
   assert.deepEqual(got, [1]);
+});
+
+test('legendaries never roll below the minimum item level', () => {
+  const rng = new Rng(7);
+  for (let i = 0; i < 4000; i++) assert.notEqual(rollRarity(rng, { magicFind: 2, ilvl: LEGENDARY_MIN_ILVL - 1 }), 'legendary');
+  let found = 0;
+  for (let i = 0; i < 4000; i++) if (rollRarity(rng, { magicFind: 2, ilvl: LEGENDARY_MIN_ILVL }) === 'legendary') found++;
+  assert.ok(found > 0);
 });

@@ -34,7 +34,15 @@ export class Story {
     this.wave = 0;
     this.nextWaveIn = 1.2;
     this.waveEnemies = [];
-    // Keep the opening clean: camps near the caravan sleep until later.
+    this.quietCamps();
+    g.teleport(START.x, START.z);
+    g.player.facing = 0;
+    this.setBurning(true);
+  }
+
+  // Keep the opening clean: camps near the caravan sleep until later.
+  quietCamps() {
+    const g = this.g;
     for (const c of g.enemies.camps) {
       if (Math.hypot(c.x - CARAVAN.x, c.z - CARAVAN.z) < 34) {
         if (c.state === 'active') g.enemies.despawnCamp(c);
@@ -42,16 +50,20 @@ export class Story {
         c.clearedAt = g.time;
       }
     }
-    g.teleport(START.x, START.z);
-    g.player.facing = 0;
-    this.caravan.visible = true;
+  }
+
+  // The wreck (and its colliders) stays on the road; it only burns during the opening.
+  setBurning(on) {
+    for (const f of this.caravan.userData.flames) f.visible = on;
+    this.caravan.userData.light.intensity = on ? 10 : 0; // not .visible: the light count must not change
   }
 
   // Loaded hero: skip the opening if it already happened.
   resume() {
     this.wave = this.g.flags.introDone ? -1 : 0;
     this.nextWaveIn = 1.2;
-    this.caravan.visible = !this.g.flags.introDone;
+    if (!this.g.flags.introDone) this.quietCamps();
+    this.setBurning(!this.g.flags.introDone);
   }
 
   update(dt) {
@@ -152,6 +164,7 @@ function buildCaravan(g) {
   group.add(light);
   for (const c of group.children) if (c.isMesh) c.position.y += g.world.heightAt(c.position.x, c.position.z);
   group.userData.flames = flames;
+  group.userData.light = light;
   g.scene.add(group);
   return group;
 }

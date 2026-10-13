@@ -82,7 +82,10 @@ export class Renderer {
     this.webgl.setPixelRatio(Math.min(window.devicePixelRatio || 1, q.pixelRatio));
     this.webgl.shadowMap.enabled = q.shadows;
     this.webgl.shadowMap.needsUpdate = true;
-    this.composer?.dispose?.();
+    if (this.composer) {
+      for (const p of this.composer.passes) if (p !== this.grade) p.dispose?.();
+      this.composer.dispose();
+    }
     const c = new EffectComposer(this.webgl);
     c.addPass(new RenderPass(this.scene, this.camera));
     if (q.ao) {

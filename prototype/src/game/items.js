@@ -65,9 +65,14 @@ const RARE_B = ['Fang', 'Ward', 'Oath', 'Hymn', 'Gate', 'Thorn', 'Veil', 'Crown'
 let idCounter = 0;
 const newId = () => `${Date.now().toString(36)}-${(idCounter++).toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`;
 
-export function rollRarity(rng, { magicFind = 0, minRarity = 'common' } = {}) {
+// Legendaries never roll below item level 5: the first one is a scripted moment
+// (the Cistern of Enki's guardian), not a lucky drop off the first Gallu.
+export const LEGENDARY_MIN_ILVL = 5;
+
+export function rollRarity(rng, { magicFind = 0, minRarity = 'common', ilvl = 99 } = {}) {
   const order = ['common', 'magic', 'rare', 'legendary'];
-  let r = rng.weighted([['common', 55], ['magic', 30], ['rare', 12 + magicFind * 6], ['legendary', 2.2 + magicFind * 3]]);
+  const legendary = ilvl < LEGENDARY_MIN_ILVL ? 0 : 1.6 + magicFind * 2.5;
+  let r = rng.weighted([['common', 55], ['magic', 30], ['rare', 12 + magicFind * 6], ['legendary', legendary]]);
   if (order.indexOf(r) < order.indexOf(minRarity)) r = minRarity;
   return r;
 }

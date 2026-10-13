@@ -45,7 +45,7 @@ export class Enemy {
     this.named = named;
     this.camp = camp;
     this.boss = this.def.ai === 'boss';
-    const eliteMult = named ? 6 : elite ? 3.5 : 1;
+    const eliteMult = named ? 6 : elite ? 3.0 : 1;
     this.maxHp = Math.round(this.def.hp * monsterLifeMult(level) * eliteMult);
     this.hp = this.maxHp;
     this.dmg = this.def.dmg * monsterDamageMult(level) * (elite ? 1.4 : 1);
@@ -84,8 +84,9 @@ export class Enemy {
 
     if (!this.boss) {
       this.bar = new THREE.Group();
-      const bg = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.12), new THREE.MeshBasicMaterial({ color: 0x220a0a, depthTest: false, transparent: true }));
-      this.barFill = new THREE.Mesh(new THREE.PlaneGeometry(1.06, 0.08), new THREE.MeshBasicMaterial({ color: elite || named ? 0xf2d24b : 0xe0393a, depthTest: false, transparent: true }));
+      const B = barParts();
+      const bg = new THREE.Mesh(B.bgGeo, B.bgMat);
+      this.barFill = new THREE.Mesh(B.fillGeo, elite || named ? B.eliteMat : B.fillMat);
       this.barFill.position.z = 0.001;
       bg.renderOrder = 10; this.barFill.renderOrder = 11;
       this.bar.add(bg, this.barFill);
@@ -102,7 +103,16 @@ export class Enemy {
   dispose(scene) {
     scene.remove(this.group);
     if (this.bar) scene.remove(this.bar);
+    this.group.userData.rig?.dispose();
+    this.group.userData.mat?.dispose();
   }
+}
+
+// Health bar meshes are shared by every enemy (only their transforms differ).
+let BAR = null;
+function barParts() {
+  const mat = (color) => new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true });
+  return (BAR ??= { bgGeo: new THREE.PlaneGeometry(1.1, 0.12), fillGeo: new THREE.PlaneGeometry(1.06, 0.08), bgMat: mat(0x220a0a), fillMat: mat(0xe0393a), eliteMat: mat(0xf2d24b) });
 }
 
 // Darker, richer tint for elites so they read as special.
@@ -222,6 +232,14 @@ export class EnemyManager {
         this.list.push(e);
       }
     });
+  }
+
+  // Story and other loose monsters that belong to no camp or dungeon.
+  clearStray() {
+    for (let i = this.list.length - 1; i >= 0; i--) {
+      const e = this.list[i];
+      if (!e.camp && !e.dungeon) { e.alive = false; e.dispose(this.scene); this.list.splice(i, 1); }
+    }
   }
 
   clearDungeon() {
@@ -566,7 +584,7 @@ export class EnemyManager {
       if (!e.teleWrapped) {
         e.teleWrapped = true;
         const dispose = e.dispose.bind(e);
-        e.dispose = (scene) => { dispose(scene); scene.remove(e.tele); };
+        e.dispose = (scene) => { dispose(scene); if (e.tele) { scene.remove(e.tele); e.tele = null; } };
       }
     }
     e.tele.visible = true;

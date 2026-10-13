@@ -234,7 +234,7 @@ export class Menus {
       if (id === 'resetTut') this.resetTutorials();
       else if (id === 'new') {
         if (!this.confirmNew) this.confirmNew = true;
-        else { g.ui.closeMenu(); g.newGame(); return; }
+        else { g.ui.menuParent = null; g.ui.closeMenu(); g.newGame(); return; }
       }
       this.render();
       return;

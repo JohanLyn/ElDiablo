@@ -56,7 +56,7 @@ await page.evaluate((seed) => {
   });
 
   const SKILL_PRIORITY = ['javelin', 'snap', 'wings', 'storm', 'aegis', 'pyre', 'strike', 'javelin', 'snap', 'storm'];
-  const bot = { busy: 0, stuck: 0, lastPos: P.pos.clone(), sidestep: 0, sideDir: 1, reactAt: null, lootTarget: null };
+  const bot = { busy: 0, stuck: 0, lastPos: P.pos.clone(), sidestep: 0, stuckRun: 0, sideDir: 1, reactAt: null, lootTarget: null };
 
   function spendPoints() {
     for (const id of SKILL_PRIORITY) {
@@ -189,8 +189,8 @@ await page.evaluate((seed) => {
         }
         if (m) {
           const arrived = moveToward(m.x, m.z, 2.2);
-          if (arrived) g.input.pressed.interact = true;
-          // Quest 4: enter the dungeon at the gate.
+          // Doorways (gate, well, portals) have colliders, so "close enough" counts.
+          if (arrived || (Math.hypot(m.x - P.pos.x, m.z - P.pos.z) < 3.5 && g.interactTarget)) g.input.pressed.interact = true;
         }
       }
     }
@@ -198,7 +198,11 @@ await page.evaluate((seed) => {
     // Stuck detection: sidestep around props.
     if (Math.floor(t() / DT) % 60 === 0) {
       const moved = P.pos.distanceTo(bot.lastPos);
-      if (g.input.move.mag > 0 && moved < 1.5) { bot.sidestep = 1.2; bot.sideDir = Math.random() < 0.5 ? 1 : -1; stats.stuckEvents++; }
+      if (g.input.move.mag > 0 && moved < 1.5) {
+        bot.sidestep = 1.2; bot.sideDir = Math.random() < 0.5 ? 1 : -1; stats.stuckEvents++;
+        // A long run of stuck checks means a navigation bug, not a stray prop: say where.
+        if (++bot.stuckRun === 20) { const m = g.questMarker(); mark(`stuck at ${Math.round(P.pos.x)},${Math.round(P.pos.z)} heading for ${m ? `${Math.round(m.x)},${Math.round(m.z)}` : 'nothing'}`); }
+      } else bot.stuckRun = 0;
       bot.lastPos.copy(P.pos);
     }
     bot.sidestep = Math.max(0, bot.sidestep - DT);

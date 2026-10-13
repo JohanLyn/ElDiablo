@@ -109,7 +109,7 @@ await log('cistern + guardian', () => {
   const instance = g.instance?.id, region = g.world.regionAt(g.player.pos.x, g.player.pos.z);
   const guardian = g.enemies.list.find((e) => e.named?.id === 'cistern-guardian');
   g.teleport(guardian.pos.x, guardian.pos.z + 6); sim.step(30);
-  sim.fight(3000, { skills: [2, 3, 4, 5, 6], filter: (e) => e === guardian || e.pos.distanceTo(guardian.pos) < 12 });
+  sim.fight(3000, { skills: [2, 3, 4, 5, 6], filter: (e) => guardian.alive && (e === guardian || e.pos.distanceTo(guardian.pos) < 12) }); // stop at the kill: A also picks up / uses portals
   const legendary = g.loot.items.some((L) => L.item.rarity === 'legendary');
   const exitPortal = !!g.interactions.exitPortal;
   g.leaveDungeon(); sim.step(5);
