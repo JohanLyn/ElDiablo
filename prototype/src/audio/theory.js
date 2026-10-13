@@ -93,7 +93,7 @@ export class MelodyGen {
     const target = bars * 16;
     let motifPos = 0;
     let useMotif = r() < 0.7;
-    while (total < target - 1) {
+    while (total < target) {
       let step;
       if (useMotif && motifPos < this.motif.length) step = this.motif[motifPos++];
       else step = pickWeighted(r, [-3, -2, -1, 0, 1, 2, 3], [0.5, 1.5, 3, 1, 3, 1.5, 0.5]);

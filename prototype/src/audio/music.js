@@ -69,15 +69,15 @@ export const PROFILES = {
 
 // Layer base gains (dB trims relative to each other) and reverb sends
 const LAYERS = {
-  drone: { send: 0.25, trim: 1.0 },
-  wind: { send: 0.2, trim: 0.6 },
-  pad: { send: 0.55, trim: 1.0 },
-  lyre: { send: 0.35, trim: 1.0 },
-  reed: { send: 0.45, trim: 1.0 },
-  bell: { send: 0.65, trim: 1.0 },
-  drum: { send: 0.25, trim: 1.0 },
-  combat: { send: 0.15, trim: 1.0 },
-  boss: { send: 0.28, trim: 1.0 },
+  drone: { send: 0.25, trim: 0.4 },
+  wind: { send: 0.2, trim: 3 },
+  pad: { send: 0.55, trim: 5 },
+  lyre: { send: 0.35, trim: 6 },
+  reed: { send: 0.45, trim: 5 },
+  bell: { send: 0.65, trim: 5 },
+  drum: { send: 0.25, trim: 4 },
+  combat: { send: 0.15, trim: 1.3 },
+  boss: { send: 0.28, trim: 1.6 },
 };
 
 const COMBAT_PAT = 'D..t..t.D..t.t..';
@@ -397,8 +397,6 @@ export class Music {
     const S = this.S;
     S.begin(t, 1, 1);
     this.stats.notes++;
-    const when = Math.max(0, t - this.ctx.currentTime); // Synth adds t0; we pass absolute t0 and offset 0
-    void when;
     switch (ev.kind) {
       case 'pad': choir(S, this.layers.pad.in, { midis: ev.midis, dur: Math.max(1, ev.dur * 0.55), a: Math.min(2.5, ev.dur * 0.3), r: Math.min(3, ev.dur * 0.4), vowel: P.pad.vowel, g: 0.1 }); break;
       case 'lyre': lyre(S, this.layers.lyre.in, { midi: ev.midi, g: 0.2 * (ev.vel ?? 1), bright: P.lyre?.bright ?? 0.5, damp: P.lyre?.damp ?? 0.996, dur: 2.6 }); break;
@@ -418,7 +416,7 @@ export class Music {
     const S = this.S;
     S.begin(t, 1, 1);
     const kind = { D: 'doum', t: 'tek', k: 'ka', s: 'slap', T: 'tom', x: 'shake' }[ch];
-    if (kind) drum(S, dest, { kind, vel: vel * (0.88 + this.rnd() * 0.24) });
+    if (kind) drum(S, dest, { kind, vel: vel * (kind === 'tom' ? 0.65 : 1) * (0.88 + this.rnd() * 0.24) });
   }
 
   combatStep(P, t, sd) {

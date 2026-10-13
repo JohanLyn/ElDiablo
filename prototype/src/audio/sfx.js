@@ -11,6 +11,8 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 // ---- reusable fragments --------------------------------------------------------------------
 function thump(S, d, { t = 0, f = 140, f2 = 48, g = 0.8, r = 0.22 } = {}) {
   S.tone(d, { t, f, f2, tf: r * 0.6, type: 'sine', g, a: 0.002, r });
+  // upper harmonic so the punch is still audible on laptop speakers that cannot reproduce the sub
+  S.tone(d, { t, f: f * 2.1, f2: f2 * 2.6, tf: r * 0.4, type: 'triangle', g: g * 0.4, a: 0.002, r: r * 0.55 });
 }
 function whoosh(S, d, { t = 0, dur = 0.2, f = 600, f2 = 2800, q = 0.9, g = 0.3, peak = 0.35 } = {}) {
   S.noise(d, { t, dur, a: dur * peak, r: dur * (1 - peak), g, filt: [{ type: 'bandpass', f, f2, tf: dur, q }] });
@@ -138,7 +140,7 @@ const DEATHS = {
     thump(S, d, { f: 85, f2: 28, g: 1.0, r: 0.6 });
     for (let i = 0; i < 7; i++) S.noise(d, { t: 0.05 + i * 0.09 + Math.random() * 0.06, dur: 0.07, a: 0.001, g: 0.4, filt: [{ type: 'bandpass', f: R(300, 1800), q: 2.5 }] });
   },
-  neti(S, d) {
+  neti(S, d, o) {
     horn(S, d, { midi: 31, dur: 1.8, a: 0.2, r: 2.2, g: 0.35, open: 1100, bend: -7 });
     choir(S, d, { midis: [38, 45, 50, 53], dur: 2, a: 0.9, r: 3.2, g: 0.12, vowel: 'oh' });
     thump(S, d, { f: 75, f2: 24, g: 1.0, r: 1.0 });
@@ -580,4 +582,96 @@ export const SFX = {
 // Enemy death sounds are generated per type and registered as `die_<type>`.
 for (const k of Object.keys(DEATHS)) {
   SFX[`die_${k}`] = { type: 'die', max: 4, gap: 0.04, dur: k === 'neti' ? 6 : k === 'asag' ? 1.6 : 1.1, send: k === 'neti' ? 0.5 : 0.25, gain: k === 'neti' ? 1 : 0.9, fn: DEATHS[k] };
+}
+
+// Loudness calibration in dB, measured offline (see the audio measurement notes) so that sounds of
+// equal importance land at similar levels. Applied on top of each entry's `gain`.
+export const TRIMS = {
+  'swing1': 7,
+  'swing2': 6,
+  'swing3': -5.5,
+  'hitFlesh': 7.5,
+  'hitDemon': 6.5,
+  'hitStone': 7,
+  'hitGhost': 8.5,
+  'hitChitin': 9,
+  'hitBoss': 7.5,
+  'crit': 5,
+  'evade': -0.5,
+  'potion': -0.5,
+  'footstep:light': 4,
+  'footstep:heavy': 2.5,
+  'hurt': 8,
+  'heartbeat': -6.5,
+  'playerDeath': -8,
+  'javelinThrow': 3,
+  'javelinHit': 4.5,
+  'tetherHit_lapis': 8,
+  'tetherHit_fire': 6,
+  'tetherHit_chain': 3,
+  'tetherHit_bulwark': 0,
+  'snap': -9.5,
+  'lightning': -1.5,
+  'stormCast': 3.5,
+  'leapStart': 2.5,
+  'leapLand': 3,
+  'aegis': -4.5,
+  'pyreCast': 0,
+  'pyrePulse': 2.5,
+  'aspectChange': 2,
+  'windup:gallu': -4.5,
+  'windup:utukku': 1,
+  'windup:lilitu': 2.5,
+  'windup:scorpion': 17,
+  'windup:asag': 2,
+  'windup:neti': 4.5,
+  'attack:gallu': 4.5,
+  'attack:utukku': 8.5,
+  'attack:lilitu': 9.5,
+  'attack:scorpion': 11,
+  'attack:asag': -1,
+  'attack:neti': -1.5,
+  'projectile': 6,
+  'blast_fire': 3,
+  'blast_void': 0.5,
+  'blast_stone': 3.5,
+  'blast_electric': 7.5,
+  'netiRoar': -1,
+  'netiPhase': -1,
+  'coin': 9.5,
+  'lootCommon': 7.5,
+  'lootMagic': -2,
+  'lootRare': -2.5,
+  'lootLegendary': -3,
+  'pickup': 10,
+  'orb': 2,
+  'levelUp': 1,
+  'questComplete': -4.5,
+  'questAccept': -1,
+  'questProgress': 2.5,
+  'region': 0.5,
+  'waypoint': -4.5,
+  'shrine': 1,
+  'chestOpen': -4,
+  'portal': -7,
+  'uiMove': 10,
+  'uiConfirm': -2,
+  'uiBack': 3,
+  'uiOpen': 2.5,
+  'denied': -5.5,
+  'die_gallu': -1.5,
+  'die_utukku': 3.5,
+  'die_lilitu': 1,
+  'die_scorpion': 0,
+  'die_asag': 3,
+  'die_neti': 2,
+};
+export function trimKey(name, o) {
+  if (o?.etype) return `${name}:${o.etype}`;
+  if (name === 'footstep') return `footstep:${o?.heavy ? 'heavy' : 'light'}`;
+  return name;
+}
+export function trimGain(name, o) {
+  const db = TRIMS[trimKey(name, o)] ?? TRIMS[name] ?? 0;
+  return 10 ** (db / 20);
 }

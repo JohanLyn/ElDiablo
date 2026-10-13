@@ -50,7 +50,7 @@ export class Engine {
     this.sfxBus = gain(volumeCurve(this.volumes.sfx));
     this.uiBus = gain(volumeCurve(this.volumes.sfx));
     this.musicDuck = gain(1); // stingers / menus duck the music through this
-    this.musicBus = gain(volumeCurve(this.volumes.music) * 0.5);
+    this.musicBus = gain(volumeCurve(this.volumes.music) * MUSIC_TRIM);
     this.musicLP = c.createBiquadFilter();
     this.musicLP.type = 'lowpass';
     this.musicLP.frequency.value = 20000;
@@ -71,7 +71,7 @@ export class Engine {
     revOut.connect(this.mix);
     // Send buses (dry signal taps) with per-environment amounts into each convolver
     this.sfxSend = gain(volumeCurve(this.volumes.sfx));
-    this.musicSend = gain(volumeCurve(this.volumes.music) * 0.5);
+    this.musicSend = gain(volumeCurve(this.volumes.music) * MUSIC_TRIM);
     this.sfxToOpen = gain(0.18); this.sfxToHall = gain(0);
     this.musicToOpen = gain(0.26); this.musicToHall = gain(0.2);
     this.sfxSend.connect(this.sfxToOpen).connect(this.revOpenIn);
@@ -222,4 +222,4 @@ export class Engine {
 }
 
 // Trim so that, at default settings, the music sits 10-14 dB below the effects (calibrated with the measurement harness).
-export const MUSIC_TRIM = 0.5;
+export const MUSIC_TRIM = 0.66;
