@@ -32,6 +32,23 @@ export function roadDistance(x, z) {
   return best;
 }
 
+// Signed distance across the nearest road (sign = side of the segment).
+export function roadLateral(x, z) {
+  let best = Infinity, signed = 99;
+  for (const road of ROADS) {
+    for (let i = 0; i < road.length - 1; i++) {
+      const [ax, az] = road[i], [bx, bz] = road[i + 1];
+      const d = distPointSegment(x, z, ax, az, bx, bz).dist;
+      if (d < best) {
+        best = d;
+        const cross = (bx - ax) * (z - az) - (bz - az) * (x - ax);
+        signed = cross >= 0 ? d : -d;
+      }
+    }
+  }
+  return signed;
+}
+
 // How strongly the ground is flattened here (1 = fully flat).
 function flatness(x, z) {
   let f = 0;
