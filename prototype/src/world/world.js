@@ -16,6 +16,7 @@ import { Grass } from './shaders/grass.js';
 import { createParticles, PARTICLE_MIX } from './shaders/particles.js';
 import { LightManager } from './lights.js';
 import { TimeOfDay } from './timeofday.js';
+import { createLiving } from './life.js'; // living-world hook (1/3): set pieces + critters
 
 // Mood per region: sky colours, fog (= sky horizon, so distant ground melts into
 // the sky), light colours/strength and the filmic grade.
@@ -111,6 +112,7 @@ export function buildWorld(scene, settings = null) {
   buildCanals(scene);
   buildLandmarks(scene, colliders);
   scatterProps(scene, colliders);
+  const living = createLiving({ scene, env, lights, tod, settings }); // living-world hook (2/3)
   const town = buildTown(scene, colliders, lights);
   const dungeon = buildDungeon(scene, colliders, lights);
   const mapImage = buildMapImage();
@@ -260,6 +262,7 @@ export function buildWorld(scene, settings = null) {
 
       dungeon.cutaway.uPlayer.value.copy(playerPos);
       dungeon.update(t, region === 'dungeon' ? 'ganzir' : region === 'cistern' ? 'cistern' : null);
+      living.update(dt, t, playerPos, renderer); // living-world hook (3/3)
       lights.update(t, playerPos, tod);
       gate.userData.portalMat.opacity = 0.5 + Math.sin(t * 1.7) * 0.12;
       well.userData.portalMat.opacity = 0.45 + Math.sin(t * 2.1) * 0.15;

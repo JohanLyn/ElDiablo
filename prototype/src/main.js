@@ -258,6 +258,7 @@ function boot() {
   g.tutorial = new Tutorial(g);
   g.audio = new GameAudio(g);
   installSystem(g); // pause on blur, pad-disconnect prompt, UI scale + colour-blind hooks
+  scene.userData.living?.bind(g); // living world (thunder events, fx) talks to the game through g
   window.__game = g; // handy for debugging in the console and for automated smoke tests
   window.__itemScore = itemScore;
 
