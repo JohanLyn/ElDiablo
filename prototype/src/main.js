@@ -23,6 +23,7 @@ import { UI } from './ui/ui.js';
 import { Fog, FOG_RES } from './ui/mapdraw.js';
 import { Story, START } from './game/story.js';
 import { Tutorial } from './game/tutorial.js';
+import { Audio as GameAudio } from './audio/audio.js';
 
 export const VERSION = '0.3.0-alpha';
 
@@ -226,6 +227,7 @@ function boot() {
   g.ui = ui;
   g.story = new Story(g);
   g.tutorial = new Tutorial(g);
+  g.audio = new GameAudio(g);
   window.__game = g; // handy for debugging in the console and for automated smoke tests
   window.__itemScore = itemScore;
 
@@ -302,6 +304,7 @@ function boot() {
       g.suppressInput = false;
     }
     ui.update(realDt);
+    g.audio.update(realDt);
 
     // g.simDriven: an external harness (e2e bot) calls g.simulate itself.
     if (g.started && !ui.open && !g.simDriven) g.simulate(realDt);
