@@ -549,7 +549,8 @@ export class EnemyManager {
 
   showArc(e, g, k, length) {
     const t = this.telegraph(e, 'arc');
-    t.position.set(e.pos.x, e.pos.y, e.pos.z);
+    getTelegraphs(this.scene).plane(t, e.pos.x, e.pos.z, g.surface ?? g.world.heightAt);
+    t.position.set(e.pos.x, 0, e.pos.z);
     t.rotation.y = e.facing;
     t.scale.set(length, 1, length);
     const u = t.material.uniforms;
@@ -560,7 +561,8 @@ export class EnemyManager {
   showLine(e, g, k, length) {
     const t = this.telegraph(e, 'line');
     const half = 0.4;
-    t.position.set(e.pos.x, e.pos.y, e.pos.z);
+    getTelegraphs(this.scene).plane(t, e.pos.x, e.pos.z, g.surface ?? g.world.heightAt, 3);
+    t.position.set(e.pos.x, 0, e.pos.z);
     t.rotation.y = e.facing;
     t.scale.set(half, 1, length);
     const u = t.material.uniforms;

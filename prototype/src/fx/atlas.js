@@ -38,9 +38,11 @@ function pixelCell(data, cell, fn) {
   for (let py = 0; py < CELL; py++) {
     for (let px = 0; px < CELL; px++) {
       const u = (px + 0.5) / CELL * 2 - 1, v = (py + 0.5) / CELL * 2 - 1;
-      const a = Math.max(0, Math.min(1, fn(u, v, Math.hypot(u, v))));
+      let a = fn(u, v, Math.hypot(u, v)), heat = 1;
+      if (Array.isArray(a)) { heat = a[1]; a = a[0]; }
+      a = Math.max(0, Math.min(1, a));
       const i = ((cy + py) * W + cx + px) * 4;
-      data[i] = data[i + 1] = data[i + 2] = 255;
+      data[i] = data[i + 1] = data[i + 2] = Math.round(Math.max(0, Math.min(1, heat)) * 255);
       data[i + 3] = Math.round(a * 255);
     }
   }
@@ -86,13 +88,17 @@ export function buildAtlas() {
   pixelCell(d, F.FLAME, (u, v) => {
     const s = (v + 1) * 0.5; // 0 tip (top) .. 1 bottom
     const n = fbm(u * 3 + 2.3, v * 4 + 7.7, 4);
-    const wob = (n - 0.5) * 0.5 * (1 - s * 0.5);
-    const hw = 0.66 * Math.pow(s, 0.62) * (1 - Math.pow(s, 4.5)) + 0.02;
+    const wob = (n - 0.5) * 0.7 * (1 - s * 0.4);
+    const tongue = 1 + 0.28 * Math.sin(s * 11 + n * 6);
+    const hw = (0.6 * Math.pow(s, 0.58) * (1 - Math.pow(s, 4.2)) + 0.02) * tongue;
     const x = Math.abs(u + wob * (1 - s) * 0.8);
-    const body = 1 - sstep(hw * 0.35, hw, x);
-    const taper = sstep(0.0, 0.18, s);
-    const inner = 0.55 + 0.45 * fbm(u * 5 + 1.1, v * 6 - 3.2, 3);
-    return body * taper * Math.min(1, inner * 1.25) * (1 - sstep(0.93, 1, s));
+    const body = 1 - sstep(hw * 0.3, hw, x);
+    const taper = sstep(0.0, 0.14, s);
+    const inner = 0.6 + 0.4 * fbm(u * 5 + 1.1, v * 6 - 3.2, 3);
+    const alpha = body * taper * Math.min(1, inner * 1.3) * (1 - sstep(0.94, 1, s));
+    // Heat: white-hot core low in the flame, cooler towards the edges and the tip.
+    const heat = 0.3 + 0.7 * (1 - sstep(0, hw, x)) * (0.35 + 0.65 * Math.sin(Math.min(1, s * 1.1) * Math.PI * 0.85));
+    return [alpha, heat];
   });
   pixelCell(d, F.RING, (u, v, r) => Math.exp(-Math.pow((r - 0.88) / 0.035, 2)) + Math.exp(-Math.pow((r - 0.88) / 0.1, 2)) * 0.25);
   pixelCell(d, F.WAVE, (u, v, r) => {

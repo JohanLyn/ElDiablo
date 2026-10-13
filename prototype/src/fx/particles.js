@@ -58,12 +58,14 @@ const FRAG = /* glsl */`
   varying vec2 vUv;
   varying vec4 vColor;
   void main() {
-    float a = texture2D(uAtlas, vUv).a * vColor.a;
+    vec4 tx = texture2D(uAtlas, vUv);
+    float a = tx.a * vColor.a;
     if (a < 0.004) discard;
+    vec3 col = vColor.rgb * tx.r;
     #ifdef PREMULT
-      gl_FragColor = vec4(vColor.rgb * a, a * uK);
+      gl_FragColor = vec4(col * a, a * uK);
     #else
-      gl_FragColor = vec4(vColor.rgb, a);
+      gl_FragColor = vec4(col, a);
     #endif
   }`;
 

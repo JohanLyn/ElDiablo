@@ -253,7 +253,7 @@ export class Tether {
       t.life = 0.45 + Math.random() * 0.4;
       t.s0 = (0.9 + Math.random() * 0.8) * (0.7 + 0.3 * k); t.s1 = t.s0 * 0.35;
       t.fp = 1.2; t.rot = (Math.random() - 0.5) * 0.4;
-      t.r0 = 2.0; t.g0 = 1.3; t.b0 = 0.35; t.r1 = 1.0; t.g1 = 0.12; t.b1 = 0.02;
+      t.r0 = 1.3; t.g0 = 0.6; t.b0 = 0.1; t.r1 = 0.9; t.g1 = 0.1; t.b1 = 0.02;
       L.emit();
       if (Math.random() < 0.18) {
         const e = L.begin(F.DOT);
@@ -267,7 +267,7 @@ export class Tether {
       p.glow = 0.12;
       const t = L.begin(F.DOT);
       t.x = p.x; t.y = 0.08; t.z = p.z; t.mode = 1; t.s0 = t.s1 = 2.6; t.life = 0.2; t.a = 0.42 * k; t.fin = 0.03;
-      t.r0 = 1.6; t.g0 = 0.45; t.b0 = 0.08;
+      t.r0 = 1.2; t.g0 = 0.3; t.b0 = 0.04;
       L.emit();
     }
   }

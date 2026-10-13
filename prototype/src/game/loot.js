@@ -23,8 +23,8 @@ export class Loot {
     };
     this.goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc44, metalness: 0.9, roughness: 0.25, emissive: 0x8a6000 });
     this.beamMats = {
-      rare: makePillarMaterial(0xffd23a, 0xfff6c0, 0.9),
-      legendary: makePillarMaterial(0xff6a14, 0xffe2b0, 1.25, 1),
+      rare: makePillarMaterial(0xffc81a, 0xffeaa0, 0.8),
+      legendary: makePillarMaterial(0xff5a0a, 0xffd0a0, 1.0, 1),
     };
     this.orbMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff3a4a).multiplyScalar(1.8) });
   }

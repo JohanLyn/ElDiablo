@@ -232,7 +232,7 @@ export class Vfx {
       t.x = x + Math.cos(a) * r; t.y = y + Math.random() * 0.4; t.z = z + Math.sin(a) * r;
       t.vx = Math.cos(a) * 0.6; t.vz = Math.sin(a) * 0.6; t.vy = up * (0.6 + Math.random() * 0.7);
       t.life = life * (0.7 + Math.random() * 0.6);
-      t.s0 = size * (0.5 + Math.random() * 0.4); t.s1 = size * 1.3; t.drag = 0.7; t.fp = 1.3; t.fin = 0.1;
+      t.s0 = size * (0.6 + Math.random() * 0.4); t.s1 = size * 1.5; t.drag = 0.7; t.fp = 1.1; t.fin = 0.1; t.a = 1.6;
       t.rot = (Math.random() - 0.5) * 0.5;
       c0(t, hex0, k); c1(t, hex1, k * 0.5);
       this.A.emit();
@@ -607,15 +607,15 @@ export class Vfx {
     this.srcFrame = this.frame;
     this.ringFlat(p.x, 0.1, p.z, 1.2, r * 2.2, 0.5, 0xff9a3a, 0.95, 1.7, F.WAVE, 1, 0xff3a10);
     this.ringFlat(p.x, 0.12, p.z, 0.8, r * 1.9, 0.4, 0xffe0a0, 0.7, 1.9, F.RING);
-    const n = this.ps.n(14);
+    const n = this.ps.n(30);
     for (let i = 0; i < n; i++) {
       const a = (i / n) * TAU + Math.random() * 0.3;
       const rad = r * rr(0.7, 1.0);
       const t = this.A.begin(F.FLAME);
       t.x = p.x + Math.sin(a) * rad; t.y = gy + 0.5; t.z = p.z + Math.cos(a) * rad;
       t.vx = Math.sin(a) * 1.5; t.vz = Math.cos(a) * 1.5; t.vy = rr(2.4, 4.2);
-      t.life = rr(0.45, 0.8); t.s0 = rr(1.2, 1.9); t.s1 = t.s0 * 0.4; t.drag = 1.2; t.fp = 1.2;
-      c0(t, 0xffe08a, 2.0); c1(t, 0xff3a0a, 1.0);
+      t.life = rr(0.45, 0.8); t.s0 = rr(1.0, 1.7); t.s1 = t.s0 * 0.4; t.drag = 1.2; t.fp = 1.2;
+      c0(t, 0xffc050, 1.7); c1(t, 0xe02200, 1.0);
       this.A.emit();
     }
     this.motes(p.x, gy + 0.3, p.z, 10, r * 0.8, 2, 5, 0xffd070, 0xff4010, 0.26, 1.0, -1.5);
@@ -633,7 +633,7 @@ export class Vfx {
     t.x = p.pos.x + Math.cos(a) * r; t.y = p.pos.y + 0.2; t.z = p.pos.z + Math.sin(a) * r;
     t.vy = rr(1.8, 3.2); t.vx = Math.cos(a) * 0.4; t.vz = Math.sin(a) * 0.4;
     t.life = rr(0.4, 0.7); t.s0 = rr(0.9, 1.3); t.s1 = 0.3; t.fp = 1.2;
-    c0(t, 0xffd070, 1.8); c1(t, 0xff3000, 1);
+    c0(t, 0xffa838, 1.2); c1(t, 0xe02000, 0.9);
     this.A.emit();
     if (Math.random() < 0.4) this.motes(p.pos.x, p.pos.y + 0.6, p.pos.z, 1, 1.0, 1, 4, 0xffe090, 0xff4010, 0.2, 1.0, -1.5);
   }
@@ -707,7 +707,7 @@ export class Vfx {
         t.x = p.pos.x + Math.cos(ph) * rad; t.z = p.pos.z + Math.sin(ph) * rad; t.y = p.pos.y + 0.1 + s.t * 1.8;
         t.vy = 1.8; t.vx = -Math.sin(ph) * 1.2; t.vz = Math.cos(ph) * 1.2;
         t.life = 0.5; t.s0 = 0.4; t.s1 = 0.1; t.fp = 1.4;
-        if (red) { c0(t, 0xff6a6a, 1.8); c1(t, 0xff2030, 1); } else { c0(t, 0x9dffb0, 1.8); c1(t, 0x20ff60, 1); }
+        if (red) { c0(t, 0xff5a5a, 1.4); c1(t, 0xe01030, 1); } else { c0(t, 0x7dff9a, 1.3); c1(t, 0x10d048, 1); }
         this.A.emit();
       }
     }
@@ -768,7 +768,7 @@ export class Vfx {
       this.flash(x, gy + 0.8, z, r * 2.4, 0xffc080, 0.2, 2);
       this.flashLight(x, gy + 2, z, 0xff7a3a, 24, 0.3);
     } else if (style === 'seal') {
-      this.pillar(x, gy, z, 0xffc13a, 0xfff6c8, r * 0.7, 16, 0.55, 1.3);
+      this.pillar(x, gy, z, 0xffb62a, 0xffe9a0, r * 0.5, 14, 0.55, 0.9);
       this.ringFlat(x, 0.1, z, r * 0.4, r * 2.6, 0.5, 0xffd560, 1, 1.8);
       this.decal(x, z, r * 2.2, F.GLYPH_A, 0xffe08a, 0.9, 0.6, true, 1.8);
       this.motes(x, gy + 0.3, z, 22, r * 0.5, 1.5, 9, 0xfff2b8, 0xff9a20, 0.3, 1.1, -2);
@@ -784,7 +784,7 @@ export class Vfx {
         const t = this.A.begin(F.FLAME);
         const a = Math.random() * TAU, d = Math.random() * r * 0.7;
         t.x = x + Math.cos(a) * d; t.y = gy + 0.3; t.z = z + Math.sin(a) * d; t.vy = rr(3, 6); t.life = rr(0.5, 0.9); t.s0 = rr(1.3, 2.2); t.s1 = 0.4; t.grav = 3;
-        c0(t, 0xffe08a, 2); c1(t, 0xff2a00, 1); this.A.emit();
+        c0(t, 0xffa030, 1.25); c1(t, 0xd82000, 0.9); this.A.emit();
       }
       this.motes(x, gy + 0.4, z, 18, r * 0.6, 3, 8, 0xffd070, 0xff3a00, 0.34, 1.1, 12);
       this.flash(x, gy + 0.8, z, r * 2.2, 0xffd090, 0.22, 2);
@@ -804,7 +804,7 @@ export class Vfx {
     if (b) {
       const gy = this.ground(b.pos.x, b.pos.z);
       this.ringFlat(b.pos.x, 0.1, b.pos.z, 1, 22, 0.8, 0xb48aff, 1, 1.7);
-      this.pillar(b.pos.x, gy, b.pos.z, 0x9a6bff, 0xf0e0ff, 2.4, 26, 1.2, 1.2);
+      this.pillar(b.pos.x, gy, b.pos.z, 0x9a6bff, 0xe0d0ff, 2.0, 14, 1.2, 0.8);
       this.wisps(b.pos.x, gy, b.pos.z, 24, 4, 0xd9b0ff, 0x6a2bd8, 1.6, 1.6);
       this.flashLight(b.pos.x, gy + 3, b.pos.z, 0xb48aff, 40, 0.5);
     }
@@ -829,7 +829,7 @@ export class Vfx {
     }
     if (en.boss) {
       const g = this.g;
-      this.pillar(x, y, z, 0xb48aff, 0xffffff, 2.6, 34, 3.0, 1.5, 1);
+      this.pillar(x, y, z, 0xa070ff, 0xe8d8ff, 2.2, 16, 3.0, 0.9, 1);
       this.ringFlat(x, 0.1, z, 2, 28, 1.1, 0xe0c8ff, 1, 1.8);
       this.ringFlat(x, 0.12, z, 1, 18, 0.8, 0xffffff, 0.8, 2);
       this.schedule(0.4, () => { this.wisps(x, y + 0.5, z, 26, 3.5, 0xe0b8ff, 0x7a3bff, 1.7, 2.2, 5); this.ringFlat(x, 0.1, z, 2, 30, 1.0, 0xc9a0ff, 0.9, 1.6); });
@@ -854,7 +854,7 @@ export class Vfx {
       if (cfg.tier >= 2) { this.flash(p.x, gy + 0.6, p.z, 2.5 + cfg.tier, cfg.hot, 0.25, 2, F.STAR); this.flashLight(p.x, gy + 1.4, p.z, cfg.hex, 12 + cfg.tier * 6, 0.35); }
       if (cfg.tier >= 3) {
         this.g.renderer.pulse(0xff9a2e, 0.25);
-        this.pillar(p.x, gy, p.z, cfg.hex, 0xfff0d0, 0.9, 22, 1.0, 1.4, 1);
+        this.pillar(p.x, gy, p.z, cfg.hex, 0xffd8a0, 0.7, 10, 1.0, 0.9, 1);
         this.ringFlat(p.x, 0.12, p.z, 0.5, 8, 0.7, 0xffb050, 0.9, 1.8);
         this.motes(p.x, gy + 0.3, p.z, 28, 0.6, 3, 8, 0xfff0c0, 0xff8a20, 0.3, 1.4, -1);
         for (let i = 0; i < 4; i++) this.glint(p.x + rr(-0.8, 0.8), gy + rr(0.4, 2.5), p.z + rr(-0.8, 0.8), 1.2, 0xfff0c0, 0.6);
@@ -934,7 +934,7 @@ export class Vfx {
     const p = e.pos;
     this.flash(p.x, p.y + 1.1, p.z, 4, 0xffe39a, 0.3, 2);
     this.motes(p.x, p.y + 0.8, p.z, 24, 0.5, 2.5, 6, 0xfff0b0, 0xffa020, 0.3, 1.0, 2);
-    this.pillar(p.x, p.y, p.z, 0xffd060, 0xffffff, 0.6, 8, 0.7, 0.9);
+    this.pillar(p.x, p.y, p.z, 0xffc040, 0xffe9a8, 0.5, 5, 0.7, 0.8);
   }
 
   // ---------------------------------------------------------------------
@@ -943,7 +943,7 @@ export class Vfx {
   onLevelUp() {
     const p = this.g.player.pos, gy = this.ground(p.x, p.z);
     this.levelT = 0;
-    this.pillar(p.x, gy, p.z, 0xffc844, 0xfff6d0, 1.35, 24, 1.9, 1.5, 0.5);
+    this.pillar(p.x, gy, p.z, 0xffb830, 0xffe9a8, 1.0, 11, 1.9, 0.85, 0.5);
     this.decal(p.x, p.z, 7, F.GLYPH_A, 0xffd870, 0.9, 1.6, true, 1.8);
     this.ringFlat(p.x, 0.1, p.z, 1, 14, 0.9, 0xffe29a, 1, 1.7);
     for (let i = 0; i < 4; i++) {

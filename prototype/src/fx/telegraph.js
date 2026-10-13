@@ -30,19 +30,25 @@ export function styleForColor(color) {
 const VERT = /* glsl */`
   uniform float uH[25];
   uniform float uConform;
+  uniform vec3 uPlane;
+  uniform vec2 uC;
   varying vec2 vP;
   void main() {
     vec2 p = position.xz;
     vP = p;
-    float h = 0.0;
-    if (uConform > 0.5) {
+    vec4 wp = modelMatrix * vec4(position.x, 0.0, position.z, 1.0);
+    if (uConform > 1.5) {
+      // Cones and lanes: ground plane fitted from three samples.
+      wp.y = uPlane.x + uPlane.y * (wp.x - uC.x) + uPlane.z * (wp.z - uC.y);
+    } else if (uConform > 0.5) {
       vec2 g = clamp((p * 0.5 + 0.5) * 4.0, 0.0, 3.999);
       ivec2 i0 = ivec2(floor(g));
       vec2 f = fract(g);
       int b = i0.y * 5 + i0.x;
-      h = mix(mix(uH[b], uH[b + 1], f.x), mix(uH[b + 5], uH[b + 6], f.x), f.y);
+      wp.y += mix(mix(uH[b], uH[b + 1], f.x), mix(uH[b + 5], uH[b + 6], f.x), f.y);
     }
-    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position.x, h + 0.1, position.z, 1.0);
+    wp.y += 0.1;
+    gl_Position = projectionMatrix * viewMatrix * wp;
     gl_Position.z -= 0.0004 * gl_Position.w;
   }`;
 
@@ -257,7 +263,7 @@ export class Telegraphs {
     const geo = shape === 0 ? zoneGeo : shape === 1 ? coneGeo : laneGeo;
     const mat = new THREE.ShaderMaterial({
       uniforms: {
-        uH: { value: new Float32Array(25) }, uConform: { value: 0 },
+        uH: { value: new Float32Array(25) }, uConform: { value: 0 }, uPlane: { value: new THREE.Vector3() }, uC: { value: new THREE.Vector2() },
         uShape: { value: shape }, uKind: { value: 0 }, uT: { value: 0 }, uTime: U.time, uScale: { value: 1 }, uLen: { value: 1 }, uHalf: { value: 0.9 }, uSeed: { value: 0 },
         uColor: { value: new THREE.Color() }, uHot: { value: new THREE.Color() }, uDark: { value: new THREE.Color() },
       },
@@ -300,8 +306,16 @@ export class Telegraphs {
     m.material.uniforms.uConform.value = 1;
   }
 
-  cone(style = 'fire') { return this._acquire(1, style); }
-  lane(style = 'poison') { return this._acquire(2, style); }
+  cone(style = 'fire') { const m = this._acquire(1, style); m.material.uniforms.uConform.value = 2; return m; }
+  lane(style = 'poison') { const m = this._acquire(2, style); m.material.uniforms.uConform.value = 2; return m; }
+
+  // Lay a cone/lane on the ground: plane through three surface samples around (x, z).
+  plane(m, x, z, surface, step = 2.2) {
+    const h0 = surface(x, z), hx = surface(x + step, z), hz = surface(x, z + step);
+    const u = m.material.uniforms;
+    u.uPlane.value.set(h0, (hx - h0) / step, (hz - h0) / step);
+    u.uC.value.set(x, z);
+  }
 
   setProgress(m, k) { m.material.uniforms.uT.value = k; }
 }
