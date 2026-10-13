@@ -25,6 +25,7 @@ import { Fog, FOG_RES } from './ui/mapdraw.js';
 import { Story, START } from './game/story.js';
 import { Tutorial } from './game/tutorial.js';
 import { Audio as GameAudio } from './audio/audio.js';
+import { Vfx } from './fx/vfx.js';
 
 export const VERSION = '0.3.0-alpha';
 
@@ -226,6 +227,7 @@ function boot() {
     },
   };
   g.interactions = new Interactions(g);
+  g.vfx = new Vfx(g);
   const ui = new UI(g);
   g.ui = ui;
   g.story = new Story(g);
@@ -313,6 +315,7 @@ function boot() {
     // g.simDriven: an external harness (e2e bot) calls g.simulate itself.
     if (g.started && !ui.open && !g.simDriven) g.simulate(realDt);
     fx.update(g.started && !ui.open ? realDt : 0);
+    g.vfx.update(g.started && !ui.open ? realDt : 0);
     world.update(realDt, performance.now() / 1000, player.pos, renderer);
     rig.update(realDt, player.pos, player.vel, fx);
     loot.updateLabels(g, camera, g.highlightedLoot);

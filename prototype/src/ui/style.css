@@ -83,8 +83,8 @@ body.colorblind .rmark.r-rare::before, body.colorblind .loot-label.r-rare::befor
 body.colorblind .rmark.r-legendary::before, body.colorblind .loot-label.r-legendary::before { content: '✦ L'; }
 
 /* ---------- VFX-owned: damage numbers (do not restyle here) ---------- */
-.dmg { position: absolute; left: 0; top: 0; font: 800 17px var(--font-display); text-shadow: 0 2px 3px #000, 0 0 6px #000; white-space: nowrap; will-change: transform; }
-.dmg.big { font-size: 24px; }
+.dmg { position: absolute; left: 0; top: 0; font: 800 18px var(--font-display); letter-spacing: 0.02em; -webkit-text-stroke: 0.6px rgba(0, 0, 0, 0.85); paint-order: stroke fill; text-shadow: 0 2px 0 #000, 0 0 8px rgba(0, 0, 0, 0.9), 0 0 14px currentColor; white-space: nowrap; will-change: transform; }
+.dmg.big { font-size: 30px; font-weight: 900; text-shadow: 0 2px 0 #000, 0 0 10px rgba(0, 0, 0, 0.9), 0 0 18px #ff9a1a, 0 0 32px rgba(255, 170, 40, 0.8); }
 /* ---------- /VFX-owned ---------- */
 
 .loot-label { position: absolute; left: 0; top: 0; padding: 2px 9px 3px; font-size: 13px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; background: linear-gradient(180deg, rgba(24, 16, 14, 0.9), rgba(10, 6, 8, 0.9)); border: 1px solid rgba(214, 167, 64, 0.22); border-radius: 3px; text-shadow: 0 1px 2px #000; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); }

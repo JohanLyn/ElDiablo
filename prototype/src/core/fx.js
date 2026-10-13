@@ -1,8 +1,11 @@
 import * as THREE from 'three';
+import { ParticleSystem } from '../fx/particles.js';
+import { F } from '../fx/atlas.js';
 
-const MAX_PARTICLES = 1200;
+const _c = new THREE.Color();
 
-// Juice: particles, floating damage numbers, screen shake, hit-stop and rumble.
+// Juice: soft GPU particles, floating damage numbers, screen shake, hit-stop and rumble.
+// The particle system (src/fx/particles.js) is shared with the VFX layer via `fx.ps`.
 export class Fx {
   constructor(scene, camera, input, overlay) {
     this.camera = camera;
@@ -10,49 +13,36 @@ export class Fx {
     this.overlay = overlay;
     this.trauma = 0;
     this.hitstop = 0;
-
-    // One Points cloud for all particles (cheap, additive, colored per particle).
-    this.pPos = new Float32Array(MAX_PARTICLES * 3);
-    this.pCol = new Float32Array(MAX_PARTICLES * 3);
-    this.pVel = new Float32Array(MAX_PARTICLES * 3);
-    this.pLife = new Float32Array(MAX_PARTICLES);
-    this.pMaxLife = new Float32Array(MAX_PARTICLES);
-    this.pGravity = new Float32Array(MAX_PARTICLES);
-    this.pBase = new Float32Array(MAX_PARTICLES * 3);
-    this.pNext = 0;
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(this.pPos, 3).setUsage(THREE.DynamicDrawUsage));
-    geo.setAttribute('color', new THREE.BufferAttribute(this.pCol, 3).setUsage(THREE.DynamicDrawUsage));
-    const mat = new THREE.PointsMaterial({
-      size: 0.28, vertexColors: true, transparent: true, depthWrite: false,
-      blending: THREE.AdditiveBlending, map: makeDotTexture(),
-    });
-    this.points = new THREE.Points(geo, mat);
-    this.points.frustumCulled = false;
-    for (let i = 0; i < MAX_PARTICLES; i++) this.pPos[i * 3 + 1] = -100;
-    scene.add(this.points);
-
+    this.ps = new ParticleSystem(scene);
     this.numbers = [];
     this._v = new THREE.Vector3();
-    this._c = new THREE.Color();
   }
 
+  // Generic burst used all over the game: hot-centred glowing sparks and motes.
   burst(pos, color, count = 12, speed = 5, { up = 2, life = 0.5, gravity = 9, spread = 1 } = {}) {
-    this._c.set(color);
-    for (let n = 0; n < count; n++) {
-      const i = this.pNext;
-      this.pNext = (this.pNext + 1) % MAX_PARTICLES;
+    const ps = this.ps;
+    const n = ps.n(count);
+    if (!n) return;
+    _c.set(color);
+    const L = ps.add;
+    const hr = _c.r + (1 - _c.r) * 0.45, hg = _c.g + (1 - _c.g) * 0.45, hb = _c.b + (1 - _c.b) * 0.45;
+    for (let k = 0; k < n; k++) {
+      const t = L.begin(Math.random() < 0.45 ? F.STREAK : Math.random() < 0.5 ? F.DOT : F.SHARD);
       const a = Math.random() * Math.PI * 2;
       const s = speed * (0.4 + Math.random() * 0.6);
-      this.pPos[i * 3] = pos.x + (Math.random() - 0.5) * 0.3 * spread;
-      this.pPos[i * 3 + 1] = pos.y + (Math.random() - 0.5) * 0.3 * spread;
-      this.pPos[i * 3 + 2] = pos.z + (Math.random() - 0.5) * 0.3 * spread;
-      this.pVel[i * 3] = Math.cos(a) * s;
-      this.pVel[i * 3 + 1] = up * (0.5 + Math.random());
-      this.pVel[i * 3 + 2] = Math.sin(a) * s;
-      this.pBase[i * 3] = this._c.r; this.pBase[i * 3 + 1] = this._c.g; this.pBase[i * 3 + 2] = this._c.b;
-      this.pLife[i] = this.pMaxLife[i] = life * (0.6 + Math.random() * 0.6);
-      this.pGravity[i] = gravity;
+      t.x = pos.x + (Math.random() - 0.5) * 0.3 * spread;
+      t.y = pos.y + (Math.random() - 0.5) * 0.3 * spread;
+      t.z = pos.z + (Math.random() - 0.5) * 0.3 * spread;
+      t.vx = Math.cos(a) * s; t.vz = Math.sin(a) * s;
+      t.vy = up * (0.5 + Math.random());
+      t.life = life * (0.6 + Math.random() * 0.6);
+      const sz = 0.18 + Math.random() * 0.26;
+      t.s0 = sz; t.s1 = sz * 0.25;
+      t.r0 = hr; t.g0 = hg; t.b0 = hb; t.r1 = _c.r; t.g1 = _c.g; t.b1 = _c.b;
+      t.a = 1; t.grav = gravity; t.drag = 0.6;
+      if (t.frame === F.STREAK) { t.stretch = 0.14; t.s0 = sz * 1.3; }
+      else if (t.frame === F.SHARD) { t.rot = Math.random() * 6.28; t.rotVel = (Math.random() - 0.5) * 12; }
+      L.emit();
     }
   }
 
@@ -73,21 +63,8 @@ export class Fx {
 
   // Called with real (unscaled) dt so effects keep animating during hit-stop.
   update(dt) {
-    for (let i = 0; i < MAX_PARTICLES; i++) {
-      if (this.pLife[i] <= 0) continue;
-      this.pLife[i] -= dt;
-      const k = Math.max(0, this.pLife[i] / this.pMaxLife[i]);
-      this.pVel[i * 3 + 1] -= this.pGravity[i] * dt;
-      this.pPos[i * 3] += this.pVel[i * 3] * dt;
-      this.pPos[i * 3 + 1] += this.pVel[i * 3 + 1] * dt;
-      this.pPos[i * 3 + 2] += this.pVel[i * 3 + 2] * dt;
-      this.pCol[i * 3] = this.pBase[i * 3] * k;
-      this.pCol[i * 3 + 1] = this.pBase[i * 3 + 1] * k;
-      this.pCol[i * 3 + 2] = this.pBase[i * 3 + 2] * k;
-      if (this.pLife[i] <= 0) this.pPos[i * 3 + 1] = -100;
-    }
-    this.points.geometry.attributes.position.needsUpdate = true;
-    this.points.geometry.attributes.color.needsUpdate = true;
+    this.ps.q = this.settings?.quality.particles ?? 1;
+    this.ps.update(dt);
 
     const w = this.overlay.clientWidth, h = this.overlay.clientHeight;
     for (let i = this.numbers.length - 1; i >= 0; i--) {
@@ -111,17 +88,4 @@ export class Fx {
     const s = this.trauma * this.trauma * 0.6;
     return out.set((Math.random() - 0.5) * s, (Math.random() - 0.5) * s, (Math.random() - 0.5) * s);
   }
-}
-
-function makeDotTexture() {
-  const c = document.createElement('canvas');
-  c.width = c.height = 32;
-  const g = c.getContext('2d');
-  const grad = g.createRadialGradient(16, 16, 0, 16, 16, 16);
-  grad.addColorStop(0, 'rgba(255,255,255,1)');
-  grad.addColorStop(0.4, 'rgba(255,255,255,0.6)');
-  grad.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = grad;
-  g.fillRect(0, 0, 32, 32);
-  return new THREE.CanvasTexture(c);
 }

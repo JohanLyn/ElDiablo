@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { clamp, clampLength, damp, distPointSegment } from '../core/util.js';
 import { ASPECTS } from '../game/skills.js';
 import { rollDamage } from '../game/stats.js';
+import { TetherBeam } from '../fx/beams.js';
+import { F } from '../fx/atlas.js';
 
 // The Gatewalker's signature: a sedu spirit bound to the hero. Steer it with the
 // right stick (or mouse); the line between you is a weapon. Left alone, the
@@ -34,21 +36,14 @@ export class Tether {
     this.wings = [-1, 1].map((s) => { const w = new THREE.Mesh(wingGeo, wingMat); w.scale.x = s; this.familiar.add(w); return w; });
     const halo = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.03, 6, 24), this.coreMat);
     halo.rotation.x = Math.PI / 2;
-    this.light = new THREE.PointLight(ASPECTS[0].color, 5, 7, 1.5);
+    this.light = new THREE.PointLight(ASPECTS[0].color, 2.2, 6, 1.6);
     this.familiar.add(this.core, halo, this.light);
     scene.add(this.familiar);
 
-    const cyl = new THREE.CylinderGeometry(1, 1, 1, 8, 1, true);
-    this.lineCoreMat = new THREE.MeshBasicMaterial({ color: coreTint(ASPECTS[0].color), transparent: true, opacity: 0.9, depthWrite: false });
-    this.lineGlowMat = new THREE.MeshBasicMaterial({ color: ASPECTS[0].color, transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending });
-    this.lineCore = new THREE.Mesh(cyl, this.lineCoreMat);
-    this.lineGlow = new THREE.Mesh(cyl, this.lineGlowMat);
-    scene.add(this.lineCore, this.lineGlow);
+    // Energy beam (shader ribbon with runes) and sweep afterimage; see src/fx/beams.js.
+    this.beam = new TetherBeam(scene);
 
     this.patches = [];
-    this.patchGeo = new THREE.PlaneGeometry(2.2, 2.2);
-    this.patchGeo.rotateX(-Math.PI / 2);
-    this.patchTex = makeEmberTexture();
     this._tmp = new THREE.Vector3();
     this._up = new THREE.Vector3(0, 1, 0);
   }
@@ -72,13 +67,11 @@ export class Tether {
   applyColors(g) {
     const a = this.aspect(g);
     this.coreMat.color.set(a.color);
-    this.lineGlowMat.color.set(a.color);
-    this.lineCoreMat.color.copy(coreTint(a.color));
+    this.beam.setColor(a.color);
     this.light.color.set(a.color);
   }
 
   reset(g) {
-    for (const p of this.patches) this.scene.remove(p.mesh);
     this.patches = [];
     this.B.set(g.player.pos.x + 1, g.player.pos.y + HEIGHT, g.player.pos.z + 1);
     this.prevB.copy(this.B);
@@ -221,23 +214,18 @@ export class Tether {
     return true;
   }
 
+  // Fire patches are data only: their flames are particles emitted in updatePatches.
   addPatch(x, z, life) {
-    if (this.patches.length >= MAX_PATCHES) { const old = this.patches.shift(); this.scene.remove(old.mesh); old.mesh.material.dispose(); }
-    const mesh = new THREE.Mesh(this.patchGeo, new THREE.MeshBasicMaterial({ color: 0xff7a2a, map: this.patchTex, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending }));
-    mesh.position.set(x, 0, z);
-    mesh.rotation.y = Math.random() * Math.PI;
-    this.scene.add(mesh);
-    this.patches.push({ mesh, x, z, life, max: life });
+    if (this.patches.length >= MAX_PATCHES) this.patches.shift();
+    this.patches.push({ x, z, life, max: life, acc: Math.random(), glow: 0 });
   }
 
   updatePatches(dt, g) {
     for (let i = this.patches.length - 1; i >= 0; i--) {
       const p = this.patches[i];
       p.life -= dt;
-      if (p.life <= 0) { this.scene.remove(p.mesh); p.mesh.material.dispose(); this.patches.splice(i, 1); continue; }
-      const k = p.life / p.max;
-      p.mesh.position.y = g.world.heightAt(p.x, p.z) + 0.05;
-      p.mesh.material.opacity = 0.55 * Math.min(1, k * 3) * (0.8 + Math.random() * 0.2);
+      if (p.life <= 0) { this.patches.splice(i, 1); continue; }
+      this.emitFlames(p, dt, g);
     }
     if (!this.patches.length) return;
     const dps = rollDamage(g.player.stats, 0.5, () => 0.5).amount;
@@ -246,6 +234,41 @@ export class Tether {
       for (const p of this.patches) {
         if (Math.hypot(e.pos.x - p.x, e.pos.z - p.z) < 0.85 + e.radius) { e.burn = Math.max(e.burn, 1.2); e.burnDps = Math.max(e.burnDps, dps); break; }
       }
+    }
+  }
+
+  // Animated flame billboards, embers and a ground glow for one fire patch.
+  emitFlames(p, dt, g) {
+    const k = Math.min(1, p.life / p.max * 2.5);
+    const L = g.fx.ps.add;
+    p.acc += dt * 9 * k;
+    const gy = g.world.heightAt(p.x, p.z);
+    while (p.acc >= 1) {
+      p.acc -= 1;
+      if (g.fx.ps.n(1) < 1) continue;
+      const t = L.begin(F.FLAME);
+      const a = Math.random() * 6.283, r = Math.random() * 0.75;
+      t.x = p.x + Math.cos(a) * r; t.y = gy + 0.15; t.z = p.z + Math.sin(a) * r;
+      t.vy = 1.4 + Math.random() * 2; t.vx = (Math.random() - 0.5) * 0.4; t.vz = (Math.random() - 0.5) * 0.4;
+      t.life = 0.45 + Math.random() * 0.4;
+      t.s0 = (0.9 + Math.random() * 0.8) * (0.7 + 0.3 * k); t.s1 = t.s0 * 0.35;
+      t.fp = 1.2; t.rot = (Math.random() - 0.5) * 0.4;
+      t.r0 = 1.3; t.g0 = 0.6; t.b0 = 0.1; t.r1 = 0.9; t.g1 = 0.1; t.b1 = 0.02;
+      L.emit();
+      if (Math.random() < 0.18) {
+        const e = L.begin(F.DOT);
+        e.x = p.x + (Math.random() - 0.5) * 1.2; e.y = gy + 0.3; e.z = p.z + (Math.random() - 0.5) * 1.2;
+        e.vy = 2 + Math.random() * 2; e.life = 0.9; e.s0 = 0.16; e.s1 = 0.04; e.r0 = 2; e.g0 = 1; e.b0 = 0.2; e.r1 = 1; e.g1 = 0.2; e.b1 = 0.02;
+        L.emit();
+      }
+    }
+    p.glow -= dt;
+    if (p.glow <= 0) {
+      p.glow = 0.12;
+      const t = L.begin(F.DOT);
+      t.x = p.x; t.y = 0.08; t.z = p.z; t.mode = 1; t.s0 = t.s1 = 2.6; t.life = 0.2; t.a = 0.42 * k; t.fin = 0.03;
+      t.r0 = 1.2; t.g0 = 0.3; t.b0 = 0.04;
+      L.emit();
     }
   }
 
@@ -258,41 +281,8 @@ export class Tether {
     this.wings[0].rotation.y = flap;
     this.wings[1].rotation.y = -flap;
     this.familiar.rotation.y = Math.atan2(this.B.x - this.A.x, this.B.z - this.A.z);
-    this.light.intensity = 4 + this.sweep * 5 + this.flare * 18;
+    this.light.intensity = 2 + this.sweep * 3 + this.flare * 8;
     const show = !g.player.dead && len > 0.3;
-    this.lineCore.visible = this.lineGlow.visible = show;
-    if (!show) return;
-    this._tmp.subVectors(this.B, this.A);
-    const l3 = this._tmp.length();
-    const dir = this._tmp.normalize();
-    const mid = this.A.clone().lerp(this.B, 0.5);
-    const thick = (this.aspect(g).id === 'bulwark' ? 1.6 : 1) * (live ? 1 : 0.5);
-    for (const [mesh, r] of [[this.lineCore, 0.04], [this.lineGlow, 0.16]]) {
-      mesh.position.copy(mid);
-      mesh.quaternion.setFromUnitVectors(this._up, dir);
-      const rr = r * thick * (1 + this.sweep * 0.5 + this.flare * 2.5);
-      mesh.scale.set(rr, l3, rr);
-    }
-    this.lineGlowMat.opacity = (live ? 0.22 : 0.08) + this.sweep * 0.2 + this.flare * 0.5 + Math.sin(g.time * 20) * 0.03;
-    this.lineCoreMat.opacity = live ? 0.9 : 0.3;
+    this.beam.update(dt, this.A, this.B, { show, live, sweep: this.sweep, flare: this.flare, thick: this.aspect(g).id === 'bulwark' ? 1.5 : 1 });
   }
-}
-
-function coreTint(hex) {
-  return new THREE.Color(hex).lerp(new THREE.Color(0xffffff), 0.55);
-}
-
-function makeEmberTexture() {
-  const c = document.createElement('canvas');
-  c.width = c.height = 64;
-  const g = c.getContext('2d');
-  for (let k = 0; k < 6; k++) {
-    const x = 32 + (Math.random() - 0.5) * 16, y = 32 + (Math.random() - 0.5) * 16, r = 14 + Math.random() * 12;
-    const grad = g.createRadialGradient(x, y, 0, x, y, r);
-    grad.addColorStop(0, 'rgba(255,255,255,0.55)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 64, 64);
-  }
-  return new THREE.CanvasTexture(c);
 }
