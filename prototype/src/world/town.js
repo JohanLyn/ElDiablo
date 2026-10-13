@@ -5,7 +5,7 @@ import { makeHouse, makeNpc } from './models.js';
 import { decorateHouse, dressTown } from './townDressing.js';
 
 // Eridu Outpost: a walled mud-brick town with a small temple, market and NPCs.
-export function buildTown(scene, colliders) {
+export function buildTown(scene, colliders, lights) {
   const rng = new Rng(99);
   const occluders = [];
   const brick = new THREE.MeshStandardMaterial({ color: 0x9a6c46, roughness: 1 });
@@ -116,9 +116,7 @@ export function buildTown(scene, colliders) {
 
   // Warm lights.
   for (const [lx, lz] of [[-6, -2], [8, 6], [0, -18]]) {
-    const l = new THREE.PointLight(0xffa860, 10, 16, 1.6);
-    l.position.set(cx + lx, 3, cz + lz);
-    scene.add(l);
+    lights.add({ x: cx + lx, y: 3, z: cz + lz, color: 0xffa860, intensity: 10, range: 16, decay: 1.6, flicker: 0.5 });
   }
 
   return { occluders, npcs };

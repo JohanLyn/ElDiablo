@@ -17,6 +17,7 @@ const SETTINGS = [
   [
     ['Graphics', [
       { key: 'quality', label: 'Graphics quality', type: 'choice', options: Object.entries(QUALITY).map(([id, q]) => [id, q.label]), desc: 'Shadows, bloom, resolution and particle density. Applies immediately.' },
+      { key: 'timeOfDay', label: 'Time of day', type: 'choice', options: [['cycle', 'Cycle'], ['dawn', 'Dawn'], ['noon', 'Noon'], ['golden', 'Golden hour'], ['dusk', 'Dusk'], ['night', 'Night']], desc: 'Let the day pass (a full day takes 14 minutes) or hold one time.' },
     ]],
     ['Audio', [
       { key: 'master', label: 'Master volume', type: 'slider', min: 0, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}` },

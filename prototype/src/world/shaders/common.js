@@ -32,6 +32,8 @@ export function createEnv() {
     uPlayer: { value: new THREE.Vector3() },
     uCloud: { value: 0.28 }, // cloud-shadow strength
     uPxScale: { value: 800 }, // viewport px per world unit at distance 1 (point sprites)
+    uDusk: { value: 0 }, // 0..1 warm low-sun light (world/timeofday.js)
+    uNight: { value: 0 }, // 0..1 night
   };
   return ENV;
 }

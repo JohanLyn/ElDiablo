@@ -20,6 +20,7 @@ export const DEFAULTS = {
   colorblind: false,
   uiScale: 1,
   tutorials: true,
+  timeOfDay: 'cycle', // or a world/timeofday.js preset: dawn, noon, golden, dusk, night
 };
 
 export class Settings {
@@ -35,6 +36,8 @@ export class Settings {
       const p = new URLSearchParams(location.search);
       if (p.has('low')) this.values.quality = 'low';
       if (QUALITY[p.get('quality')]) this.values.quality = p.get('quality');
+      // ?time=dusk holds the time of day for this visit only (deterministic screenshots).
+      this.timeOverride = p.get('time');
     } catch { /* no location (tests) */ }
     if (!QUALITY[this.values.quality]) this.values.quality = DEFAULTS.quality;
   }

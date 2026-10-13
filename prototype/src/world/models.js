@@ -409,9 +409,6 @@ export function makeWellHouse() {
   const water = add(new THREE.CircleGeometry(1.3, 24), portalMat, 0, 0.26, 0);
   water.rotation.x = -Math.PI / 2;
   water.castShadow = false;
-  const light = new THREE.PointLight(0x5fe0ff, 6, 9, 1.6);
-  light.position.set(0, 1.2, 0);
-  g.add(light);
-  g.userData = { portalMat };
+  g.userData = { portalMat }; // its cyan glow is a light-manager emitter (world.js)
   return g;
 }

@@ -55,7 +55,7 @@ export class Story {
   // The wreck (and its colliders) stays on the road; it only burns during the opening.
   setBurning(on) {
     for (const f of this.caravan.userData.flames) f.visible = on;
-    this.caravan.userData.light.intensity = on ? 10 : 0; // not .visible: the light count must not change
+    this.caravan.userData.light.enabled = on;
   }
 
   // Loaded hero: skip the opening if it already happened.
@@ -159,9 +159,7 @@ function buildCaravan(g) {
     flames.push(f);
     g.world.colliders.addCircle(CARAVAN.x + x, CARAVAN.z + z, 1.2);
   });
-  const light = new THREE.PointLight(0xff7a2a, 10, 14, 1.6);
-  light.position.set(CARAVAN.x + 2, 2.5, CARAVAN.z + 1);
-  group.add(light);
+  const light = g.world.lights.add({ x: CARAVAN.x + 2, y: g.world.heightAt(CARAVAN.x + 2, CARAVAN.z + 1) + 2.5, z: CARAVAN.z + 1, color: 0xff7a2a, intensity: 10, range: 14, decay: 1.6, flicker: 1 });
   for (const c of group.children) if (c.isMesh) c.position.y += g.world.heightAt(c.position.x, c.position.z);
   group.userData.flames = flames;
   group.userData.light = light;

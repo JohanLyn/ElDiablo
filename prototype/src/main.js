@@ -89,7 +89,8 @@ function boot() {
       g.started = true;
       g.tutorial.start();
       if (!save) {
-        // New hero: cold open over the flyover, then the caravan ambush.
+        // New hero: cold open over the flyover at dawn, then the caravan ambush.
+        if (!world.tod.locked) world.tod.set('dawn');
         hud.show(false);
         g.started = false;
         ui.playIntro(() => {
@@ -249,6 +250,10 @@ function boot() {
   g.vfx = new Vfx(g);
   const ui = new UI(g);
   g.ui = ui;
+  // Time of day: ?time= wins for this visit, else the saved setting.
+  const applyTime = () => world.tod.lock(settings.timeOverride ?? settings.get('timeOfDay'));
+  applyTime();
+  settings.onChange((k) => { if (k === 'timeOfDay') applyTime(); });
   g.story = new Story(g);
   g.tutorial = new Tutorial(g);
   g.audio = new GameAudio(g);

@@ -15,19 +15,15 @@ const STYLES = {
   cistern: { floorA: 0x4f6660, floorB: 0x465a55, inlay: 0x2a6a7a, wall: 0x5f7a74, band: 0x1d5a6c, bandEm: 0x08303a, cap: 0x9ab8a4, capEm: 0x1a3a30, rune: [0.3, 0.85, 0.9], flame: 0x7fe8ff, halo: 0x2fb8e8, flameColors: [0xd8fbff, 0x3fc8f0, 0x0a4a7a], flameIntensity: 1.5, haloOpacity: 0.32 },
 };
 
-export function buildDungeon(scene, colliders) {
+export function buildDungeon(scene, colliders, lights) {
   // One cutaway uniform shared by every instance's walls.
   const cutaway = { uPlayer: { value: new THREE.Vector3() } };
   const ganzir = buildInstance(scene, colliders, INSTANCES.ganzir, STYLES.ganzir, cutaway);
   const cistern = buildInstance(scene, colliders, INSTANCES.cistern, STYLES.cistern, cutaway);
-  // Brazier lights are pooled and moved to whichever instance is active, so the
-  // scene's light count (and therefore every shader) stays the same everywhere.
-  const pool = Array.from({ length: Math.max(ganzir.braziers.length, cistern.braziers.length) }, () => {
-    const l = new THREE.PointLight(0xffffff, 0, 16, 1.5);
-    scene.add(l);
-    return l;
-  });
-  let lit = null;
+  // Brazier light comes from the shared light manager (world/lights.js).
+  for (const part of [ganzir, cistern]) {
+    for (const b of part.braziers) lights.add({ x: b.x, y: 2.6, z: b.z, color: part.style.flame, intensity: 14, range: 16, flicker: 1 });
+  }
   const goldMat = new THREE.MeshStandardMaterial({ color: 0xd6a740, metalness: 0.8, roughness: 0.3 });
 
   // Neti's dais.
@@ -39,9 +35,8 @@ export function buildDungeon(scene, colliders) {
   daisRing.rotation.x = Math.PI / 2;
   daisRing.position.set(boss.x, 0.1, boss.z);
   scene.add(dais, daisRing);
-  // One boss-room light, shared: violet over Neti's throne, cyan over the singing pool.
-  const bossLight = new THREE.PointLight(0xa07aff, 0, 22, 1.4);
-  scene.add(bossLight);
+  // Boss-room lights: violet over Neti's throne, cyan over the singing pool.
+  const throneLight = lights.add({ x: boss.x, y: 7, z: boss.z + 2, color: 0xa07aff, intensity: 30, range: 22, decay: 1.4, priority: 6 });
 
   // Cistern: shallow flooded pools that glow faintly from below.
   const poolMat = new THREE.MeshStandardMaterial({ color: 0x2a6a6a, roughness: 0.08, metalness: 0.2, transparent: true, opacity: 0.62, emissive: 0x0a3a3a, emissiveIntensity: 0.6 });
@@ -53,28 +48,17 @@ export function buildDungeon(scene, colliders) {
     pool.receiveShadow = true;
     scene.add(pool);
   }
-  const parts = { ganzir, cistern };
+  const song = INSTANCES.cistern.spots.boss;
+  const songLight = lights.add({ x: song.x, y: 6, z: song.z + 2, color: 0x5fe0ff, intensity: 22, range: 22, decay: 1.4, priority: 6 });
 
   return {
     cutaway,
     update(t, activeId) {
       ganzir.update(t, activeId === 'ganzir');
       cistern.update(t, activeId === 'cistern');
-      const active = parts[activeId];
-      if (activeId !== lit) {
-        lit = activeId;
-        pool.forEach((l, i) => {
-          const b = active?.braziers[i];
-          if (b) { l.position.set(b.x, 2.6, b.z); l.color.setHex(active.style.flame); }
-        });
-        if (activeId === 'ganzir') { bossLight.position.set(boss.x, 7, boss.z + 2); bossLight.color.setHex(0xa07aff); }
-        if (activeId === 'cistern') { const b = INSTANCES.cistern.spots.boss; bossLight.position.set(b.x, 6, b.z + 2); bossLight.color.setHex(0x5fe0ff); }
-      }
-      pool.forEach((l, i) => {
-        const b = active?.braziers[i];
-        l.intensity = b ? 14 + Math.sin(t * 11 + b.seed) * 2 : 0;
-      });
-      bossLight.intensity = activeId === 'ganzir' ? 30 : activeId === 'cistern' ? 22 + Math.sin(t * 1.6) * 4 : 0;
+      throneLight.enabled = activeId === 'ganzir';
+      songLight.enabled = activeId === 'cistern';
+      songLight.intensity = 22 + Math.sin(t * 1.6) * 4;
       poolMat.emissiveIntensity = 0.5 + Math.sin(t * 1.3) * 0.15;
     },
   };

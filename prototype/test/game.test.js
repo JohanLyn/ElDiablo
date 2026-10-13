@@ -126,3 +126,20 @@ test('legendaries never roll below the minimum item level', () => {
   for (let i = 0; i < 4000; i++) if (rollRarity(rng, { magicFind: 2, ilvl: LEGENDARY_MIN_ILVL }) === 'legendary') found++;
   assert.ok(found > 0);
 });
+
+test('time of day: sun above the horizon by day, night weight at night, presets lock', async () => {
+  const { TimeOfDay, TIME_PRESETS, DAY_LENGTH, nightWeight } = await import('../src/world/timeofday.js');
+  const tod = new TimeOfDay(TIME_PRESETS.noon);
+  assert.ok(tod.sunDir.y > 0.7, `noon sun high (${tod.sunDir.y})`);
+  assert.ok(tod.night < 0.05 && tod.dusk < 0.05);
+  tod.lock('dusk');
+  tod.update(DAY_LENGTH / 4);
+  assert.equal(tod.t, TIME_PRESETS.dusk, 'locked time does not advance');
+  assert.ok(tod.dusk > 0.5);
+  tod.lock('night');
+  assert.ok(tod.night > 0.95 && tod.sunDir.y > 0.3, 'moonlight still comes from above');
+  tod.lock(null);
+  tod.update(DAY_LENGTH * 0.5);
+  assert.notEqual(tod.t, TIME_PRESETS.night, 'unlocked time advances');
+  for (let t = 0; t < 1; t += 0.01) { const n = nightWeight(t); assert.ok(n >= 0 && n <= 1); }
+});

@@ -14,6 +14,8 @@ import { createEnv } from './shaders/common.js';
 import { createSky } from './shaders/sky.js';
 import { Grass } from './shaders/grass.js';
 import { createParticles, PARTICLE_MIX } from './shaders/particles.js';
+import { LightManager } from './lights.js';
+import { TimeOfDay } from './timeofday.js';
 
 // Mood per region: sky colours, fog (= sky horizon, so distant ground melts into
 // the sky), light colours/strength and the filmic grade.
@@ -80,6 +82,10 @@ export function buildWorld(scene, settings = null) {
   scene.background = new THREE.Color(start.horizon);
   scene.fog = new THREE.Fog(start.horizon, start.near, start.far);
 
+  // Day cycle and pooled point lights, shared with gameplay (world.tod, world.lights).
+  const tod = new TimeOfDay();
+  const lights = new LightManager(scene);
+
   const sky = createSky(env);
   scene.add(sky.mesh);
 
@@ -105,8 +111,8 @@ export function buildWorld(scene, settings = null) {
   buildCanals(scene);
   buildLandmarks(scene, colliders);
   scatterProps(scene, colliders);
-  const town = buildTown(scene, colliders);
-  const dungeon = buildDungeon(scene, colliders);
+  const town = buildTown(scene, colliders, lights);
+  const dungeon = buildDungeon(scene, colliders, lights);
   const mapImage = buildMapImage();
 
   const place = (obj, x, z) => { obj.position.set(x, heightAt(x, z), z); scene.add(obj); return obj; };
@@ -152,6 +158,7 @@ export function buildWorld(scene, settings = null) {
   place(gate, GATE.x, GATE.z);
   const well = place(makeWellHouse(), CISTERN_ENTRANCE.x, CISTERN_ENTRANCE.z);
   colliders.addCircle(CISTERN_ENTRANCE.x, CISTERN_ENTRANCE.z, 1.8);
+  lights.add({ x: CISTERN_ENTRANCE.x, y: well.position.y + 1.2, z: CISTERN_ENTRANCE.z, color: 0x5fe0ff, intensity: 6, range: 9, decay: 1.6 });
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) colliders.addCircle(CISTERN_ENTRANCE.x + sx * 2.7, CISTERN_ENTRANCE.z + sz * 2.7, 0.45);
   colliders.addBox(GATE.x - 24, GATE.z - 2, GATE.x - 5, GATE.z + 2.5);
   colliders.addBox(GATE.x + 5, GATE.z - 2, GATE.x + 24, GATE.z + 2.5);
@@ -181,6 +188,8 @@ export function buildWorld(scene, settings = null) {
     ritual: { ...EVENT, ringMat: ritualRingMat, group: ritual },
     gate,
     dungeon,
+    tod,
+    lights,
     heightAt,
     regionAt,
     sun,
@@ -199,6 +208,9 @@ export function buildWorld(scene, settings = null) {
       for (const key of [...COLOR_KEYS, ...GRADE_COLORS]) cur[key].lerp(target[key], k);
       clock = (clock + dt) % 3600;
       env.uTime.value = clock;
+      tod.update(dt);
+      env.uDusk.value = tod.dusk;
+      env.uNight.value = tod.night;
       env.uPlayer.value.copy(playerPos);
       env.uCloud.value = cur.cloud;
       env.uSunColor.value.copy(cur.sunColor);
@@ -248,6 +260,7 @@ export function buildWorld(scene, settings = null) {
 
       dungeon.cutaway.uPlayer.value.copy(playerPos);
       dungeon.update(t, region === 'dungeon' ? 'ganzir' : region === 'cistern' ? 'cistern' : null);
+      lights.update(t, playerPos, tod);
       gate.userData.portalMat.opacity = 0.5 + Math.sin(t * 1.7) * 0.12;
       well.userData.portalMat.opacity = 0.45 + Math.sin(t * 2.1) * 0.15;
       for (const s of shrines) {
