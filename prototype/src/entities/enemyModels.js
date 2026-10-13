@@ -9,7 +9,7 @@ import { Rig, Animator, MODE, humanoid, to, add, mix, smooth, easeOut, clamp01, 
 
 const TAU = Math.PI * 2;
 const W = 0xffffff, W2 = 0xd2d2d2, W3 = 0xa8a8a8;
-const BONE = 0xe8d6b0, IRON = 0x41372f, GOLD = 0xe2b441, LAPIS = 0x2a4aa8, LAPIS_D = 0x182a6a;
+const BONE = 0xe8d6b0, IRON = 0x6a5240, GOLD = 0xe2b441, LAPIS = 0x2a4aa8, LAPIS_D = 0x182a6a;
 const T = { tint: true, rough: 0.82, ao: 0.4 };
 
 const defCache = {};
@@ -220,12 +220,12 @@ function lilituDef() {
     b.seg(w1, [0, 0, 0], [s * 0.6, 0.12, 0], 0.045, 0.035, 5, W3, { tint: 0.3, ao: 0.3 });
     for (let i = 0; i < 5; i++) {
       const x = s * (0.06 + i * 0.11);
-      b.add(w1, shapes.tatter(0.15, 0.1, 0.95 - i * 0.07), 0x6a3a8a, { x, y: 0.02 + i * 0.02, rz: s * (0.04 * i), double: true, tint: 0.7, rough: 0.8, glow: 0.12 });
+      b.add(w1, shapes.tatter(0.26, 0.16, 0.95 - i * 0.07), 0x7a4a9a, { x, y: 0.02 + i * 0.02, rz: s * (0.04 * i), double: true, tint: 0.7, rough: 0.8, glow: 0.12 });
     }
     b.seg(w2, [0, 0, 0], [s * 0.7, 0.2, 0], 0.035, 0.02, 5, W3, { tint: 0.3, ao: 0.3 });
     for (let i = 0; i < 6; i++) {
       const x = s * (0.05 + i * 0.11);
-      b.add(w2, shapes.tatter(0.15, 0.06, 1.25 - i * 0.14), 0x3a1f4a, { x, y: 0.03 + i * 0.03, rz: s * (0.05 + 0.04 * i), double: true, tint: 0.8, rough: 0.8, glow: 0.16 });
+      b.add(w2, shapes.tatter(0.26, 0.12, 1.25 - i * 0.14), 0x4a2a62, { x, y: 0.03 + i * 0.03, rz: s * (0.05 + 0.04 * i), double: true, tint: 0.8, rough: 0.8, glow: 0.16 });
     }
     b.add(w2, shapes.fin(0.07, 0.22, 0.03), 0xc890ff, { x: s * 0.7, y: 0.18, rz: -s * 1.3, glow: 1.0, ao: 0 });
   });
