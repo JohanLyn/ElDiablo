@@ -78,22 +78,22 @@ Release notes are in [prototype/CHANGELOG.md](../prototype/CHANGELOG.md).
 ### Alpha checklist
 Before tagging an alpha build, tick every box.
 
-- [ ] `npm test` passes (game logic, maths, audio theory and recipes)
-- [ ] `npm run build` succeeds and `npm run e2e` (`e2e/sim.mjs`) plays the full quest chain without page errors
-- [ ] `node e2e/firstfifteen.mjs` passes all balance targets (the script checks these):
-  - [ ] Level 2 by 2:30
-  - [ ] Level 4 by 9:00
-  - [ ] Level 5 or higher by 15:00
-  - [ ] A Legendary by 12:00
-  - [ ] Two quests done by 11:00
-  - [ ] No more than 2 deaths
-  - [ ] Average time to kill a normal monster between 1 and 5 seconds
-- [ ] Performance budget, measured in a real browser with a GPU:
-  - [ ] High: at most 600 draw calls and 1.5M triangles
-  - [ ] Low: at most 300 draw calls
+- [x] `npm test` passes (game logic, maths, audio theory and recipes)
+- [x] `npm run build` succeeds and `npm run e2e` (`e2e/sim.mjs`) plays the full quest chain without page errors
+- [x] `node e2e/firstfifteen.mjs` passes all balance targets (the script checks these):
+  - [x] Level 2 by 2:30
+  - [x] Level 4 by 9:00
+  - [x] Level 5 or higher by 15:00
+  - [x] A Legendary by 12:00
+  - [x] Two quests done by 11:00
+  - [x] No more than 2 deaths
+  - [x] Average time to kill a normal monster between 1 and 5 seconds
+- [x] Performance budget (draw calls and triangles from `renderer.info`; counts don't depend on the GPU):
+  - [x] High: at most 600 draw calls and 1.5M triangles
+  - [x] Low: at most 300 draw calls
 - [ ] Manual controller smoke test on real hardware: title, new game, combat with all six skills, evade, potion, Tether steering, menus, map, pause, disconnect and reconnect
 
-Status: the tests, e2e sim and balance bot exist in the repo. The performance budget and the real-controller test have not been done yet.
+Status (0.3.0-alpha): 29 unit tests pass; the e2e sim exercises the ambush, quests, the ritual, Aqrabu, both dungeons and their guardians, menus, portals, save/load and death with no page errors; the balance bot passes every target on 4 seeds (first Legendary at 4:30–7:00 bot time, from the Cistern guardian; 0–1 deaths; normal TTK 1.5–2.2 s). Busiest scenes: High 290 draw calls / 0.5M triangles (Eridu), Low 135 draw calls. Still open: the real-controller smoke test, and frame times on a low-end GPU.
 
 ## Next (beta)
 - [ ] A second gate and region
