@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { U } from './shared.js';
+import { U, PREMULT } from './shared.js';
 import { buildRuneStrip } from './atlas.js';
 
 // ---------------------------------------------------------------------------
@@ -29,7 +29,7 @@ const PILLAR_FRAG = /* glsl */`
     float base = pow(1.0 - vY, 3.0) * 1.2;
     float a = edge * top * bottom * (stripes * 0.75 + base) * uInt;
     vec3 col = mix(uColor, uHot, clamp(base * 0.5 + edge * edge * 0.35, 0.0, 1.0));
-    gl_FragColor = vec4(col, a);
+    gl_FragColor = vec4(col * a, a * 0.4);
   }`;
 
 let pillarGeo = null;
@@ -42,7 +42,7 @@ export function makePillarMaterial(color, hot, intensity = 1, spin = 0) {
   return new THREE.ShaderMaterial({
     uniforms: { uColor: { value: new THREE.Color(color) }, uHot: { value: new THREE.Color(hot) }, uInt: { value: intensity }, uTime: U.time, uSpin: { value: spin } },
     vertexShader: PILLAR_VERT, fragmentShader: PILLAR_FRAG,
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    transparent: true, depthWrite: false, ...PREMULT, side: THREE.DoubleSide,
   });
 }
 
@@ -101,7 +101,7 @@ const BARRIER_FRAG = /* glsl */`
     float v = (line * 0.95 + inner * (0.07 + flick) + rim * 1.15 + scan * 0.35) * alive + rim * 0.25;
     v += uHit * (0.5 + rim * 1.5);
     float alpha = clamp(v, 0.0, 1.0) * uI;
-    gl_FragColor = vec4(mix(uColor, uHot, clamp(line * 0.6 + rim * 0.5 + uHit, 0.0, 1.0)) * (1.0 + line), alpha);
+    gl_FragColor = vec4(mix(uColor, uHot, clamp(line * 0.6 + rim * 0.5 + uHit, 0.0, 1.0)) * (1.0 + line) * alpha, alpha * 0.4);
   }`;
 
 export function makeBarrierMaterial() {
@@ -111,7 +111,7 @@ export function makeBarrierMaterial() {
       uColor: { value: new THREE.Color(0xffb43a) }, uHot: { value: new THREE.Color(0xfff0b0) },
     },
     vertexShader: BARRIER_VERT, fragmentShader: BARRIER_FRAG,
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    transparent: true, depthWrite: false, ...PREMULT,
   });
 }
 
@@ -154,7 +154,7 @@ const BEAM_FRAG = /* glsl */`
     float bead = exp(-pow((vUv.x - uSurge) * 9.0, 2.0)) * step(0.0, uSurge) * (0.35 + p);
     float a = (core * 1.4 + glow * 0.55 * flow + rune * 0.85 * glow + bead * 1.6) * ends * uInt;
     vec3 col = mix(uColor, uHot, clamp(core + bead * 0.8 + rune * 0.3, 0.0, 1.0));
-    gl_FragColor = vec4(col, a);
+    gl_FragColor = vec4(col * a, a * 0.45);
   }`;
 
 const FAN_N = 9;
@@ -173,7 +173,7 @@ const FAN_FRAG = /* glsl */`
   void main() {
     float a = vA * pow(vX, 1.4);
     if (a < 0.004) discard;
-    gl_FragColor = vec4(mix(uColor, uHot, vX * vX * 0.6), a);
+    gl_FragColor = vec4(mix(uColor, uHot, vX * vX * 0.6) * a, a * 0.45);
   }`;
 
 export class TetherBeam {
@@ -189,7 +189,7 @@ export class TetherBeam {
         uLen: { value: 6 }, uInt: { value: 1 }, uSurge: { value: -1 }, uRune: { value: 1 },
       },
       vertexShader: BEAM_VERT, fragmentShader: BEAM_FRAG, transparent: true, depthWrite: false,
-      blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      ...PREMULT, side: THREE.DoubleSide,
     });
     this.mesh = new THREE.Mesh(geo, this.mat);
     this.mesh.frustumCulled = false;
@@ -216,7 +216,7 @@ export class TetherBeam {
     this.fan = new THREE.Mesh(fgeo, new THREE.ShaderMaterial({
       uniforms: { uColor: this.mat.uniforms.uColor, uHot: this.mat.uniforms.uHot, uGain: { value: 0 } },
       vertexShader: FAN_VERT, fragmentShader: FAN_FRAG, transparent: true, depthWrite: false,
-      blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      ...PREMULT, side: THREE.DoubleSide,
     }));
     this.fan.frustumCulled = false;
     this.fan.renderOrder = 8;
@@ -238,9 +238,9 @@ export class TetherBeam {
     this.A.copy(A); this.B.copy(B);
     const u = this.mat.uniforms;
     u.uLen.value = A.distanceTo(B);
-    u.uWidth.value = (0.2 + sweep * 0.12 + flare * 0.5) * thick * (live ? 1 : 0.4);
+    u.uWidth.value = (0.2 + sweep * 0.12 + flare * 0.2) * thick * (live ? 1 : 0.4);
     u.uAmp.value = live ? 0.05 + sweep * 0.08 + flare * 0.1 : 0.015;
-    u.uInt.value = (live ? 1.0 : 0.38) + sweep * 0.5 + flare * 1.2;
+    u.uInt.value = (live ? 1.0 : 0.38) + sweep * 0.35 + flare * 0.5;
     u.uRune.value = live ? 1 : 0.4;
     u.uSurge.value = this.surge;
 

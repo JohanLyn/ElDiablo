@@ -6,12 +6,12 @@ import { U } from './shared.js';
 // rim (the strike lands when it arrives), and a pattern per attack family
 // (violet sigils, cracked ground, golden seals, lightning, molten rock).
 export const TELE_STYLES = {
-  void: { kind: 1, col: 0xb04dff, hot: 0xeed0ff, dark: 0x16052a },
-  crack: { kind: 2, col: 0xff5a22, hot: 0xffd27a, dark: 0x240804 },
-  seal: { kind: 3, col: 0xffc13a, hot: 0xfff2b8, dark: 0x241a04 },
-  storm: { kind: 4, col: 0x7fcfff, hot: 0xffffff, dark: 0x041428 },
-  molten: { kind: 5, col: 0xff6a1a, hot: 0xffe08a, dark: 0x240a02 },
-  fire: { kind: 0, col: 0xff3a2a, hot: 0xffb08a, dark: 0x240606 },
+  void: { kind: 1, col: 0xb04dff, hot: 0xe6b8ff, dark: 0x16052a },
+  crack: { kind: 2, col: 0xff4a18, hot: 0xff9a50, dark: 0x1c0604 },
+  seal: { kind: 3, col: 0xffb62a, hot: 0xffe08a, dark: 0x241a04 },
+  storm: { kind: 4, col: 0x4fb4ff, hot: 0xcfeaff, dark: 0x041428 },
+  molten: { kind: 5, col: 0xff5a10, hot: 0xffc060, dark: 0x240a02 },
+  fire: { kind: 0, col: 0xff3a2a, hot: 0xff8a5a, dark: 0x240606 },
   poison: { kind: 0, col: 0x9aff3a, hot: 0xeaffb0, dark: 0x0a2004 },
 };
 
@@ -28,7 +28,7 @@ export function styleForColor(color) {
 }
 
 const VERT = /* glsl */`
-  uniform float uH[9];
+  uniform float uH[25];
   uniform float uConform;
   varying vec2 vP;
   void main() {
@@ -36,11 +36,14 @@ const VERT = /* glsl */`
     vP = p;
     float h = 0.0;
     if (uConform > 0.5) {
-      vec3 wx = vec3(p.x * (p.x - 1.0) * 0.5, 1.0 - p.x * p.x, p.x * (p.x + 1.0) * 0.5);
-      vec3 wz = vec3(p.y * (p.y - 1.0) * 0.5, 1.0 - p.y * p.y, p.y * (p.y + 1.0) * 0.5);
-      for (int iz = 0; iz < 3; iz++) for (int ix = 0; ix < 3; ix++) h += uH[iz * 3 + ix] * wx[ix] * wz[iz];
+      vec2 g = clamp((p * 0.5 + 0.5) * 4.0, 0.0, 3.999);
+      ivec2 i0 = ivec2(floor(g));
+      vec2 f = fract(g);
+      int b = i0.y * 5 + i0.x;
+      h = mix(mix(uH[b], uH[b + 1], f.x), mix(uH[b + 5], uH[b + 6], f.x), f.y);
     }
-    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position.x, h + 0.09, position.z, 1.0);
+    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position.x, h + 0.1, position.z, 1.0);
+    gl_Position.z -= 0.0004 * gl_Position.w;
   }`;
 
 const FRAG = /* glsl */`
@@ -105,14 +108,22 @@ const FRAG = /* glsl */`
       P += hx * 0.9;
       P += line(r, 0.05) * 0.8;
     } else if (uKind < 2.5) {
-      // Cracked ground: glowing fissures lighting up from the centre.
-      vec2 q = p * 3.1 + vec2(uSeed * 7.0, 0.0);
-      vec2 vo = voronoi(q + (noise(q * 2.3) - 0.5) * 0.35);
-      float edge = vo.y - vo.x;
-      float crack = smoothstep(0.17, 0.0, edge);
-      float lit = smoothstep(fill + 0.12, fill - 0.05, r);
-      P = crack * (0.35 + 0.65 * lit) + crack * 0.4 * (0.6 + 0.4 * sin(uTime * 9.0 + r * 12.0));
-      P += smoothstep(0.35, 0.0, r) * lit * 0.5;
+      // Cracked ground: glowing fissures radiating from the centre, lighting up outward.
+      float a = atan(p.x, p.y);
+      float lit = smoothstep(fill + 0.15, fill - 0.05, r);
+      float cr = 0.0;
+      for (int i = 0; i < 9; i++) {
+        float fi = float(i);
+        float base = hash(vec2(fi, uSeed)) * TAU;
+        float wob = (noise(vec2(r * 5.0 + fi * 7.1, fi)) - 0.5) * 1.1 * r;
+        float da = abs(mod(a - base - wob + PI, TAU) - PI);
+        float width = mix(0.05, 0.012, r);
+        float reach = 0.35 + hash(vec2(fi, 3.0)) * 0.7;
+        cr = max(cr, smoothstep(width, 0.0, da * r) * (1.0 - smoothstep(reach - 0.1, reach, r)));
+      }
+      vec2 vo = voronoi(p * 4.0 + uSeed);
+      float hair = smoothstep(0.07, 0.0, vo.y - vo.x) * 0.3;
+      P = (cr * 1.1 + hair) * (0.35 + 0.65 * lit) * (0.85 + 0.15 * sin(uTime * 8.0 + r * 10.0)) + smoothstep(0.3, 0.0, r) * lit * 0.7;
     } else if (uKind < 3.5) {
       // Golden seal: heptagram, rings, ticks.
       float spin = uTime * 0.3;
@@ -200,15 +211,15 @@ const FRAG = /* glsl */`
     col += uColor * tint * 1.4; alpha += tint;
     // Pattern.
     float pv = pat * patW;
-    col += mix(uColor, uHot, 0.35 + 0.4 * t) * pv * 1.55; alpha += pv * 0.9;
+    col += mix(uColor, uHot, 0.2 + 0.4 * t) * pv * 1.15; alpha += pv * 0.9;
     // Rim and front.
     float rv = (rim * (0.7 + 0.8 * t) + rimGlow) * pulse;
-    col += mix(uColor, uHot, 0.3 + 0.5 * t) * rv * 1.8; alpha += rv * 0.95;
+    col += mix(uColor, uHot, 0.2 + 0.4 * t) * rv * 1.35; alpha += rv * 0.95;
     float fv = front * 0.9;
-    col += uHot * fv * 1.5; alpha += fv * 0.85;
+    col += uHot * fv * 0.9; alpha += fv * 0.7;
     // Strike flash.
     float fl = strike * strike;
-    col += uHot * fl * 0.9 * (0.4 + rim); alpha += fl * 0.5;
+    col += uHot * fl * 0.35 * (0.4 + rim); alpha += fl * 0.2;
     alpha = clamp(alpha, 0.0, 1.0) * inside;
     if (alpha < 0.01) discard;
     gl_FragColor = vec4(col / max(alpha, 0.001) * inside, alpha);
@@ -217,7 +228,7 @@ const FRAG = /* glsl */`
 let zoneGeo = null, coneGeo = null, laneGeo = null;
 function geometries() {
   if (zoneGeo) return;
-  zoneGeo = new THREE.PlaneGeometry(2, 2, 12, 12);
+  zoneGeo = new THREE.PlaneGeometry(2, 2, 16, 16);
   zoneGeo.rotateX(-Math.PI / 2);
   // Cone: fan of triangles around +Z, half angle 0.9 rad, radius 1.
   const half = 0.9, seg = 24, pos = [0, 0, 0], idx = [];
@@ -246,11 +257,11 @@ export class Telegraphs {
     const geo = shape === 0 ? zoneGeo : shape === 1 ? coneGeo : laneGeo;
     const mat = new THREE.ShaderMaterial({
       uniforms: {
-        uH: { value: new Float32Array(9) }, uConform: { value: 0 },
+        uH: { value: new Float32Array(25) }, uConform: { value: 0 },
         uShape: { value: shape }, uKind: { value: 0 }, uT: { value: 0 }, uTime: U.time, uScale: { value: 1 }, uLen: { value: 1 }, uHalf: { value: 0.9 }, uSeed: { value: 0 },
         uColor: { value: new THREE.Color() }, uHot: { value: new THREE.Color() }, uDark: { value: new THREE.Color() },
       },
-      vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false,
+      vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide,
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.frustumCulled = false;
@@ -285,7 +296,7 @@ export class Telegraphs {
   // Fit a zone to the terrain (9 height samples, biquadratic in the shader).
   conform(m, x, z, r, heightAt) {
     const H = m.material.uniforms.uH.value;
-    for (let iz = 0; iz < 3; iz++) for (let ix = 0; ix < 3; ix++) H[iz * 3 + ix] = heightAt(x + (ix - 1) * r, z + (iz - 1) * r);
+    for (let iz = 0; iz < 5; iz++) for (let ix = 0; ix < 5; ix++) H[iz * 5 + ix] = heightAt(x + (ix - 2) * r * 0.5, z + (iz - 2) * r * 0.5);
     m.material.uniforms.uConform.value = 1;
   }
 

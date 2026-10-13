@@ -49,16 +49,22 @@ const VERT = /* glsl */`
     vUv = (cellUv + uv * 0.992 + 0.004) * 0.25;
     vColor = iColor;
     gl_Position = projectionMatrix * viewMatrix * vec4(world, 1.0);
+    if (mode > 0.5) gl_Position.z -= 0.0003 * gl_Position.w; // keep ground decals above terrain facets
   }`;
 
 const FRAG = /* glsl */`
   uniform sampler2D uAtlas;
+  uniform float uK;
   varying vec2 vUv;
   varying vec4 vColor;
   void main() {
     float a = texture2D(uAtlas, vUv).a * vColor.a;
     if (a < 0.004) discard;
-    gl_FragColor = vec4(vColor.rgb, a);
+    #ifdef PREMULT
+      gl_FragColor = vec4(vColor.rgb * a, a * uK);
+    #else
+      gl_FragColor = vec4(vColor.rgb, a);
+    #endif
   }`;
 
 const DEFAULTS = {
@@ -102,10 +108,13 @@ class Layer {
     geo.instanceCount = 0;
     this.geo = geo;
     const mat = new THREE.ShaderMaterial({
-      uniforms: { uAtlas: { value: atlas } },
+      uniforms: { uAtlas: { value: atlas }, uK: { value: 0.4 } },
       vertexShader: VERT, fragmentShader: FRAG,
       transparent: true, depthWrite: false,
-      blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+      // Glow layer: premultiplied with a partial "over" term (uK) so saturated colours
+      // survive on bright sand instead of washing out to white like pure additive.
+      blending: additive ? THREE.CustomBlending : THREE.NormalBlending,
+      ...(additive ? { blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneMinusSrcAlphaFactor, defines: { PREMULT: '' } } : {}),
     });
     this.mesh = new THREE.Mesh(geo, mat);
     this.mesh.frustumCulled = false;

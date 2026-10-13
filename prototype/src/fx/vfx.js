@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { F } from './atlas.js';
-import { U, TAU, rr, clamp01, smooth } from './shared.js';
+import { U, TAU, rr, clamp01, smooth, makeSurfaceHeight } from './shared.js';
+import { HALF } from '../world/layout.js';
+import { DUNGEON_Z } from '../world/terrain.js';
 import { RibbonBatch } from './ribbons.js';
 import { SlashPool } from './slash.js';
 import { makePillarMaterial, makePillar, makeBarrierMaterial } from './beams.js';
@@ -22,6 +24,7 @@ function c0(t, hex, k = 1) { _col.set(hex); t.r0 = _col.r * k; t.g0 = _col.g * k
 function c1(t, hex, k = 1) { _col.set(hex); t.r1 = _col.r * k; t.g1 = _col.g * k; t.b1 = _col.b * k; }
 
 const MAX_HIT_FX = 16;
+const LIGHT_K = 0.2; // sand is bright: flash lights must stay gentle
 
 // The combat/loot VFX director. Gameplay only emits events; this class turns
 // them into pooled sprites, ribbons, decals, shaders and short-lived lights.
@@ -30,7 +33,9 @@ export class Vfx {
     this.g = g;
     this.scene = g.scene;
     this.ps = g.fx.ps;
-    this.ps.heightAt = g.world.heightAt;
+    this.surface = makeSurfaceHeight(g.world.heightAt, HALF, 220, DUNGEON_Z);
+    g.surface = this.surface;
+    this.ps.heightAt = this.surface;
     this.A = this.ps.add;
     this.B = this.ps.alpha;
     this.frame = 0;
@@ -105,7 +110,7 @@ export class Vfx {
   // ---------------------------------------------------------------------
   // helpers
   // ---------------------------------------------------------------------
-  ground(x, z) { return this.g.world.heightAt(x, z); }
+  ground(x, z) { return this.surface(x, z); }
 
   schedule(delay, fn) { this.later.push({ t: delay, fn }); }
 
@@ -114,6 +119,7 @@ export class Vfx {
     this.lightCursor = (this.lightCursor + 1) % this.lights.length;
     l.position.set(x, y, z);
     l.color.set(hex);
+    intensity *= LIGHT_K;
     l.userData.t = 0; l.userData.dur = dur; l.userData.i0 = intensity;
     l.intensity = intensity;
   }
@@ -129,12 +135,14 @@ export class Vfx {
   }
 
   glow(x, y, z, size, hex, life, a = 1, k = 1.4) {
+    k /= 1 + size * 0.12;
     const t = this.A.begin(F.DOT);
     t.x = x; t.y = y; t.z = z; t.s0 = size; t.s1 = size * 0.4; t.life = life; t.a = a; c0(t, hex, k);
     this.A.emit();
   }
 
   flash(x, y, z, size, hex, life, k = 1.6, frame = F.STAR, spin = 0) {
+    k /= 1 + size * 0.14;
     const t = this.A.begin(frame);
     t.x = x; t.y = y; t.z = z; t.s0 = size * 0.55; t.s1 = size; t.life = life; t.fp = 1.6; t.fin = 0.008;
     t.rot = Math.random() * 6.28; t.rotVel = spin; c0(t, hex, k);
@@ -286,23 +294,22 @@ export class Vfx {
       const tilt = 0.14;
       this.slashes.spawn({
         center, axU: _v2.set(sf * Math.cos(tilt), Math.sin(tilt), cf * Math.cos(tilt)), axV: _v3.set(cf, 0, -sf),
-        a0: 1.5 * dir, a1: -1.5 * dir, r0: 0.7, r1: 2.95, color: 0xffb248, hot: 0xfff2cc,
-        dur: 0.115 / speed, hold: 0.16, tail: 2.6, power: 1.5,
+        a0: 1.5 * dir, a1: -1.5 * dir, r0: 0.7, r1: 2.95, color: 0xff8a14, hot: 0xfff0c8,
+        dur: 0.115 / speed, hold: 0.16, tail: 2.6, power: 1.0,
       });
     } else {
-      // Big golden overhead chop (diagonal vertical plane) plus a wide ground sweep.
-      const sx = 0.85, sr = 0.5; // forward / right mix for the chop plane
-      const fx = sf * sx + cf * sr, fz = cf * sx - sf * sr;
+      // Big golden overhead chop in a plane that leans toward the camera so it reads from above.
+      const fx = sf * 0.45 + (sf >= 0 ? 0.9 : -0.9), fz = cf * 0.45;
       const fl = Math.hypot(fx, fz);
       this.slashes.spawn({
         center, axU: _v2.set(0, 1, 0), axV: _v3.set(fx / fl, 0.12, fz / fl),
-        a0: -0.75, a1: 1.95, r0: 1.1, r1: 4.0, color: 0xffa417, hot: 0xffffff,
-        dur: 0.19 / speed, hold: 0.28, tail: 2.2, power: 2.1,
+        a0: -0.75, a1: 1.95, r0: 0.6, r1: 3.9, color: 0xff8a00, hot: 0xfff4c8,
+        dur: 0.19 / speed, hold: 0.3, tail: 2.2, power: 1.15,
       });
       this.slashes.spawn({
         center, axU: _v2.set(sf, 0.05, cf), axV: _v3.set(cf, 0, -sf),
-        a0: 2.1, a1: -2.1, r0: 1.4, r1: 3.5, color: 0xffd060, hot: 0xfff6dd,
-        dur: 0.2 / speed, hold: 0.2, tail: 3.2, power: 1.1,
+        a0: 2.1, a1: -2.1, r0: 1.4, r1: 3.5, color: 0xffb020, hot: 0xfff6dd,
+        dur: 0.2 / speed, hold: 0.2, tail: 3.2, power: 0.9,
       });
     }
   }
@@ -543,8 +550,8 @@ export class Vfx {
     w.root.visible = true;
     w.mat.opacity = 0.95 * open * fade;
     const flap = Math.sin(this.wingT * 26) * 0.32;
-    w.wings[0].rotation.set(-0.95 + (1 - open) * 0.6, -0.5 * open, -(0.55 + flap) * open);
-    w.wings[1].rotation.set(-0.95 + (1 - open) * 0.6, 0.5 * open, (0.55 + flap) * open);
+    w.wings[0].rotation.set(-0.35 + (1 - open) * 0.5, -0.85 * open, -(0.5 + flap) * open);
+    w.wings[1].rotation.set(-0.35 + (1 - open) * 0.5, 0.85 * open, (0.5 + flap) * open);
     w.root.scale.setScalar(0.65 + open * 0.55);
     // Shed golden feathers.
     if (Math.random() < 0.8) {
@@ -808,9 +815,9 @@ export class Vfx {
     const x = en.pos.x, y = en.pos.y, z = en.pos.z;
     const big = en.boss ? 3 : en.named ? 2 : en.elite ? 1 : 0;
     const sc = en.scale ?? 1;
-    this.wisps(x, y + 0.8, z, big === 3 ? 30 : big === 2 ? 14 : big === 1 ? 7 : 3, 0.5 * sc, 0xe0b8ff, 0x6a2bd8, 1.0 + big * 0.35, 1.3 + big * 0.2);
+    this.wisps(x, y + 0.8, z, big === 3 ? 30 : big === 2 ? 14 : big === 1 ? 7 : 4, 0.5 * sc, 0xb070ff, 0x5a18d0, 1.5 + big * 0.4, 1.5 + big * 0.2, 2.6, 1.1);
     this.motes(x, y + 0.9, z, big ? 24 + big * 12 : 8, 0.4 * sc, 3 + big, 3 + big, 0xffe39a, 0xd6a740, 0.2 + big * 0.06, 0.9, 5);
-    this.flash(x, y + 1.0, z, 2.4 + big, 0xd9b0ff, 0.2, 1.8, F.DOT);
+    this.flash(x, y + 1.0, z, 2.4 + big, 0xb070ff, 0.22, 1.2, F.DOT);
     this.ringFlat(x, 0.1, z, 0.5, 3.4 + big * 1.8, 0.4, 0xb98aff, 0.7 + big * 0.1, 1.4);
     if (big >= 1) {
       this.glint(x, y + 1.4, z, 2.2 + big, 0xfff0c0, 0.4, 2.2);
@@ -1022,7 +1029,6 @@ export class Vfx {
       l.intensity = l.userData.i0 * (1 - k) * (1 - k);
     }
 
-    g.tether.beam && null;
     this.ribbons.flush(g.camera.position);
   }
 
@@ -1037,7 +1043,7 @@ export class Vfx {
         this.sparks(m.x, m.y, m.z, 0, 0, 5, 5, 0, 0xcfe2ff, 0x4d86ff, 0.2, 0.3, 6);
       }
       if (!j.ended) {
-        if (j.strip >= 0) R.push(j.strip, m.x, m.y, m.z, 0.62, 0.35, 0.62, 1.0, 1);
+        if (j.strip >= 0) R.push(j.strip, m.x, m.y, m.z, 0.62, 0.15, 0.45, 1.5, 1);
         this.glow(m.x, m.y, m.z, 1.5, 0x6aa0ff, 0.07, 0.9, 1.6);
         j.shard -= dt;
         if (j.shard <= 0) {
@@ -1082,17 +1088,22 @@ export class Vfx {
         this.A.emit();
       }
     }
-    for (const [b, tr] of this.projTrails) {
-      if (tr.seen === stamp) continue;
-      if (!tr.ended) {
-        tr.ended = true;
-        const m = b.pos;
-        this.flash(m.x, m.y, m.z, 1.5, 0xb8ff6a, 0.16, 1.8);
-        this.sparks(m.x, m.y, m.z, 0, 0, 6, 5, 0, 0xeaffb0, 0x44aa18, 0.2, 0.35, 8);
-      }
-      tr.fade += dt;
-      if (tr.strip >= 0) R.sa[tr.strip] = Math.max(0, 1 - tr.fade / 0.25);
-      if (tr.fade > 0.28) { R.release(tr.strip); this.projTrails.delete(b); }
-    }
+    this._dt = dt;
+    this._stamp = stamp;
+    this.projTrails.forEach(this._fadeTrail);
   }
+
+  // Fades the trail of a projectile that no longer exists (Map.forEach callback, no allocation).
+  _fadeTrail = (tr, b) => {
+    if (tr.seen === this._stamp) return;
+    if (!tr.ended) {
+      tr.ended = true;
+      const m = b.pos;
+      this.flash(m.x, m.y, m.z, 1.5, 0xb8ff6a, 0.16, 1.8);
+      this.sparks(m.x, m.y, m.z, 0, 0, 6, 5, 0, 0xeaffb0, 0x44aa18, 0.2, 0.35, 8);
+    }
+    tr.fade += this._dt;
+    if (tr.strip >= 0) this.ribbons.sa[tr.strip] = Math.max(0, 1 - tr.fade / 0.25);
+    if (tr.fade > 0.28) { this.ribbons.release(tr.strip); this.projTrails.delete(b); }
+  };
 }

@@ -36,7 +36,7 @@ export class Tether {
     this.wings = [-1, 1].map((s) => { const w = new THREE.Mesh(wingGeo, wingMat); w.scale.x = s; this.familiar.add(w); return w; });
     const halo = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.03, 6, 24), this.coreMat);
     halo.rotation.x = Math.PI / 2;
-    this.light = new THREE.PointLight(ASPECTS[0].color, 5, 7, 1.5);
+    this.light = new THREE.PointLight(ASPECTS[0].color, 2.2, 6, 1.6);
     this.familiar.add(this.core, halo, this.light);
     scene.add(this.familiar);
 
@@ -281,7 +281,7 @@ export class Tether {
     this.wings[0].rotation.y = flap;
     this.wings[1].rotation.y = -flap;
     this.familiar.rotation.y = Math.atan2(this.B.x - this.A.x, this.B.z - this.A.z);
-    this.light.intensity = 4 + this.sweep * 5 + this.flare * 18;
+    this.light.intensity = 2 + this.sweep * 3 + this.flare * 8;
     const show = !g.player.dead && len > 0.3;
     this.beam.update(dt, this.A, this.B, { show, live, sweep: this.sweep, flare: this.flare, thick: this.aspect(g).id === 'bulwark' ? 1.5 : 1 });
   }

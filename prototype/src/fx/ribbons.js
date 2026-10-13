@@ -22,8 +22,8 @@ const FRAG = /* glsl */`
     float core = pow(p, 4.0) * 1.1;
     float a = vColor.a * (glow + core);
     if (a < 0.004) discard;
-    vec3 col = mix(vColor.rgb, vec3(1.0), pow(p, 5.0) * 0.65);
-    gl_FragColor = vec4(col, a);
+    vec3 col = mix(vColor.rgb, vec3(1.0), pow(p, 6.0) * 0.5);
+    gl_FragColor = vec4(col * a, a * 0.5);
   }`;
 
 export class RibbonBatch {
@@ -69,7 +69,7 @@ export class RibbonBatch {
     geo.setIndex(new THREE.BufferAttribute(idx, 1));
     this.mesh = new THREE.Mesh(geo, new THREE.ShaderMaterial({
       vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false,
-      blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneMinusSrcAlphaFactor, side: THREE.DoubleSide,
     }));
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 7;

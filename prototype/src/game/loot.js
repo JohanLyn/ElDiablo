@@ -70,7 +70,7 @@ export class Loot {
     let beam = null;
     if (item.rarity === 'rare' || item.rarity === 'legendary') {
       const fx = RARITY_FX[item.rarity];
-      beam = makePillar(this.beamMats[item.rarity], item.rarity === 'legendary' ? 0.55 : 0.36, fx.beam);
+      beam = makePillar(this.beamMats[item.rarity], item.rarity === 'legendary' ? 0.42 : 0.28, fx.beam);
       beam.position.copy(target);
       beam.userData.grow = 0;
       beam.scale.y = 0.01; // rises when the item lands

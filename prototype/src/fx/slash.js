@@ -18,26 +18,27 @@ const FRAG = /* glsl */`
   uniform vec3 uColor, uHot;
   uniform float uHead, uFade, uTail, uPower, uSeed;
   varying vec2 vUv;
-  float hash(float n) { return fract(sin(n) * 43758.5453); }
   void main() {
     float u = vUv.x, v = vUv.y;
     float behind = uHead - u;
     if (behind < 0.0) discard;
-    float w = pow(max(sin(3.14159 * u), 0.0), 0.65);
-    float outer = 0.5 + 0.5 * w;
-    float inner = 0.5 - 0.5 * w * 0.8;
-    float shape = smoothstep(inner - 0.03, inner + 0.25, v) * (1.0 - smoothstep(outer - 0.03, outer + 0.015, v));
-    float edge = smoothstep(outer - 0.28, outer, v);
+    float w = pow(max(sin(3.14159 * u), 0.0), 0.7);
+    float outer = 0.9 + 0.07 * w;
+    float inner = outer - 0.66 * w;
+    float t = (v - inner) / max(outer - inner, 0.001);
+    if (t < 0.0 || t > 1.0) discard;
+    float edgeSoft = 1.0 - smoothstep(0.93, 1.0, t);
     float tail = exp(-behind * uTail);
-    float streak = 0.72 + 0.28 * sin(v * 70.0 + u * 14.0 + uSeed * 9.0) * sin(v * 23.0 - u * 6.0);
-    float lead = smoothstep(0.0, 0.1, behind) ;
-    float a = shape * tail * streak * uFade * (0.35 + edge * 0.9) * lead;
-    // Bright white-hot head of the swing.
-    float headGlow = exp(-behind * 14.0) * shape * uFade;
-    vec3 col = mix(uColor, uHot, edge * edge * 0.8 + headGlow * 0.6) * uPower;
-    a += headGlow * 0.6;
-    if (a < 0.004) discard;
-    gl_FragColor = vec4(col, min(a, 1.0));
+    float streak = 0.8 + 0.2 * sin(v * 60.0 + u * 11.0 + uSeed * 9.0) * sin(v * 21.0 - u * 5.0);
+    float lead = smoothstep(0.0, 0.06, behind);
+    float a = pow(t, 1.1) * edgeSoft * tail * streak * uFade * lead;
+    float heat = smoothstep(0.8, 1.0, t) * (0.3 + 0.7 * tail) + exp(-behind * 18.0) * 0.45 * t;
+    vec3 body = mix(uColor, uHot, clamp(heat, 0.0, 1.0));
+    // Premultiplied: saturated body composited over the ground, hot core added on top.
+    vec3 rgb = body * a * 1.05 + uHot * heat * a * 0.7;
+    float alpha = a * 0.95;
+    if (alpha < 0.004) discard;
+    gl_FragColor = vec4(rgb * uPower, alpha);
   }`;
 
 function arcGeometry(seg = 40, rows = 6) {
@@ -74,7 +75,7 @@ export class SlashPool {
           uHead: { value: 0 }, uFade: { value: 1 }, uTail: { value: 3 }, uPower: { value: 1.4 }, uSeed: { value: 0 },
         },
         vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false,
-        blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+        blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneMinusSrcAlphaFactor, side: THREE.DoubleSide,
       });
       const mesh = new THREE.Mesh(this.geo, mat);
       mesh.frustumCulled = false;

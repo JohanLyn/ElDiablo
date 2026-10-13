@@ -321,7 +321,7 @@ export class EnemyManager {
       const h = this.hazards[i];
       h.t += dt;
       const k = Math.min(1, h.t / h.delay);
-      if (!h.fitted) { h.fitted = true; getTelegraphs(this.scene).conform(h.group, h.x, h.z, h.r, g.world.heightAt); }
+      if (!h.fitted) { h.fitted = true; getTelegraphs(this.scene).conform(h.group, h.x, h.z, h.r, g.surface ?? g.world.heightAt); }
       h.group.material.uniforms.uT.value = k;
       if (h.t >= h.delay) {
         if (!p.dead && Math.hypot(p.pos.x - h.x, p.pos.z - h.z) < h.r + 0.3) {
