@@ -7,9 +7,8 @@ import { Input } from './core/input.js';
 import { Fx } from './core/fx.js';
 import { CameraRig } from './core/camera.js';
 import { buildWorld } from './world/world.js';
-import { DUNGEON_SPOTS } from './world/dungeon.js';
-import { DUNGEON_Z } from './world/terrain.js';
-import { DUNGEON_ENTRANCE, TOWN, AQRABU, WAYPOINTS } from './world/layout.js';
+import { INSTANCES, instanceAt } from './world/instances.js';
+import { TOWN, AQRABU, WAYPOINTS } from './world/layout.js';
 import { Player } from './entities/player.js';
 import { Tether } from './entities/tether.js';
 import { Abilities } from './entities/abilities.js';
@@ -63,7 +62,7 @@ function boot() {
     renderer, settings, events, version: VERSION,
     quests: new QuestLog(), fog: new Fog(),
     time: 0, timers: [], flags: {}, started: false,
-    inDungeon: false, inSafeZone: true, combatNearby: false, interactTarget: null, suppressInput: false,
+    inDungeon: false, instance: null, inSafeZone: true, combatNearby: false, interactTarget: null, suppressInput: false,
     get uiOpen() { return ui.open; },
 
     start(fresh) {
@@ -123,7 +122,8 @@ function boot() {
     teleport(x, z) {
       const wasDungeon = g.inDungeon;
       player.pos.set(x, 0, z);
-      g.inDungeon = z < DUNGEON_Z;
+      g.instance = instanceAt(z);
+      g.inDungeon = !!g.instance;
       g.inSafeZone = world.regionAt(x, z) === 'town';
       world.colliders.resolve(player.pos, 0.5, g.inDungeon);
       player.pos.y = world.heightAt(player.pos.x, player.pos.z);
@@ -134,19 +134,21 @@ function boot() {
       enemies.updateCamps(g);
     },
 
-    enterDungeon() {
-      g.teleport(DUNGEON_SPOTS.entry.x, DUNGEON_SPOTS.entry.z);
-      enemies.populateDungeon(g);
+    enterDungeon(id = 'ganzir') {
+      const inst = INSTANCES[id];
+      g.teleport(inst.spots.entry.x, inst.spots.entry.z);
+      enemies.populateDungeon(g, inst);
       g.interactions.removeExitPortal();
-      g.interactions.spawnBoss();
-      g.quests.notify({ type: 'enter', id: 'dungeon' });
-      hud.banner('The Ganzir Stair', 'region', 'Dungeon · resets each time you enter');
+      g.interactions.spawnBoss(inst);
+      if (inst.enterEvent) g.quests.notify({ type: 'enter', id: inst.enterEvent });
+      hud.banner(inst.name, 'region', inst.banner);
     },
 
     leaveDungeon() {
+      const back = (g.instance ?? INSTANCES.ganzir).returnTo;
       enemies.clearDungeon();
       g.interactions.removeExitPortal();
-      g.teleport(DUNGEON_ENTRANCE.x, DUNGEON_ENTRANCE.z + 7);
+      g.teleport(back.x, back.z);
     },
 
     startTownPortal() {
@@ -157,9 +159,9 @@ function boot() {
 
     openTownPortal() {
       const from = player.pos.clone();
-      const leavingDungeon = g.inDungeon;
-      if (leavingDungeon) enemies.clearDungeon();
-      g.interactions.createTownPortal(leavingDungeon ? new THREE.Vector3(DUNGEON_ENTRANCE.x, 0, DUNGEON_ENTRANCE.z + 7) : from);
+      const inst = g.instance;
+      if (inst) enemies.clearDungeon();
+      g.interactions.createTownPortal(inst ? new THREE.Vector3(inst.returnTo.x, 0, inst.returnTo.z) : from);
       g.teleport(TOWN.x + 2, TOWN.z - 1);
       hud.banner('Eridu Outpost', 'region', 'Your portal will carry you back');
     },
@@ -183,6 +185,10 @@ function boot() {
       g.interactions.onKill(e);
       if (e.boss) {
         hud.banner('Neti has fallen', 'boss', 'The First Gate is open');
+        g.interactions.spawnExitPortal();
+        g.save();
+      } else if (e.dungeon && e.named && g.instance?.guardian?.id === e.named.id) {
+        hud.banner(g.instance.slainBanner[0], 'boss', g.instance.slainBanner[1]);
         g.interactions.spawnExitPortal();
         g.save();
       }
@@ -222,8 +228,10 @@ function boot() {
       if (m === 'ev-ritual') return { x: world.ritual.x, z: world.ritual.z };
       if (m.startsWith('wp-')) { const w = WAYPOINTS.find((x) => x.id === m); return { x: w.x, z: w.z }; }
       if (m === 'named-aqrabu') return { x: AQRABU.x, z: AQRABU.z };
-      if (m === 'boss-neti' && g.inDungeon) return DUNGEON_SPOTS.boss;
-      return { x: DUNGEON_ENTRANCE.x, z: DUNGEON_ENTRANCE.z };
+      if (m === 'boss-neti' && g.instance?.id === 'ganzir') return INSTANCES.ganzir.spots.boss;
+      if (m === 'cistern-entrance') return g.instance?.id === 'cistern' ? INSTANCES.cistern.spots.boss : INSTANCES.cistern.entrance;
+      if (g.instance) return g.instance.spots.entry; // wrong instance: head back out
+      return INSTANCES.ganzir.entrance;
     },
   };
   g.interactions = new Interactions(g);

@@ -5,7 +5,7 @@ import { makeEnemyModel, driveEnemy } from './enemyModels.js';
 import { monsterLevelFor, monsterLifeMult, monsterDamageMult, monsterXp } from '../game/stats.js';
 import { REGIONS, ROSTER, AQRABU, PLAY_LIMIT, TOWN, WAYPOINTS, flatSpots } from '../world/layout.js';
 import { regionAt, roadDistance } from '../world/terrain.js';
-import { DUNGEON_SPOTS } from '../world/dungeon.js';
+import { INSTANCES } from '../world/instances.js';
 import { getTelegraphs, styleForColor } from '../fx/telegraph.js';
 import { makeEnemyBolt } from '../fx/models.js';
 
@@ -203,16 +203,16 @@ export class EnemyManager {
   }
 
   // Dungeon content resets every time you enter (D4-style instances).
-  populateDungeon(g) {
+  populateDungeon(g, inst = INSTANCES.ganzir) {
     this.clearDungeon();
-    const level = monsterLevelFor(REGIONS.dungeon.level, g.player.level);
+    const level = monsterLevelFor(REGIONS[inst.region].level, g.player.level);
     const rng = new Rng(Math.floor(Math.random() * 1e9));
-    DUNGEON_SPOTS.packs.forEach((spot, i) => {
+    inst.spots.packs.forEach((spot, i) => {
       const n = rng.int(3, 5);
       for (let k = 0; k < n; k++) {
-        const type = rng.weighted(ROSTER.dungeon);
-        const isElite = k === 0 && i % 2 === 1;
-        const e = new Enemy(isElite ? 'asag' : type, {
+        const type = rng.weighted(ROSTER[inst.roster]);
+        const isElite = k === 0 && inst.elitePacks.includes(i);
+        const e = new Enemy(isElite ? inst.eliteType : type, {
           level: level + (isElite ? 1 : 0),
           elite: isElite ? Object.assign(pickAffixes(rng, 2), { prefix: rng.pick(ELITE_PREFIX) }) : null,
           x: spot.x + rng.float(-3, 3), z: spot.z + rng.float(-3, 3),

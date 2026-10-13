@@ -101,6 +101,20 @@ await log('ritual event', () => {
   sim.fight(2400, { skills: [2, 3] });
   return { started, state: g.interactions.ritual.state, kills: g.interactions.ritual.kills, cooldown: Math.round(g.interactions.ritual.cooldown), ...sim.s() };
 });
+await log('cistern + guardian', () => {
+  const g = window.__game;
+  g.teleport(-108, 34); sim.step(5);
+  const near = g.interactions.candidates().some((c) => c.label === 'Enter the Cistern of Enki');
+  g.enterDungeon('cistern'); sim.step(60);
+  const instance = g.instance?.id, region = g.world.regionAt(g.player.pos.x, g.player.pos.z);
+  const guardian = g.enemies.list.find((e) => e.named?.id === 'cistern-guardian');
+  g.teleport(guardian.pos.x, guardian.pos.z + 6); sim.step(30);
+  sim.fight(3000, { skills: [2, 3, 4, 5, 6], filter: (e) => e === guardian || e.pos.distanceTo(guardian.pos) < 12 });
+  const legendary = g.loot.items.some((L) => L.item.rarity === 'legendary');
+  const exitPortal = !!g.interactions.exitPortal;
+  g.leaveDungeon(); sim.step(5);
+  return { near, instance, region, guardianDead: !guardian.alive, legendary, exitPortal, back: [Math.round(g.player.pos.x), Math.round(g.player.pos.z)], inDungeon: g.inDungeon, ...sim.s() };
+});
 await log('dungeon + neti', () => {
   const g = window.__game;
   g.teleport(0, -150); sim.step(5);
@@ -108,7 +122,7 @@ await log('dungeon + neti', () => {
   const boss = g.enemies.list.find((e) => e.boss);
   g.teleport(boss.pos.x, boss.pos.z + 8); sim.step(60);
   sim.fight(4000, { skills: [2, 3, 4, 5, 6], filter: (e) => e.boss || e.pos.distanceTo(boss.pos) < 14 });
-  return { bossHp: Math.round(boss.hp), bossAlive: boss.alive, shielded: boss.shielded, exitPortal: !!g.interactions.exitPortal, legendaryDropped: g.loot.items.some((L) => L.item.rarity === 'legendary'), ...sim.s() };
+  return { bossHp: Math.round(boss.hp), bossAlive: boss.alive, shielded: boss.shielded, exitPortal: !!g.interactions.exitPortal, legendaryDropped: g.loot.items.some((L) => L.item.rarity === 'legendary' && L.pos.distanceTo(boss.pos) < 15), ...sim.s() };
 });
 await log('menus/map/dialog', () => {
   const g = window.__game;
@@ -128,9 +142,12 @@ await log('portal + save', () => {
   const inTown = g.world.regionAt(g.player.pos.x, g.player.pos.z);
   g.interactions.returnThroughPortal();
   g.save();
-  const before = JSON.stringify(sim.s());
+  const before = sim.s();
   g.ui.startGame(false);
-  return { inTown, roundTrip: before === JSON.stringify(sim.s()), ...sim.s() };
+  const after = sim.s();
+  // Ground loot and live monsters are transient by design; everything else must survive.
+  const diff = Object.keys(before).filter((k) => k !== 'loot' && k !== 'alive').filter((k) => JSON.stringify(before[k]) !== JSON.stringify(after[k])).map((k) => `${k}:${JSON.stringify(before[k])}->${JSON.stringify(after[k])}`);
+  return { inTown, roundTrip: diff.length === 0, diff, ...after };
 });
 await log('death+respawn', () => {
   const g = window.__game;

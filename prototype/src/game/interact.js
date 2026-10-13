@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { Enemy } from '../entities/enemies.js';
 import { Neti } from '../entities/boss.js';
-import { DUNGEON_SPOTS } from '../world/dungeon.js';
-import { DUNGEON_ENTRANCE, TOWN, REGIONS } from '../world/layout.js';
+import { Enemy } from '../entities/enemies.js';
+import { INSTANCES } from '../world/instances.js';
+import { TOWN, REGIONS } from '../world/layout.js';
 import { monsterLevelFor } from './stats.js';
 
 const RANGE = 2.6;
@@ -27,8 +27,12 @@ export class Interactions {
     for (const w of g.world.waypoints) list.push({ x: w.x, z: w.z, r: 3.2, label: `Use waypoint: ${w.name}`, use: () => g.ui.openMap(true) });
     for (const s of g.world.shrines) if (s.cooldown <= 0) list.push({ x: s.x, z: s.z, label: `Pray at ${s.def.name}`, use: () => this.useShrine(s) });
     for (const c of g.world.chests) if (!c.opened) list.push({ x: c.x, z: c.z, label: c.tier >= 3 ? 'Open gilded chest' : 'Open chest', use: () => this.openChest(c) });
-    if (!g.inDungeon) list.push({ x: DUNGEON_ENTRANCE.x, z: DUNGEON_ENTRANCE.z, r: 4, label: 'Enter the Ganzir Stair', use: () => g.enterDungeon() });
-    if (g.inDungeon) list.push({ x: DUNGEON_SPOTS.entry.x, z: DUNGEON_SPOTS.entry.z + 3, r: 3, label: 'Climb back to the surface', use: () => g.leaveDungeon() });
+    if (!g.instance) {
+      for (const inst of Object.values(INSTANCES)) list.push({ x: inst.entrance.x, z: inst.entrance.z, r: 4, label: `Enter the ${inst.name.replace(/^The /, '')}`, use: () => g.enterDungeon(inst.id) });
+    } else {
+      const e = g.instance.spots.entry;
+      list.push({ x: e.x, z: e.z + 3, r: 3, label: 'Climb back to the surface', use: () => g.leaveDungeon() });
+    }
     if (this.exitPortal) list.push({ x: this.exitPortal.position.x, z: this.exitPortal.position.z, r: 2.5, label: 'Leave through the portal', use: () => g.leaveDungeon() });
     if (this.portal) list.push({ x: this.portal.mesh.position.x, z: this.portal.mesh.position.z, r: 2.5, label: 'Return through the Town Portal', use: () => this.returnThroughPortal() });
     return list;
@@ -102,9 +106,10 @@ export class Interactions {
 
   // ---- dungeon portal after Neti ----------------------------------------------------
   spawnExitPortal() {
-    if (this.exitPortal) return;
+    if (this.exitPortal || !this.g.instance) return;
+    const spot = this.g.instance.spots.exit;
     const m = new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.35, 8, 24), this.portalMat);
-    m.position.set(DUNGEON_SPOTS.exit.x, 1.6, DUNGEON_SPOTS.exit.z);
+    m.position.set(spot.x, 1.6, spot.z);
     this.g.scene.add(m);
     this.exitPortal = m;
   }
@@ -210,10 +215,18 @@ export class Interactions {
     this.ritual.enemies.clear();
   }
 
-  spawnBoss() {
+  // Each instance ends in a guardian: Neti in the Ganzir Stair, a named champion elsewhere.
+  spawnBoss(inst = INSTANCES.ganzir) {
     const g = this.g;
-    const level = monsterLevelFor(REGIONS.dungeon.level, g.player.level) + 2;
-    const boss = new Neti(level, DUNGEON_SPOTS.boss.x, DUNGEON_SPOTS.boss.z, g.scene);
+    const level = monsterLevelFor(REGIONS[inst.region].level, g.player.level) + 2;
+    const at = inst.spots.boss;
+    let boss;
+    if (inst.guardian) {
+      boss = new Enemy(inst.guardian.type, { level, named: inst.guardian, x: at.x, z: at.z }, g.scene);
+      boss.spawning = 0.01;
+    } else {
+      boss = new Neti(level, at.x, at.z, g.scene);
+    }
     boss.dungeon = true;
     g.enemies.add(boss);
     return boss;

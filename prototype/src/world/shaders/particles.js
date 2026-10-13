@@ -12,6 +12,7 @@ export const PARTICLE_MIX = {
   ruins: [0.1, 0, 1, 0, 0, 0],
   ashen: [0, 0, 0, 1, 0.9, 0],
   dungeon: [0, 0, 0, 0.12, 0, 1],
+  cistern: [0, 0.35, 0, 0, 0, 1],
 };
 
 const BOX = 56;

@@ -140,7 +140,7 @@ export class UI {
     r.textContent = msg ?? '';
     const p = g.player;
     const info = g.world.regionInfo(p.pos.x, p.pos.z);
-    $('pause-sub').textContent = `Level ${p.level} Gatewalker · ${g.inDungeon ? 'The Ganzir Stair' : info.name}`;
+    $('pause-sub').textContent = `Level ${p.level} Gatewalker · ${g.instance?.name ?? info.name}`;
     this.buildPauseOptions();
     this.renderPause();
     g.events.emit('uiOpen', { kind: 'pause' });
@@ -163,7 +163,7 @@ export class UI {
       { label: 'Inventory', hint: btn('', 'I'), run: via('inventory') },
       { label: 'Skills', hint: btn('', 'K'), run: via('skills') },
       { label: 'Quests', hint: btn('', 'J'), run: via('quests') },
-      { label: 'Map', hint: btn('Back', 'M'), run: () => { if (this.g.inDungeon) { this.g.hud.notify('The map does not reach into the Ganzir Stair', 'warn'); return; } $('pause').hidden = true; this.openMap({ from: 'pause' }); } },
+      { label: 'Map', hint: btn('Back', 'M'), run: () => { if (this.g.inDungeon) { this.g.hud.notify(`The map does not reach into the ${this.g.instance.name.replace(/^The /, '')}`, 'warn'); return; } $('pause').hidden = true; this.openMap({ from: 'pause' }); } },
       { label: 'Settings', run: via('settings') },
       { label: 'Controls', run: via('system') },
       { label: 'Quit to Title', run: () => { this.pauseView = 'confirm'; this.buildPauseOptions(); this.renderPause(); } },
@@ -200,7 +200,7 @@ export class UI {
 
   // ---- map + fast travel ----------------------------------------------------------
   openMap({ from = null } = {}) {
-    if (this.g.inDungeon) { this.g.hud.notify('The map does not reach into the Ganzir Stair', 'warn'); return; }
+    if (this.g.inDungeon) { this.g.hud.notify(`The map does not reach into the ${this.g.instance.name.replace(/^The /, '')}`, 'warn'); return; }
     this.mode = 'map';
     this.mapParent = from;
     $('map').hidden = false;

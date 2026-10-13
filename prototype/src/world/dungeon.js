@@ -2,37 +2,89 @@ import * as THREE from 'three';
 import { part, merge, PROP_GEOMETRY } from './models.js';
 import { createFlames, createGlow } from './shaders/glow.js';
 import { getEnv } from './shaders/common.js';
+import { INSTANCES } from './instances.js';
 
-// The Ganzir Stair: a hand-laid dungeon instance far north of the overworld.
-// Rooms are rectangles on a 2 m grid; walls grow on every empty cell that touches floor.
-export const DUNGEON_ORIGIN = { x: 0, z: -600 };
+// Dungeon instances (the Ganzir Stair, the Cistern of Enki): hand-laid rooms
+// on a 2 m grid; walls grow on every empty cell that touches floor. Layout data
+// lives in instances.js; this file builds the meshes for each instance.
 const CELL = 2;
 
-export const DUNGEON_RECTS = [
-  // [cx, cz, w, d] relative to the origin
-  [0, 0, 18, 18], // entry hall
-  [0, -17, 6, 16],
-  [0, -34, 26, 20], // hall of offerings
-  [20, -34, 14, 6],
-  [36, -34, 18, 22], // ossuary
-  [36, -55, 6, 20],
-  [36, -72, 22, 18], // gallery
-  [14, -72, 22, 6],
-  [-12, -76, 34, 32], // throne of Neti
-];
-
-export const DUNGEON_SPOTS = {
-  entry: { x: 0, z: -600 + 4 },
-  packs: [[-6, -632], [7, -638], [33, -628], [40, -640], [30, -670], [42, -676]].map(([x, z]) => ({ x, z })),
-  boss: { x: -12, z: -680 },
-  exit: { x: -12, z: -664 },
+// Visual themes per instance.
+const STYLES = {
+  ganzir: { floorA: 0x6a5a64, floorB: 0x5e4f59, inlay: 0x2c449a, wall: 0x86707a, band: 0x1d3b8c, bandEm: 0x0a1a58, cap: 0xd6a740, capEm: 0x6a4810, rune: [0.55, 0.38, 1.0], flame: 0xff8a3a, halo: 0xff7a24 },
+  cistern: { floorA: 0x4f6660, floorB: 0x465a55, inlay: 0x2a6a7a, wall: 0x5f7a74, band: 0x1d5a6c, bandEm: 0x08303a, cap: 0x9ab8a4, capEm: 0x1a3a30, rune: [0.3, 0.85, 0.9], flame: 0x7fe8ff, halo: 0x2fb8e8, flameColors: [0xd8fbff, 0x3fc8f0, 0x0a4a7a], flameIntensity: 1.5, haloOpacity: 0.32 },
 };
 
 export function buildDungeon(scene, colliders) {
-  const ox = DUNGEON_ORIGIN.x, oz = DUNGEON_ORIGIN.z;
+  // One cutaway uniform shared by every instance's walls.
+  const cutaway = { uPlayer: { value: new THREE.Vector3() } };
+  const ganzir = buildInstance(scene, colliders, INSTANCES.ganzir, STYLES.ganzir, cutaway);
+  const cistern = buildInstance(scene, colliders, INSTANCES.cistern, STYLES.cistern, cutaway);
+  // Brazier lights are pooled and moved to whichever instance is active, so the
+  // scene's light count (and therefore every shader) stays the same everywhere.
+  const pool = Array.from({ length: Math.max(ganzir.braziers.length, cistern.braziers.length) }, () => {
+    const l = new THREE.PointLight(0xffffff, 0, 16, 1.5);
+    scene.add(l);
+    return l;
+  });
+  let lit = null;
+  const goldMat = new THREE.MeshStandardMaterial({ color: 0xd6a740, metalness: 0.8, roughness: 0.3 });
+
+  // Neti's dais.
+  const boss = INSTANCES.ganzir.spots.boss;
+  const dais = new THREE.Mesh(new THREE.CylinderGeometry(6, 6.5, 0.12, 32), new THREE.MeshStandardMaterial({ color: 0x2a4aa8, roughness: 0.35, metalness: 0.3 }));
+  dais.position.set(boss.x, 0.02, boss.z);
+  dais.receiveShadow = true;
+  const daisRing = new THREE.Mesh(new THREE.TorusGeometry(6.2, 0.12, 6, 48), goldMat);
+  daisRing.rotation.x = Math.PI / 2;
+  daisRing.position.set(boss.x, 0.1, boss.z);
+  scene.add(dais, daisRing);
+  // One boss-room light, shared: violet over Neti's throne, cyan over the singing pool.
+  const bossLight = new THREE.PointLight(0xa07aff, 0, 22, 1.4);
+  scene.add(bossLight);
+
+  // Cistern: shallow flooded pools that glow faintly from below.
+  const poolMat = new THREE.MeshStandardMaterial({ color: 0x2a6a6a, roughness: 0.08, metalness: 0.2, transparent: true, opacity: 0.62, emissive: 0x0a3a3a, emissiveIntensity: 0.6 });
+  const { origin } = INSTANCES.cistern;
+  for (const [cx, cz, w, d] of INSTANCES.cistern.pools) {
+    const pool = new THREE.Mesh(new THREE.PlaneGeometry(w, d), poolMat);
+    pool.rotation.x = -Math.PI / 2;
+    pool.position.set(origin.x + cx, 0.12, origin.z + cz);
+    pool.receiveShadow = true;
+    scene.add(pool);
+  }
+  const parts = { ganzir, cistern };
+
+  return {
+    cutaway,
+    update(t, activeId) {
+      ganzir.update(t, activeId === 'ganzir');
+      cistern.update(t, activeId === 'cistern');
+      const active = parts[activeId];
+      if (activeId !== lit) {
+        lit = activeId;
+        pool.forEach((l, i) => {
+          const b = active?.braziers[i];
+          if (b) { l.position.set(b.x, 2.6, b.z); l.color.setHex(active.style.flame); }
+        });
+        if (activeId === 'ganzir') { bossLight.position.set(boss.x, 7, boss.z + 2); bossLight.color.setHex(0xa07aff); }
+        if (activeId === 'cistern') { const b = INSTANCES.cistern.spots.boss; bossLight.position.set(b.x, 6, b.z + 2); bossLight.color.setHex(0x5fe0ff); }
+      }
+      pool.forEach((l, i) => {
+        const b = active?.braziers[i];
+        l.intensity = b ? 14 + Math.sin(t * 11 + b.seed) * 2 : 0;
+      });
+      bossLight.intensity = activeId === 'ganzir' ? 30 : activeId === 'cistern' ? 22 + Math.sin(t * 1.6) * 4 : 0;
+      poolMat.emissiveIntensity = 0.5 + Math.sin(t * 1.3) * 0.15;
+    },
+  };
+}
+
+function buildInstance(scene, colliders, inst, style, cutaway) {
+  const ox = inst.origin.x, oz = inst.origin.z;
   const floor = new Set();
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-  for (const [cx, cz, w, d] of DUNGEON_RECTS) {
+  for (const [cx, cz, w, d] of inst.rects) {
     for (let x = cx - w / 2; x < cx + w / 2; x += CELL) {
       for (let z = cz - d / 2; z < cz + d / 2; z += CELL) {
         const gx = Math.round(x / CELL), gz = Math.round(z / CELL);
@@ -67,7 +119,7 @@ export function buildDungeon(scene, colliders) {
     dummy.updateMatrix();
     tiles.setMatrixAt(i, dummy.matrix);
     const inlay = (gx + gz) % 7 === 0;
-    tiles.setColorAt(i, inlay ? col.setHex(0x2c449a) : col.setHex((gx + gz) % 2 ? 0x6a5a64 : 0x5e4f59));
+    tiles.setColorAt(i, inlay ? col.setHex(style.inlay) : col.setHex((gx + gz) % 2 ? style.floorA : style.floorB));
     i++;
   }
   tiles.receiveShadow = true;
@@ -75,8 +127,7 @@ export function buildDungeon(scene, colliders) {
 
   // Walls, with a cutaway shader so walls between camera and hero dissolve.
   const wallGeo = new THREE.BoxGeometry(CELL, 3.2, CELL);
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0x86707a, roughness: 0.95 });
-  const cutaway = { uPlayer: { value: new THREE.Vector3() } };
+  const wallMat = new THREE.MeshStandardMaterial({ color: style.wall, roughness: 0.95 });
   const applyCut = (mat) => { mat.onBeforeCompile = (shader) => {
     shader.uniforms.uPlayer = cutaway.uPlayer;
     shader.vertexShader = shader.vertexShader
@@ -106,8 +157,8 @@ export function buildDungeon(scene, colliders) {
   scene.add(wallMesh);
 
   // Carved details: a lapis band and gold cap on every wall block (same cutaway as the walls).
-  const bandMat = applyCut(new THREE.MeshStandardMaterial({ color: 0x1d3b8c, roughness: 0.4, metalness: 0.2, emissive: 0x0a1a58, emissiveIntensity: 0.8 }));
-  const capMat = applyCut(new THREE.MeshStandardMaterial({ color: 0xd6a740, roughness: 0.4, metalness: 0.3, emissive: 0x6a4810, emissiveIntensity: 0.7 }));
+  const bandMat = applyCut(new THREE.MeshStandardMaterial({ color: style.band, roughness: 0.4, metalness: 0.2, emissive: style.bandEm, emissiveIntensity: 0.8 }));
+  const capMat = applyCut(new THREE.MeshStandardMaterial({ color: style.cap, roughness: 0.4, metalness: 0.3, emissive: style.capEm, emissiveIntensity: 0.7 }));
   const band = new THREE.InstancedMesh(new THREE.BoxGeometry(CELL * 1.02, 0.34, CELL * 1.02), bandMat, walls.length);
   const cap = new THREE.InstancedMesh(new THREE.BoxGeometry(CELL * 1.06, 0.14, CELL * 1.06), capMat, walls.length);
   walls.forEach(([gx, gz], k) => {
@@ -129,7 +180,7 @@ export function buildDungeon(scene, colliders) {
         float ticks = smoothstep(0.12, 0.0, abs(fract(a * 8.0 / 3.14159) - 0.5) * 2.0 - 0.6) * smoothstep(0.82, 0.62, r) * smoothstep(0.55, 0.62, r);
         float star = smoothstep(0.035, 0.0, abs(abs(p.x) - abs(p.y)) * 0.7) * smoothstep(0.58, 0.2, r);
         float g = (ring + ticks * 0.8 + star * 0.8) * (0.5 + 0.35 * sin(uTime * 1.4 + r * 6.0));
-        gl_FragColor = vec4(vec3(0.55, 0.38, 1.0) * g * 0.38, 1.0);
+        gl_FragColor = vec4(vec3(${style.rune.join(', ')}) * g * 0.38, 1.0);
       }`,
   });
   const runes = new THREE.InstancedMesh(new THREE.PlaneGeometry(2.6, 2.6).rotateX(-Math.PI / 2), runeMat, Math.max(1, runeCells.length));
@@ -169,49 +220,29 @@ export function buildDungeon(scene, colliders) {
   place(urnCells, urnGeo, dungMat({ roughness: 0.6 }), 0.1, 0.7, 0.9);
 
   // Braziers and pillars.
-  const lights = [];
+  const braziers = [];
   const flameSpots = [], haloSpots = [];
-  const flameMat = new THREE.MeshBasicMaterial({ color: 0xff8a3a });
   const goldMat = new THREE.MeshStandardMaterial({ color: 0xd6a740, metalness: 0.8, roughness: 0.3 });
-  for (const [x, z] of [[-6, -594], [6, -594], [-10, -626], [10, -626], [36, -626], [36, -668], [-24, -664], [0, -664], [-24, -690], [0, -690]]) {
+  for (const [x, z] of inst.braziers) {
     const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 1.6, 6), goldMat);
     stand.position.set(x, 0.8, z);
-    const flame = new THREE.Object3D(); // flame itself is a billboard (below); keeps the flicker API
     flameSpots.push({ x, y: 1.75, z, s: 1.9 });
-    haloSpots.push({ x, y: 2.2, z, color: 0xff7a24, size: 8, flicker: 0.25 });
+    haloSpots.push({ x, y: 2.2, z, color: style.halo, size: 8, flicker: 0.25 });
     scene.add(stand);
     colliders.addCircle(x, z, 0.4);
-    const l = new THREE.PointLight(0xff8a3a, 0, 16, 1.5);
-    l.position.set(x, 2.6, z);
-    scene.add(l);
-    lights.push({ light: l, flame, seed: Math.random() * 10 });
+    braziers.push({ x, z, seed: Math.random() * 10 });
   }
 
-  const flameFx = createFlames(flameSpots, { intensity: 2.2 }), glowFx = createGlow(haloSpots, { opacity: 0.5 });
+  const flameFx = createFlames(flameSpots, { intensity: style.flameIntensity ?? 2.2, ...(style.flameColors && { colors: style.flameColors }) });
+  const glowFx = createGlow(haloSpots, { opacity: style.haloOpacity ?? 0.5 });
   scene.add(flameFx, glowFx);
 
-  // Neti's dais.
-  const dais = new THREE.Mesh(new THREE.CylinderGeometry(6, 6.5, 0.12, 32), new THREE.MeshStandardMaterial({ color: 0x2a4aa8, roughness: 0.35, metalness: 0.3 }));
-  dais.position.set(DUNGEON_SPOTS.boss.x, 0.02, DUNGEON_SPOTS.boss.z);
-  dais.receiveShadow = true;
-  const daisRing = new THREE.Mesh(new THREE.TorusGeometry(6.2, 0.12, 6, 48), goldMat);
-  daisRing.rotation.x = Math.PI / 2;
-  daisRing.position.set(DUNGEON_SPOTS.boss.x, 0.1, DUNGEON_SPOTS.boss.z);
-  scene.add(dais, daisRing);
-  const throneLight = new THREE.PointLight(0xa07aff, 0, 22, 1.4);
-  throneLight.position.set(DUNGEON_SPOTS.boss.x, 7, DUNGEON_SPOTS.boss.z + 2);
-  scene.add(throneLight);
-
   return {
-    cutaway,
+    braziers,
+    style,
     update(t, active) {
       flameFx.visible = glowFx.visible = active;
       runes.visible = active;
-      throneLight.intensity = active ? 30 : 0;
-      for (const b of lights) {
-        b.light.intensity = active ? 14 + Math.sin(t * 11 + b.seed) * 2 : 0;
-        b.flame.scale.y = 1 + Math.sin(t * 13 + b.seed) * 0.15;
-      }
     },
   };
 }

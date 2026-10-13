@@ -6,8 +6,8 @@ import { buildCanals } from './canals.js';
 import { buildLandmarks } from './landmarks.js';
 import { buildTown } from './town.js';
 import { buildDungeon } from './dungeon.js';
-import { makeWaypoint, makeShrine, makeChest, makeGate } from './models.js';
-import { WAYPOINTS, SHRINES, CHESTS, EVENT, GATE, REGIONS } from './layout.js';
+import { makeWaypoint, makeShrine, makeChest, makeGate, makeWellHouse } from './models.js';
+import { WAYPOINTS, SHRINES, CHESTS, EVENT, GATE, REGIONS, CISTERN_ENTRANCE } from './layout.js';
 import { heightAt, regionAt } from './terrain.js';
 import { damp } from '../core/util.js';
 import { createEnv } from './shaders/common.js';
@@ -42,6 +42,11 @@ const ATMOS_DEF = {
     horizon: 0x5b3b57, zenith: 0x1d1530, near: 22, far: 90, hemi: 0.85, sun: 1.3, sunColor: 0xffa588,
     hemiSky: 0x7a6a90, hemiGround: 0x2e1d33, fill: 0.45, fillColor: 0x6a5a8a, cloud: 0.12, glow: 0.9,
     grade: { shadow: 0x2a1a40, highlight: 0xf0c4b4, split: 0.18, saturation: 0.86, contrast: 1.12 },
+  },
+  cistern: {
+    horizon: 0x0d1a1c, zenith: 0x081012, near: 26, far: 80, hemi: 1.2, sun: 0, sunColor: 0x7fe8ff,
+    hemiSky: 0x6ab0b8, hemiGround: 0x2a4040, fill: 0.0, fillColor: 0x5fd0ff, cloud: 0, glow: 0,
+    grade: { shadow: 0x0e3240, highlight: 0xc8fff0, split: 0.24, saturation: 1.06, contrast: 1.08 },
   },
   dungeon: {
     horizon: 0x15101c, zenith: 0x0c0912, near: 26, far: 80, hemi: 1.25, sun: 0, sunColor: 0x8a7aff,
@@ -145,6 +150,9 @@ export function buildWorld(scene, settings = null) {
 
   const gate = makeGate();
   place(gate, GATE.x, GATE.z);
+  const well = place(makeWellHouse(), CISTERN_ENTRANCE.x, CISTERN_ENTRANCE.z);
+  colliders.addCircle(CISTERN_ENTRANCE.x, CISTERN_ENTRANCE.z, 1.8);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) colliders.addCircle(CISTERN_ENTRANCE.x + sx * 2.7, CISTERN_ENTRANCE.z + sz * 2.7, 0.45);
   colliders.addBox(GATE.x - 24, GATE.z - 2, GATE.x - 5, GATE.z + 2.5);
   colliders.addBox(GATE.x + 5, GATE.z - 2, GATE.x + 24, GATE.z + 2.5);
   colliders.addBox(GATE.x - 5, GATE.z - 2, GATE.x + 5, GATE.z - 0.5);
@@ -152,7 +160,7 @@ export function buildWorld(scene, settings = null) {
   // Blended atmosphere state.
   const cur = { ...ATMOS.sunfields };
   for (const k of [...COLOR_KEYS, ...GRADE_COLORS]) cur[k] = ATMOS.sunfields[k].clone();
-  let inDungeon = false;
+  let inDungeon = null;
   const lastPos = new THREE.Vector3();
   let clock = 0;
   const partMix = Float32Array.from(PARTICLE_MIX.sunfields);
@@ -180,7 +188,7 @@ export function buildWorld(scene, settings = null) {
     update(dt, t, playerPos, renderer = null) {
       const region = regionAt(playerPos.x, playerPos.z);
       const target = ATMOS[region];
-      const nowDungeon = region === 'dungeon';
+      const nowDungeon = region === 'dungeon' || region === 'cistern' ? region : null;
       // Snap instantly when entering or leaving the dungeon, blend otherwise.
       const jumped = playerPos.distanceToSquared(lastPos) > 400;
       lastPos.copy(playerPos);
@@ -239,8 +247,9 @@ export function buildWorld(scene, settings = null) {
       grass.update(playerPos);
 
       dungeon.cutaway.uPlayer.value.copy(playerPos);
-      dungeon.update(t, region === 'dungeon');
+      dungeon.update(t, region === 'dungeon' ? 'ganzir' : region === 'cistern' ? 'cistern' : null);
       gate.userData.portalMat.opacity = 0.5 + Math.sin(t * 1.7) * 0.12;
+      well.userData.portalMat.opacity = 0.45 + Math.sin(t * 2.1) * 0.15;
       for (const s of shrines) {
         s.model.userData.flame.scale.y = s.cooldown > 0 ? 0.3 : 1 + Math.sin(t * 9 + s.x) * 0.15;
         s.model.userData.flameMat.color.setHex(s.cooldown > 0 ? 0x444444 : s.def.color);

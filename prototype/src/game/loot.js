@@ -37,8 +37,10 @@ export class Loot {
     let items = 0, minRarity = 'common';
     if (enemy.boss) { items = 5; minRarity = 'rare'; } else if (enemy.named) { items = 3; minRarity = 'rare'; } else if (enemy.elite) { items = 2; minRarity = 'magic'; } else if (this.rng.chance(0.13)) items = 1;
     for (let i = 0; i < items; i++) {
-      const rarity = enemy.boss && i === 0 && !g.flags.netiLegendary ? 'legendary' : rollRarity(this.rng, { magicFind: mf, minRarity });
-      if (enemy.boss && i === 0) g.flags.netiLegendary = true;
+      // Neti and the Cistern's guardian each drop a guaranteed Legendary the first time.
+      const flag = enemy.boss ? 'netiLegendary' : enemy.named?.legendaryFlag;
+      const rarity = flag && i === 0 && !g.flags[flag] ? 'legendary' : rollRarity(this.rng, { magicFind: mf, minRarity });
+      if (flag && i === 0) g.flags[flag] = true;
       this.dropItem(generateItem({ ilvl: lvl, rarity, rng: this.rng }), pos, g);
     }
     if (enemy.boss || enemy.named || enemy.elite || this.rng.chance(0.4)) {

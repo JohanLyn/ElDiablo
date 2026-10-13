@@ -11,6 +11,7 @@ export const REGIONS = {
   ruins: { name: 'Dune Ruins', level: 5, ground: [0.7, 0.55, 0.36] },
   ashen: { name: 'Ashen Approach', level: 7, ground: [0.30, 0.25, 0.28] },
   dungeon: { name: 'The Ganzir Stair', level: 9, ground: [0.2, 0.17, 0.2] },
+  cistern: { name: 'Cistern of Enki', level: 3, ground: [0.2, 0.26, 0.25] },
 };
 
 export const TOWN = { x: 0, z: 150, r: 26 };
@@ -53,7 +54,9 @@ export const EVENT = { id: 'ev-ritual', name: 'Ritual of the Gallu', x: -55, z: 
 export const AQRABU = { id: 'aqrabu', x: 160, z: -30 };
 
 export const GATE = { x: 0, z: -176 };
-export const DUNGEON_ENTRANCE = { x: 0, z: -168 };
+// The well-house over the Cistern of Enki, in the Reed Marsh near the Shrine of Enki waypoint
+// (instances.js holds the same point as the cistern's entrance).
+export const CISTERN_ENTRANCE = { x: -108, z: 26 };
 
 // Points that the terrain flattens around (POIs need level ground).
 export function flatSpots() {
@@ -64,6 +67,7 @@ export function flatSpots() {
     ...CHESTS.map((c) => ({ x: c.x, z: c.z, r: 4 })),
     { x: EVENT.x, z: EVENT.z, r: EVENT.r + 5 },
     { x: GATE.x, z: GATE.z, r: 22 },
+    { x: CISTERN_ENTRANCE.x, z: CISTERN_ENTRANCE.z + 2, r: 7 },
   ];
 }
 
@@ -74,4 +78,5 @@ export const ROSTER = {
   ruins: [['scorpion', 5], ['gallu', 2], ['asag', 1]],
   ashen: [['asag', 3], ['gallu', 3], ['lilitu', 2], ['scorpion', 2]],
   dungeon: [['gallu', 3], ['asag', 2], ['lilitu', 2], ['utukku', 2]],
+  cistern: [['utukku', 4], ['lilitu', 3], ['gallu', 2]],
 };

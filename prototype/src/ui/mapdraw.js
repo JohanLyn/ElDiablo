@@ -1,5 +1,5 @@
-import { HALF, DUNGEON_ENTRANCE, REGIONS } from '../world/layout.js';
-import { DUNGEON_RECTS, DUNGEON_ORIGIN, DUNGEON_SPOTS } from '../world/dungeon.js';
+import { HALF, REGIONS } from '../world/layout.js';
+import { INSTANCES } from '../world/instances.js';
 
 // Fog of war: 4 m cells over the overworld, revealed around the hero.
 export const FOG_RES = 110;
@@ -56,13 +56,16 @@ export function drawMap(ctx, g, { cx, cz, scale, width, height, full = false, se
   ctx.fillStyle = '#0a0608';
   ctx.fillRect(0, 0, width, height);
 
-  if (g.inDungeon) {
-    ctx.fillStyle = '#3a3038';
-    for (const [rx, rz, w, d] of DUNGEON_RECTS) {
-      ctx.fillRect(toX(DUNGEON_ORIGIN.x + rx - w / 2), toY(DUNGEON_ORIGIN.z + rz - d / 2), w * scale, d * scale);
+  if (g.instance) {
+    const { origin, rects, spots, pools = [] } = g.instance;
+    ctx.fillStyle = g.instance.id === 'cistern' ? '#2c3a3a' : '#3a3038';
+    for (const [rx, rz, w, d] of rects) {
+      ctx.fillRect(toX(origin.x + rx - w / 2), toY(origin.z + rz - d / 2), w * scale, d * scale);
     }
-    icon(ctx, toX(DUNGEON_SPOTS.entry.x), toY(DUNGEON_SPOTS.entry.z + 3), 'exit', scale);
-    if (g.interactions.exitPortal) icon(ctx, toX(DUNGEON_SPOTS.exit.x), toY(DUNGEON_SPOTS.exit.z), 'portal', scale);
+    ctx.fillStyle = '#2a5a66';
+    for (const [rx, rz, w, d] of pools) ctx.fillRect(toX(origin.x + rx - w / 2), toY(origin.z + rz - d / 2), w * scale, d * scale);
+    icon(ctx, toX(spots.entry.x), toY(spots.entry.z + 3), 'exit', scale);
+    if (g.interactions.exitPortal) icon(ctx, toX(spots.exit.x), toY(spots.exit.z), 'portal', scale);
   } else {
     ctx.imageSmoothingEnabled = true;
     const S = HALF * 2 * scale;
@@ -81,7 +84,7 @@ export function drawMap(ctx, g, { cx, cz, scale, width, height, full = false, se
     for (const s of g.world.shrines) if (seen(s.x, s.z)) icon(ctx, toX(s.x), toY(s.z), s.cooldown > 0 ? 'shrineUsed' : 'shrine', scale);
     for (const c of g.world.chests) if (!c.opened && seen(c.x, c.z)) icon(ctx, toX(c.x), toY(c.z), 'chest', scale);
     if (seen(g.world.ritual.x, g.world.ritual.z)) icon(ctx, toX(g.world.ritual.x), toY(g.world.ritual.z), 'event', scale);
-    if (seen(DUNGEON_ENTRANCE.x, DUNGEON_ENTRANCE.z)) icon(ctx, toX(DUNGEON_ENTRANCE.x), toY(DUNGEON_ENTRANCE.z), 'dungeon', scale);
+    for (const { entrance: e } of Object.values(INSTANCES)) if (seen(e.x, e.z)) icon(ctx, toX(e.x), toY(e.z), 'dungeon', scale);
     for (const n of g.world.npcs) icon(ctx, toX(n.x), toY(n.z), 'npc', scale);
     if (g.interactions.portal) icon(ctx, toX(g.interactions.portal.mesh.position.x), toY(g.interactions.portal.mesh.position.z), 'portal', scale);
     for (const w of g.world.waypoints) {

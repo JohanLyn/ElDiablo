@@ -380,3 +380,38 @@ export function makeGate() {
   g.userData = { portalMat };
   return g;
 }
+
+// Well-house over the Cistern of Enki: a glazed dome on four lapis-banded
+// columns, sheltering a well that glows with Enki's water.
+export function makeWellHouse() {
+  const g = new THREE.Group();
+  const stone = new THREE.MeshStandardMaterial({ color: 0xa8a48e, roughness: 0.95 });
+  const teal = new THREE.MeshStandardMaterial({ color: 0x2f7a74, roughness: 0.35, metalness: 0.15 });
+  const lapis = new THREE.MeshStandardMaterial({ color: 0x1d4a8c, roughness: 0.35, metalness: 0.25 });
+  const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
+  add(new THREE.BoxGeometry(7.2, 0.16, 7.2), stone, 0, 0.08, 0);
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      add(new THREE.CylinderGeometry(0.32, 0.38, 3.6, 8), stone, sx * 2.7, 1.8, sz * 2.7);
+      add(new THREE.CylinderGeometry(0.36, 0.36, 0.3, 8), lapis, sx * 2.7, 2.6, sz * 2.7);
+    }
+  }
+  add(new THREE.BoxGeometry(6.6, 0.4, 6.6), stone, 0, 3.8, 0);
+  add(new THREE.BoxGeometry(6.7, 0.16, 6.7), lapis, 0, 3.55, 0);
+  add(new THREE.SphereGeometry(2.8, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), teal, 0, 4.0, 0).scale.y = 0.6;
+  add(new THREE.ConeGeometry(0.22, 0.9, 6), new THREE.MeshStandardMaterial({ color: 0xd6a740, metalness: 0.8, roughness: 0.3 }), 0, 6.0, 0);
+  // The well: stone rim, dark shaft and glowing water.
+  add(new THREE.TorusGeometry(1.5, 0.28, 8, 24), stone, 0, 0.42, 0).rotation.x = Math.PI / 2;
+  add(new THREE.CylinderGeometry(1.4, 1.4, 0.5, 20, 1, true), stone, 0, 0.25, 0);
+  const shaft = add(new THREE.CircleGeometry(1.42, 24), new THREE.MeshBasicMaterial({ color: 0x041010 }), 0, 0.2, 0);
+  shaft.rotation.x = -Math.PI / 2;
+  const portalMat = new THREE.MeshBasicMaterial({ color: 0x3fd8ff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false });
+  const water = add(new THREE.CircleGeometry(1.3, 24), portalMat, 0, 0.26, 0);
+  water.rotation.x = -Math.PI / 2;
+  water.castShadow = false;
+  const light = new THREE.PointLight(0x5fe0ff, 6, 9, 1.6);
+  light.position.set(0, 1.2, 0);
+  g.add(light);
+  g.userData = { portalMat };
+  return g;
+}

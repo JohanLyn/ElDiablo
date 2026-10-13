@@ -6,11 +6,13 @@ import { distPointSegment, clamp } from '../core/util.js';
 
 const SEED = 1337;
 export const WATER_LEVEL = -0.85;
-export const DUNGEON_Z = -400; // everything north of this is the dungeon instance
+export const DUNGEON_Z = -400; // everything north of this is a dungeon instance (see instances.js)
+export const CISTERN_Z = -800; // ...and north of this, the Cistern of Enki
 
 const FLATS = flatSpots();
 
 export function regionAt(x, z) {
+  if (z < CISTERN_Z) return 'cistern';
   if (z < DUNGEON_Z) return 'dungeon';
   if (Math.hypot(x - TOWN.x, z - TOWN.z) < TOWN.r) return 'town';
   const n = (fbm(x / 60, z / 60, SEED + 3, 3) - 0.5) * 40;
