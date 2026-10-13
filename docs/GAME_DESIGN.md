@@ -1,6 +1,6 @@
 # ElDiablo — Game Design Document
 
-> Living document. Theme is not final yet (see section 5).
+> Living document. **Chosen theme: The Seven Gates of Kur** (section 5). **Lead twist: the Tether** (section 4), now playable in the [three.js prototype](../prototype/).
 
 ## 1. Vision & design pillars
 1. **Feels great on a gamepad.** Every system (combat, loot, menus) is designed for a controller first. Mouse and keyboard is a port, not the other way around.
@@ -50,12 +50,12 @@ When a major boss is defeated, it kneels and you choose:
 
 Choices are stored per character, and the endgame reads them. For example, spared bosses can unite against the final threat, or betray you. **Why it works:** it adds narrative agency and **replay value across alts**, which the genre usually lacks, and it ties story directly to builds.
 
-## 5. Three theme suggestions
+## 5. Themes (B chosen)
 
 ### Theme A — *Mosegrav* (Nordic Iron-Age bog folk horror)
 In Iron-Age Scandinavia, the old bog sacrifices are rising: bodies that never rotted, wearing their nooses. Enemies include huldra, mare (nightmare spirits), lindworms, draugr, and wicker idols. Mist, peat and torchlight in a palette of greens, browns and bone. **Familiar:** a will-o'-the-wisp lyktgubbe. **Spare example:** a bog-king spared in Act 1 becomes the keeper of the peat-roads (fast travel). The theme is rich in folklore that's rarely used beyond generic "Viking".
 
-### Theme B — *The Seven Gates of Kur* (Mesopotamian underworld descent)
+### Theme B — *The Seven Gates of Kur* (Mesopotamian underworld descent) ✅ chosen
 Inspired by Inanna's descent: the hero descends through **seven gates of the underworld**, and **each gate takes something** (a stat, a skill slot, an item type). The player earns those back in new forms. This gives the act structure a built-in mechanical arc. Enemies include gallu demons, Lamashtu, scorpion-men, and clay golems from broken ziggurats. Palette: lapis, gold, sun-baked clay, then dusty grey in the deep. **Familiar:** a winged sedu spirit. A fresh setting for the genre.
 
 ### Theme C — *Aurum Rot* (alchemical Renaissance canal city)

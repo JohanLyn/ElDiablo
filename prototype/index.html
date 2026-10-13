@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gates of Kur</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #1b1222;
+      --ink: #f3e6cc;
+      --muted: #b7a58a;
+      --gold: #d6a740;
+      --lapis: #2a4fae;
+      --panel: rgba(20, 12, 24, 0.78);
+      --line: rgba(214, 167, 64, 0.35);
+      --hp: #c8323a;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: Inter, system-ui, sans-serif; }
+    canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+    #numbers, #hud { position: fixed; inset: 0; pointer-events: none; }
+    .dmg { position: absolute; left: 0; top: 0; font: 800 18px Cinzel, serif; text-shadow: 0 2px 3px #000, 0 0 6px #000; white-space: nowrap; will-change: transform; }
+    .dmg.big { font-size: 26px; }
+
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; backdrop-filter: blur(4px); }
+    #topleft { position: absolute; top: 16px; left: 16px; padding: 8px 14px; font: 600 14px Cinzel, serif; letter-spacing: 0.06em; display: flex; gap: 14px; }
+    #topleft #kills { color: var(--muted); }
+    #device { position: absolute; top: 16px; right: 16px; padding: 6px 12px; font-size: 12px; color: var(--muted); }
+
+    #vitals { position: absolute; left: 16px; bottom: 16px; padding: 10px 12px; width: min(280px, calc(100vw - 32px)); }
+    #hp { position: relative; height: 18px; background: #2a1014; border-radius: 9px; overflow: hidden; border: 1px solid #000; }
+    #hp-fill { height: 100%; width: 100%; background: linear-gradient(#e5484f, #8f1f27); transition: width 0.12s; }
+    #hp-text { position: absolute; inset: 0; display: grid; place-items: center; font-size: 11px; font-weight: 600; text-shadow: 0 1px 2px #000; }
+    #dodge { display: flex; gap: 6px; margin-top: 8px; align-items: center; font-size: 11px; color: var(--muted); }
+    #dodge::before { content: 'Dodge'; margin-right: 4px; }
+    #dodge i { width: 22px; height: 6px; border-radius: 3px; background: #3a2c3a; }
+    #dodge i.on { background: #7fb2ff; box-shadow: 0 0 6px #7fb2ff; }
+
+    #tetherbar { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); padding: 10px 12px 8px; display: flex; gap: 12px; align-items: flex-end; }
+    #modes { display: flex; gap: 6px; }
+    .mode { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 84px; opacity: 0.45; transition: opacity 0.15s, transform 0.15s; }
+    .mode.active { opacity: 1; transform: translateY(-3px); }
+    .mode .gem { width: 18px; height: 18px; transform: rotate(45deg); background: var(--c); border: 1px solid #fff6; }
+    .mode.active .gem { box-shadow: 0 0 12px var(--c); }
+    .mode .name { font-size: 10px; text-align: center; line-height: 1.15; }
+    #sweep { height: 4px; background: #2f2433; border-radius: 2px; margin-top: 6px; overflow: hidden; }
+    #sweep-fill { height: 100%; width: 0; }
+    #snap { position: relative; width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--c, var(--gold)); overflow: hidden; display: grid; place-items: center; font: 800 13px Cinzel, serif; opacity: 0.6; }
+    #snap.ready { opacity: 1; box-shadow: 0 0 14px var(--c); }
+    #snap-fill { position: absolute; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--c, #d6a740) 35%, transparent); }
+    #snap span { position: relative; text-align: center; line-height: 1.05; }
+    #snap small { display: block; font: 600 9px Inter, sans-serif; color: var(--muted); }
+    .hint { font-size: 10px; color: var(--muted); text-align: center; margin-top: 4px; }
+
+    body[data-device="pad"] .kbm, body:not([data-device="pad"]) .pad { display: none; }
+
+    #banner { position: absolute; top: 18%; left: 50%; transform: translate(-50%, -10px); font: 800 clamp(22px, 4vw, 40px) Cinzel, serif; color: var(--gold); letter-spacing: 0.08em; text-shadow: 0 3px 12px #000; opacity: 0; transition: opacity 0.3s, transform 0.3s; white-space: nowrap; }
+    #banner.show { opacity: 1; transform: translate(-50%, 0); }
+    #toast { position: absolute; top: calc(18% + 60px); left: 50%; transform: translateX(-50%); padding: 8px 14px; max-width: min(420px, calc(100vw - 32px)); text-align: center; opacity: 0; transition: opacity 0.25s; }
+    #toast.show { opacity: 1; }
+    #toast b { display: block; font: 800 16px Cinzel, serif; }
+    #toast span { font-size: 12px; color: var(--muted); }
+
+    .overlay { position: fixed; inset: 0; display: none; place-items: center; background: radial-gradient(ellipse at center, rgba(27,18,34,0.75), rgba(10,6,14,0.94)); pointer-events: auto; padding: 16px; }
+    .overlay.show { display: grid; }
+    .card { max-width: 760px; width: 100%; padding: 24px 28px; max-height: calc(100vh - 32px); overflow: auto; }
+    .card h1 { font: 800 clamp(26px, 5vw, 42px) Cinzel, serif; color: var(--gold); margin: 0; letter-spacing: 0.05em; }
+    .card h2 { font: 600 14px Cinzel, serif; color: var(--muted); margin: 4px 0 18px; letter-spacing: 0.12em; text-transform: uppercase; }
+    .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+    .cols h3 { font: 600 13px Cinzel, serif; color: var(--ink); margin: 0 0 8px; letter-spacing: 0.06em; }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    td { padding: 3px 0; vertical-align: top; }
+    td:first-child { color: var(--gold); font-weight: 600; width: 44%; padding-right: 10px; }
+    .lore { font-size: 13px; color: var(--muted); line-height: 1.5; margin: 16px 0 0; }
+    .start { margin-top: 18px; text-align: center; font: 800 16px Cinzel, serif; color: var(--ink); animation: pulse 1.6s infinite; }
+    @keyframes pulse { 50% { opacity: 0.45; } }
+    #death .card { text-align: center; max-width: 480px; }
+    #death h1 { color: #e5484f; }
+
+    @media (max-width: 640px) {
+      .mode { width: 58px; }
+      .mode .name { font-size: 8px; }
+      #vitals { bottom: 120px; }
+    }
+  </style>
+</head>
+<body data-device="kbm">
+  <canvas id="game"></canvas>
+  <div id="numbers"></div>
+  <div id="hud">
+    <div id="topleft" class="panel"><span id="wave">Wave 0</span><span id="kills">0 slain</span></div>
+    <div id="device" class="panel"></div>
+    <div id="vitals" class="panel">
+      <div id="hp"><div id="hp-fill"></div><div id="hp-text"></div></div>
+      <div id="dodge"></div>
+    </div>
+    <div id="tetherbar" class="panel">
+      <div>
+        <div id="modes"></div>
+        <div id="sweep"><div id="sweep-fill"></div></div>
+        <div class="hint"><span class="pad">RB / D-pad ◀▶ change tether · whip the right stick</span><span class="kbm">Q / E change tether · whip the mouse</span></div>
+      </div>
+      <div id="snap"><div id="snap-fill"></div><span><span class="pad">Y</span><span class="kbm">F</span><small>Snap</small></span></div>
+    </div>
+    <div id="banner"></div>
+    <div id="toast" class="panel"></div>
+  </div>
+
+  <div id="help" class="overlay">
+    <div class="card panel">
+      <h1>The Seven Gates of Kur</h1>
+      <h2>Prototype · The Tether</h2>
+      <div class="cols">
+        <div>
+          <h3>🎮 Controller</h3>
+          <table>
+            <tr><td>Left stick</td><td>Move</td></tr>
+            <tr><td>Right stick</td><td>Steer your sedu spirit. The line between you is a weapon</td></tr>
+            <tr><td>A / RT (hold)</td><td>Strike, a 3-hit combo with aim assist</td></tr>
+            <tr><td>B / LB</td><td>Dodge (2 charges)</td></tr>
+            <tr><td>Y / X</td><td>Tether Snap: a burst along the line</td></tr>
+            <tr><td>RB · D-pad ◀ ▶</td><td>Change tether</td></tr>
+            <tr><td>D-pad ▼</td><td>Zoom</td></tr>
+            <tr><td>Start</td><td>Pause / help</td></tr>
+          </table>
+        </div>
+        <div>
+          <h3>⌨️ Keyboard &amp; mouse</h3>
+          <table>
+            <tr><td>WASD / arrows</td><td>Move</td></tr>
+            <tr><td>Mouse</td><td>Steer your sedu spirit</td></tr>
+            <tr><td>Left click / J</td><td>Strike</td></tr>
+            <tr><td>Space / Shift</td><td>Dodge</td></tr>
+            <tr><td>Right click / F</td><td>Tether Snap</td></tr>
+            <tr><td>Q / E</td><td>Change tether</td></tr>
+            <tr><td>Z</td><td>Zoom</td></tr>
+            <tr><td>Esc / H</td><td>Pause / help</td></tr>
+          </table>
+        </div>
+      </div>
+      <p class="lore">You stand before the First Gate of the underworld. The Gallu demons and the scorpion-men of Kur pour out to stop you. Your bound sedu spirit is your blade: sweep the tether through packs, whip it fast for bonus damage, and switch between Lapis, Fire (Gibil), Chain (Ereshkigal) and Bulwark (Nergal). The Bulwark blocks scorpion bolts.</p>
+      <div class="start"><span class="pad">Press A to begin</span><span class="kbm">Click or press Enter to begin</span></div>
+    </div>
+  </div>
+
+  <div id="death" class="overlay">
+    <div class="card panel">
+      <h1>You Have Fallen</h1>
+      <p class="lore" id="death-stats"></p>
+      <div class="start"><span class="pad">Press A to rise again</span><span class="kbm">Press Enter to rise again</span></div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

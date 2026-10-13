@@ -9,20 +9,30 @@
 | **M4 – Content** | 3 classes, Act 1–2, 15+ enemy types, Deedforge crafting. |
 | **M5 – Endgame & polish** | Rift-style endgame, balancing, accessibility, optional co-op. |
 
-## Before M0
-- [ ] Pick a theme (A *Mosegrav*, B *Seven Gates of Kur*, C *Aurum Rot*)
-- [ ] Confirm the engine (recommended: Godot 4)
+## Decisions
+- [x] Theme: **The Seven Gates of Kur**
+- [x] Lead twist to prove first: **the Tether**
+- [x] Prototype tech: **three.js + Vite** (see [Tech Plan](TECH_PLAN.md))
+- [ ] Production engine: decide after M1 playtests
 
-## M0 – Feel prototype checklist
-- [ ] Godot 4 project scaffold (folders: `scenes/`, `scripts/`, `data/`, `assets/`)
-- [ ] Input map for gamepad (move, dodge, 6 skill slots, zoom, menu) plus keyboard/mouse fallback
-- [ ] Player controller: analog movement with acceleration curves, state machine (idle/move/attack/dodge/hit)
-- [ ] Camera rig: ~55° pitch, fixed yaw, smooth follow with look-ahead, 3 zoom steps
-- [ ] Occlusion fade for walls/roofs between camera and player
-- [ ] Dodge with i-frames and charges
-- [ ] One melee skill with soft-target aim assist
-- [ ] One enemy type: chase, telegraphed attack, hit reaction, death
-- [ ] Hit-stop, screen shake, controller rumble, damage numbers
-- [ ] Greybox test arena
+## M0 – Feel prototype (three.js, `prototype/`)
+- [x] Vite + three.js project scaffold
+- [x] Input mapping for gamepad (move, dodge, attack, snap, tether modes, zoom, pause) plus keyboard/mouse fallback
+- [x] Player controller: analog movement with acceleration, states (move/attack/dodge), 3-hit combo
+- [x] Camera rig: 55° pitch, fixed yaw, smooth follow with look-ahead, 3 zoom steps
+- [x] Occlusion fade for pillars/walls between camera and player
+- [x] Dodge with i-frames and 2 charges
+- [x] Melee combo with soft-target aim assist and lunge
+- [x] Enemies: Gallu (melee, telegraphed arc) and Girtablullu scorpion-men (ranged, telegraphed bolt), waves
+- [x] Hit-stop, screen shake, controller rumble, damage numbers, bloom
+- [x] Kur-themed greybox arena before the First Gate
+- [ ] Playtest with a real controller and tune the numbers
 
 **Done when:** it feels good to fight 20 enemies in the test arena with a controller.
+
+## M1 – Tether prototype
+- [x] Right-stick (or mouse) familiar within a 6.5 m radius; a resting familiar is harmless
+- [x] Damaging line with a whip bonus (faster sweep = up to 2.5x damage)
+- [x] Modes: Lapis (damage), Gibil (burn + fire trail), Ereshkigal (pull + slow), Nergal (blocks bolts, shoves)
+- [x] Tether Snap (Y): a mode-specific burst along the line
+- [ ] Playtest questions: Is steering two sticks at once fun or tiring? Should the familiar stay where it was left? Should the Tether have a resource cost?
