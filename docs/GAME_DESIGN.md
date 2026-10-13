@@ -1,6 +1,7 @@
 # ElDiablo — Game Design Document
 
-> Living document. **Chosen theme: The Seven Gates of Kur** (section 5). **Lead twist: the Tether** (section 4), now playable in the [three.js prototype](../prototype/).
+> Living document. **Chosen theme: The Seven Gates of Kur** (section 5). **Lead twist: the Tether** (section 4).
+> **Prototype v2** is an open-world slice that plays like Diablo 3/4: town, 4 regions, waypoints, camps and elites, a dungeon with a boss, quests, loot and 6 skills. See [ARPG_FEATURES.md](ARPG_FEATURES.md) for the feature research behind it and [the prototype](../prototype/) to play it.
 
 ## 1. Vision & design pillars
 1. **Feels great on a gamepad.** Every system (combat, loot, menus) is designed for a controller first. Mouse and keyboard is a port, not the other way around.

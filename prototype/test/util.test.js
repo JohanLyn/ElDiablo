@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { radialDeadzone, angleDelta, distPointSegment, clampLength, inCone } from '../src/util.js';
+import { radialDeadzone, angleDelta, distPointSegment, clampLength, inCone } from '../src/core/util.js';
 
 const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) < eps, `${a} != ${b}`);
 

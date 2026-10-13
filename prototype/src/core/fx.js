@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-const MAX_PARTICLES = 600;
+const MAX_PARTICLES = 1200;
 
 // Juice: particles, floating damage numbers, screen shake, hit-stop and rumble.
 export class Fx {
@@ -62,6 +62,7 @@ export class Fx {
     el.textContent = Math.round(value);
     el.style.color = color;
     this.overlay.appendChild(el);
+    if (this.numbers.length > 40) this.numbers.shift().el.remove();
     this.numbers.push({ el, pos: pos.clone().add(new THREE.Vector3(0, 1.8, 0)), t: 0, drift: (Math.random() - 0.5) * 0.8 });
   }
 
@@ -79,7 +80,6 @@ export class Fx {
       this.pPos[i * 3] += this.pVel[i * 3] * dt;
       this.pPos[i * 3 + 1] += this.pVel[i * 3 + 1] * dt;
       this.pPos[i * 3 + 2] += this.pVel[i * 3 + 2] * dt;
-      if (this.pPos[i * 3 + 1] < 0.05) { this.pPos[i * 3 + 1] = 0.05; this.pVel[i * 3 + 1] *= -0.3; }
       this.pCol[i * 3] = this.pBase[i * 3] * k;
       this.pCol[i * 3 + 1] = this.pBase[i * 3 + 1] * k;
       this.pCol[i * 3 + 2] = this.pBase[i * 3 + 2] * k;
