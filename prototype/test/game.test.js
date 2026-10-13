@@ -84,3 +84,29 @@ test('quest chain advances on matching events only', () => {
   const restored = new QuestLog(JSON.parse(JSON.stringify(log)));
   assert.ok(restored.done);
 });
+
+test('save migration upgrades v2 and rejects junk', async () => {
+  const { migrate, SAVE_VERSION } = await import('../src/game/save.js');
+  const v2 = { version: 2, player: { level: 3 }, flags: { netiLegendary: true } };
+  const m = migrate(v2);
+  assert.equal(m.version, SAVE_VERSION);
+  assert.equal(m.flags.introDone, true);
+  assert.equal(m.flags.netiLegendary, true);
+  assert.equal(migrate({ version: 1, player: {} }), null);
+  assert.equal(migrate(null), null);
+  assert.equal(migrate({ version: 3 }), null);
+});
+
+test('event bus delivers and isolates handler errors', async () => {
+  const { Events } = await import('../src/core/events.js');
+  const ev = new Events();
+  const got = [];
+  ev.on('hit', () => { throw new Error('boom'); });
+  const off = ev.on('hit', (p) => got.push(p.n));
+  const orig = console.error; console.error = () => {};
+  ev.emit('hit', { n: 1 });
+  off();
+  ev.emit('hit', { n: 2 });
+  console.error = orig;
+  assert.deepEqual(got, [1]);
+});

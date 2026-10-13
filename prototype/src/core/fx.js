@@ -57,6 +57,7 @@ export class Fx {
   }
 
   number(pos, value, { color = '#fff', big = false } = {}) {
+    if (this.settings?.get('damageNumbers') === false) return;
     const el = document.createElement('div');
     el.className = 'dmg' + (big ? ' big' : '');
     el.textContent = Math.round(value);
@@ -66,7 +67,7 @@ export class Fx {
     this.numbers.push({ el, pos: pos.clone().add(new THREE.Vector3(0, 1.8, 0)), t: 0, drift: (Math.random() - 0.5) * 0.8 });
   }
 
-  shake(amount) { this.trauma = Math.min(1, this.trauma + amount); }
+  shake(amount) { if (this.settings?.get('screenShake') === false) return; this.trauma = Math.min(1, this.trauma + amount); }
   stop(seconds) { this.hitstop = Math.max(this.hitstop, seconds); }
   rumble(strong, weak, ms) { this.input.rumble(strong, weak, ms); }
 

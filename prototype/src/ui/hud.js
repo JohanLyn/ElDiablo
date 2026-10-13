@@ -121,6 +121,7 @@ export class Hud {
     if (info.id !== this._lastRegion) {
       if (this._lastRegion !== null) this.banner(info.name, 'region', info.safe ? 'Safe zone' : `Monster level ${Math.max(info.level, p.level)}+`);
       this._lastRegion = info.id;
+      g.events.emit('regionEnter', { id: info.id });
       $('region-name').textContent = info.name;
     }
     $('region-level').textContent = info.safe ? 'Safe zone' : `Level ${Math.max(info.level, p.level)}`;

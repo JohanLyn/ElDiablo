@@ -1,8 +1,7 @@
 import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { Renderer } from './core/render.js';
+import { Settings } from './core/settings.js';
+import { Events } from './core/events.js';
 import { Input } from './core/input.js';
 import { Fx } from './core/fx.js';
 import { CameraRig } from './core/camera.js';
@@ -23,41 +22,26 @@ import { Hud } from './ui/hud.js';
 import { UI } from './ui/ui.js';
 import { Fog, FOG_RES } from './ui/mapdraw.js';
 
-const params = new URLSearchParams(location.search);
-const LOW = params.has('low'); // ?low disables shadows and bloom (slow machines, automated tests)
+export const VERSION = '0.3.0-alpha';
 
+// ?low or ?quality=medium override the saved graphics preset (slow machines, automated tests).
+const settings = new Settings();
+const events = new Events();
 const canvas = document.getElementById('game');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: !LOW, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, LOW ? 1 : 1.75));
-renderer.shadowMap.enabled = !LOW;
-renderer.shadowMap.type = THREE.PCFShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
-
+const renderer = new Renderer(canvas, settings);
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 260);
-const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
-if (!LOW) composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.45, 0.4, 0.88));
-composer.addPass(new OutputPass());
-
-function resize() {
-  const w = window.innerWidth, h = window.innerHeight;
-  renderer.setSize(w, h, false);
-  composer.setSize(w, h);
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-}
-window.addEventListener('resize', resize);
-resize();
+const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 400);
 
 // Let the loading screen paint before the (synchronous) world build.
 requestAnimationFrame(() => setTimeout(boot, 30));
 
 function boot() {
   const input = new Input(canvas, camera);
-  const world = buildWorld(scene);
+  const world = buildWorld(scene, settings);
+  renderer.attach(scene, camera);
   const fx = new Fx(scene, camera, input, document.getElementById('numbers'));
+  fx.settings = settings;
+  input.settings = settings;
   const player = new Player(scene);
   const tether = new Tether(scene);
   const abilities = new Abilities(scene);
@@ -69,6 +53,7 @@ function boot() {
   // Shared game context handed to every system.
   const g = {
     scene, camera, input, fx, world, player, tether, abilities, enemies, loot, hud, rig,
+    renderer, settings, events, version: VERSION,
     quests: new QuestLog(), fog: new Fog(),
     time: 0, timers: [], flags: {}, started: false,
     inDungeon: false, inSafeZone: true, combatNearby: false, interactTarget: null, suppressInput: false,
@@ -116,6 +101,7 @@ function boot() {
       const wasDungeon = g.inDungeon;
       player.pos.set(x, 0, z);
       g.inDungeon = z < DUNGEON_Z;
+      g.inSafeZone = world.regionAt(x, z) === 'town';
       world.colliders.resolve(player.pos, 0.5, g.inDungeon);
       player.pos.y = world.heightAt(player.pos.x, player.pos.z);
       player.vel.set(0, 0, 0);
@@ -181,6 +167,8 @@ function boot() {
 
     onLevelUp(level) {
       hud.banner(`Level ${level}`, 'level', 'Skill point gained · open Skills (K / Start)');
+      g.events.emit('levelUp', { level });
+      renderer.pulse(0xf3d68a, 0.25);
       fx.burst(player.pos.clone().setY(player.pos.y + 1), 0xf3d68a, 60, 6, { up: 6, life: 1.2, gravity: -1 });
       fx.rumble(0.4, 0.6, 200);
       g.save();
@@ -208,6 +196,7 @@ function boot() {
 
   function bindQuestEvents() {
     g.quests.onChange((kind, q) => {
+      g.events.emit('questUpdate', { kind, quest: q });
       if (kind === 'accepted' && g.quests.index > 0) hud.banner(`New quest: ${q.title}`, 'quest', q.objective.text);
       if (kind === 'completed') {
         hud.banner(`Quest complete: ${q.title}`, 'quest', `+${q.reward.xp} XP · +${q.reward.gold} gold`);
@@ -272,7 +261,8 @@ function boot() {
     rig.update(realDt, player.pos, player.vel, fx);
     loot.updateLabels(g, camera, g.highlightedLoot);
     if (g.started) hud.update(realDt, g);
-    composer.render();
+    const lifeFrac = player.life / player.stats.maxLife;
+    renderer.render(realDt, { hurt: g.started && !player.dead && lifeFrac < 0.35 ? (0.35 - lifeFrac) * 1.6 * (0.75 + Math.sin(performance.now() / 180) * 0.25) : 0 });
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

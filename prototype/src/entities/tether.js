@@ -65,6 +65,7 @@ export class Tether {
     g.player.aspectIndex = ASPECTS.indexOf(next);
     this.applyColors(g);
     g.hud.toast(next.name, next.desc, next.css);
+    g.events.emit('aspectChange', { aspect: next.id });
     g.fx.rumble(0.1, 0.25, 40);
   }
 
@@ -154,6 +155,7 @@ export class Tether {
       if (r.t <= 0 || r.dist > e.radius + half) continue;
       e.tetherCd = HIT_INTERVAL;
       g.fx.burst(this._tmp.set(r.cx, this.A.y, r.cz), this.aspect(g).color, 3, 3, { life: 0.3 });
+      g.events.emit('tetherHit', { pos: this._tmp.clone(), aspect: this.aspect(g).id, enemy: e });
       const coef = TICK_COEF * (id === 'lapis' ? 1.5 : id === 'bulwark' ? 0.6 : 1);
       const { amount, crit } = rollDamage(stats, coef, Math.random, mult);
       let knockX = 0, knockZ = 0;

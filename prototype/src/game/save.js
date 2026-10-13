@@ -1,14 +1,14 @@
 // Local save in the browser. Storage can be unavailable (private windows,
 // sandboxed previews), so every access is guarded and the game runs without it.
 
-const KEY = 'eldiablo-kur-save-v2';
+const KEY = 'eldiablo-kur-save-v2'; // key kept so v2 saves carry over; payload version is migrated
+export const SAVE_VERSION = 3;
 
 export function loadSave() {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
-    const data = JSON.parse(raw);
-    return data?.version === 2 ? data : null;
+    return migrate(JSON.parse(raw));
   } catch {
     return null;
   }
@@ -16,7 +16,7 @@ export function loadSave() {
 
 export function writeSave(data) {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ version: 2, savedAt: Date.now(), ...data }));
+    localStorage.setItem(KEY, JSON.stringify({ ...data, version: SAVE_VERSION, savedAt: Date.now() }));
     return true;
   } catch {
     return false;
@@ -41,4 +41,15 @@ export function decodeBytes(str, length) {
     for (let i = 0; i < Math.min(length, s.length); i++) out[i] = s.charCodeAt(i);
   } catch { /* corrupt or missing: start unexplored */ }
   return out;
+}
+
+// Upgrade older save payloads in place. Returns null for unknown/corrupt data.
+export function migrate(data) {
+  if (!data || typeof data !== 'object' || !data.player) return null;
+  if (data.version === 2) {
+    // v3 adds tutorial/onboarding flags; v2 heroes have already played, so skip the intro.
+    data.flags = { ...(data.flags ?? {}), introDone: true, tutorialSkipped: true };
+    data.version = 3;
+  }
+  return data.version === SAVE_VERSION ? data : null;
 }

@@ -59,6 +59,7 @@ export class Interactions {
       if (!w.discovered && Math.hypot(p.pos.x - w.x, p.pos.z - w.z) < 7) {
         w.discovered = true;
         g.hud.banner(`Waypoint discovered: ${w.name}`, 'waypoint');
+        g.events.emit('waypoint', { id: w.id });
         g.quests.notify({ type: 'discover', id: w.id });
         g.save();
       }
@@ -74,6 +75,7 @@ export class Interactions {
     const g = this.g;
     if (!g.player.addItem(L.item)) { g.hud.notify('Your inventory is full', 'warn'); return; }
     g.loot.remove(L);
+    g.events.emit('pickup', { kind: 'item', rarity: L.item.rarity, item: L.item });
     g.hud.feed(L.item.name, `r-${L.item.rarity}`);
     g.fx.rumble(0.1, 0.2, 40);
   }
@@ -83,6 +85,7 @@ export class Interactions {
     s.cooldown = 120;
     g.player.addBuff(`shrine-${s.kind}`, s.def.buff, s.def.stats, 45);
     g.hud.banner(s.def.buff, 'shrine');
+    g.events.emit('shrine', { kind: s.kind, pos: s.model.position });
     g.fx.burst(g.player.pos.clone().setY(g.player.pos.y + 1), s.def.color, 40, 5, { up: 5, life: 1 });
   }
 
@@ -92,6 +95,7 @@ export class Interactions {
     c.model.userData.lid.rotation.x = -1.9;
     const ilvl = monsterLevelFor(REGIONS[g.world.regionAt(c.x, c.z)].level, g.player.level);
     g.loot.dropChest(c.tier, c.model.position, g, ilvl);
+    g.events.emit('chestOpen', { pos: c.model.position, tier: c.tier });
     g.fx.burst(c.model.position.clone().setY(c.model.position.y + 1), 0xffd060, 30, 4, { up: 4, life: 0.8 });
     g.save();
   }
@@ -116,6 +120,7 @@ export class Interactions {
     m.position.set(TOWN.x + 2, 1.5, TOWN.z - 4);
     this.g.scene.add(m);
     this.portal = { mesh: m, returnTo: returnTo.clone() };
+    this.g.events.emit('portal', {});
   }
 
   removeTownPortal() {

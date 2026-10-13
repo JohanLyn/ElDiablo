@@ -247,6 +247,7 @@ export class EnemyManager {
     g.fx.burst(e.pos.clone().setY(e.pos.y + 1), 0xffc27a, silent ? 2 : 7, 4, { life: 0.35 });
     this.alertPack(e);
     g.hud.setTarget(e);
+    g.events.emit('hit', { enemy: e, amount, crit, pos: e.pos });
     if (amount >= e.maxHp * 0.25 && e.state === 'windup' && !e.boss && !e.elite) e.setState('recover');
     if (e.hp <= 0) this.kill(e, g);
     return amount;
@@ -271,6 +272,7 @@ export class EnemyManager {
       g.abilities.areaDamage(e.pos, 3.5, 0.8, g, { color: '#ff9a4a', fx: 0xff7a2a });
     }
     if (e.camp && e.camp.enemies.every((o) => !o.alive)) { e.camp.state = 'cleared'; e.camp.clearedAt = g.time; }
+    g.events.emit('kill', { enemy: e, pos: e.pos });
     g.onEnemyKilled(e);
   }
 
@@ -336,6 +338,7 @@ export class EnemyManager {
         if (!p.dead && Math.hypot(p.pos.x - h.x, p.pos.z - h.z) < h.r + 0.3) {
           if (p.takeDamage(h.dmg, g, h.level)) h.onHit?.();
         }
+        g.events.emit('hazardBlast', { x: h.x, z: h.z, r: h.r, color: h.color });
         g.fx.burst(new THREE.Vector3(h.x, h.group.position.y + 0.3, h.z), h.color, 26, h.r * 2.5, { up: 4, life: 0.6 });
         g.fx.shake(0.12);
         this.scene.remove(h.group);
@@ -480,6 +483,7 @@ export class EnemyManager {
         e.facing += angleDelta(e.facing, Math.atan2(dx, dz)) * damp(10, dt);
         if (d < range && !p.dead) {
           e.setState('windup');
+          g.events.emit('enemyWindup', { enemy: e });
           if (def.ai === 'brute') this.hazard({ x: e.pos.x, z: e.pos.z, r: 3.2 * e.scale, delay: windup, dmg: e.dmg, color: 0xff3a2a, level: e.level, onHit: () => this.onEnemyHit(e, g) });
         }
       } else if (e.state === 'windup') {
@@ -487,6 +491,7 @@ export class EnemyManager {
         if (e.stateTime >= windup) {
           if (def.ai === 'melee') {
             const off = Math.abs(angleDelta(e.facing, Math.atan2(dx, dz)));
+            g.events.emit('enemyAttack', { enemy: e });
             if (d < range + 0.6 && off < 1.0 && p.takeDamage(e.dmg, g, e.level)) this.onEnemyHit(e, g);
             this.hideArc(e);
           }
@@ -504,6 +509,7 @@ export class EnemyManager {
         wz = ((dz / d) * radial + (dx / d) * strafe) * speed;
         if (e.cooldown <= 0 && d < keep + 6 && !p.dead) {
           e.setState('windup');
+          g.events.emit('enemyWindup', { enemy: e });
           if (def.ai === 'caster') {
             e.castAt = { x: p.pos.x + p.vel.x * 0.4, z: p.pos.z + p.vel.z * 0.4 };
           }
@@ -513,6 +519,7 @@ export class EnemyManager {
         if (e.stateTime >= windup) {
           if (def.ai === 'ranged') {
             this.fire(e.pos, e.facing, def.projSpeed, e.dmg, e.level);
+            g.events.emit('enemyProjectile', { pos: e.pos, enemy: e });
             if (e.named) { this.fire(e.pos, e.facing + 0.25, def.projSpeed, e.dmg, e.level); this.fire(e.pos, e.facing - 0.25, def.projSpeed, e.dmg, e.level); }
             this.hideArc(e);
           } else {

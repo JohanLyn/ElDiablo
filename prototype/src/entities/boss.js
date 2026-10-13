@@ -43,6 +43,7 @@ export class Neti extends Enemy {
           this.adds.push(add);
         }
         g.hud.notify('Neti calls the Gallu to the gate. His seal shields him.', 'boss');
+        g.events.emit('bossPhase', { phase: t, boss: this });
         g.fx.shake(0.5);
       }
     }

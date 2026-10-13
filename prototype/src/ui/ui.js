@@ -48,6 +48,11 @@ export class UI {
 
   update(dt) {
     const g = this.g, input = g.input;
+    if (this.mode !== null) {
+      if (input.nav.x || input.nav.y) g.events.emit('uiMove', {});
+      if (input.pressed.confirm) g.events.emit('uiConfirm', {});
+      if (input.pressed.back) g.events.emit('uiBack', {});
+    }
     if (this.mode === null) {
       if (g.player.dead) return;
       if (input.pressed.menu) this.openMenu('inventory');
@@ -64,13 +69,14 @@ export class UI {
   }
 
   // ---- menus ------------------------------------------------------------------
-  openMenu(tab, opts) { this.mode = 'menu'; this.menus.show(tab, opts); }
+  openMenu(tab, opts) { this.mode = 'menu'; this.menus.show(tab, opts); this.g.events.emit('uiOpen', { kind: 'menu' }); }
 
   // ---- map + fast travel ----------------------------------------------------------
   openMap() {
     if (this.g.inDungeon) { this.g.hud.notify('The map does not reach into the Ganzir Stair', 'warn'); return; }
     this.mode = 'map';
     $('map').hidden = false;
+    this.g.events.emit('uiOpen', { kind: 'map' });
     const discovered = this.g.world.waypoints.filter((w) => w.discovered);
     this.mapSel = discovered.reduce((best, w) => (!best || dist(w, this.g.player.pos) < dist(best, this.g.player.pos) ? w : best), null);
     this.drawMap();
@@ -148,6 +154,7 @@ export class UI {
       options = [{ label: 'Farewell', run: () => {} }];
     }
     this.dialog = { npc, options, focus: 0 };
+    g.events.emit('uiOpen', { kind: 'dialog', npc: npc.id });
     this.mode = 'dialog';
     const el = $('dialog');
     el.hidden = false;

@@ -152,7 +152,7 @@ export class Input {
 
   rumble(strong, weak, ms) {
     const pad = this.gamepad;
-    if (!pad || this.device !== 'pad') return;
+    if (!pad || this.device !== 'pad' || this.settings?.get('rumble') === false) return;
     pad.vibrationActuator?.playEffect?.('dual-rumble', { duration: ms, strongMagnitude: strong, weakMagnitude: weak })?.catch?.(() => {});
   }
 }

@@ -75,6 +75,7 @@ export class Loot {
     this.overlay.appendChild(label);
     this.items.push({ item, mesh, beam, label, pos: target, t: 0, from: mesh.position.clone() });
     if (item.rarity === 'legendary') g.hud.notify(`Legendary: ${item.name}`, 'legendary');
+    g.events.emit('lootDrop', { item, pos: target });
   }
 
   dropGold(amount, pos, g) { this.dropPickup('gold', amount, pos, g); }
@@ -111,6 +112,7 @@ export class Loot {
         o.pos.y += (p.pos.y + 1 - o.pos.y) * dt * 8;
         if (d < 0.7) {
           if (o.kind === 'gold') { p.gold += o.amount; g.hud.feed(`+${o.amount} gold`, 'gold'); } else { p.potions = Math.min(p.maxPotions, p.potions + 1); g.hud.feed('+1 Healing Potion', 'potion'); }
+          g.events.emit('pickup', { kind: o.kind, amount: o.amount, pos: o.pos });
           this.scene.remove(o.mesh);
           this.pickups.splice(i, 1);
           continue;

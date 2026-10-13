@@ -120,12 +120,14 @@ export class Abilities {
     this.queued = null;
     this.channel = null;
     this[`cast_${id}`](g, skillCoef(id, rank));
+    g.events.emit('skillCast', { id, pos: p.pos });
   }
 
   denied(g, msg) {
     if (this._lastDenied && g.time - this._lastDenied < 0.6) return;
     this._lastDenied = g.time;
     g.hud.notify(msg, 'warn');
+    g.events.emit('denied', { reason: msg });
   }
 
   // ---- targeting -----------------------------------------------------------
@@ -222,6 +224,7 @@ export class Abilities {
     if (!this.hitDone && k >= step.hitAt) {
       this.hitDone = true;
       p.trailMat.opacity = 0.75;
+      g.events.emit('strikeSwing', { combo: this.combo, pos: p.pos, facing: p.facing, reach: step.reach });
       p.trail.scale.setScalar(step.reach / 2.6);
       const coef = skillCoef('strike', p.skillRanks.strike ?? 1) * step.mult;
       let hits = 0;
@@ -265,6 +268,7 @@ export class Abilities {
       mesh.position.set(p.pos.x + Math.sin(a) * 0.8, p.pos.y + 1.2, p.pos.z + Math.cos(a) * 0.8);
       mesh.rotation.y = a;
       this.scene.add(mesh);
+      g.events.emit('javelinThrow', { pos: mesh.position, dir: a, mesh });
       this.javelins.push({ mesh, vx: Math.sin(a) * 30, vz: Math.cos(a) * 30, life: SKILLS.javelin.range / 30, coef: coef * (spreads.length > 1 ? 0.7 : 1), hit: new Set() });
     }
     g.fx.rumble(0.2, 0.2, 50);
@@ -285,6 +289,7 @@ export class Abilities {
         j.hit.add(e);
         const { amount, crit } = rollDamage(g.player.stats, j.coef);
         g.enemies.damage(e, amount, g, { crit, color: '#9cc0ff', knockX: j.vx * 0.08, knockZ: j.vz * 0.08 });
+        g.events.emit('javelinHit', { pos: e.pos.clone().setY(e.pos.y + 1.1) });
         g.player.heal(g.player.stats.lifeOnHit * 0.5);
       }
       if (j.life <= 0 || g.world.colliders.pointBlocked(j.mesh.position.x, j.mesh.position.z)) {
@@ -298,6 +303,7 @@ export class Abilities {
     const p = g.player;
     p.castLock = 0.2;
     const hits = g.tether.snap(g, coef);
+    g.events.emit('snap', { a: g.tether.A.clone(), b: g.tether.B.clone(), aspect: g.tether.aspect(g).id, hits });
     g.fx.stop(hits ? 0.07 : 0.02);
     g.fx.shake(0.35);
     g.fx.rumble(0.9, 0.7, 160);
@@ -322,6 +328,7 @@ export class Abilities {
     p.setState('leap');
     p.invuln = 0.5;
     g.fx.burst(p.pos.clone().setY(p.pos.y + 0.5), 0xffe6a8, 16, 3, { up: 3, life: 0.5 });
+    g.events.emit('leapStart', { pos: p.pos.clone(), to: this.leap.to.clone() });
   }
 
   updateLeap(dt, g) {
@@ -339,6 +346,7 @@ export class Abilities {
       p.setState('move');
       this.leap = null;
       this.areaDamage(p.pos, 3.4, L.coef, g, { knock: 10, color: '#ffe6a8', fx: 0xffe6a8 });
+      g.events.emit('leapLand', { pos: p.pos.clone(), r: 3.4 });
       g.fx.shake(0.4);
       g.fx.stop(0.06);
       g.fx.rumble(0.8, 0.6, 140);
@@ -363,6 +371,7 @@ export class Abilities {
         const z = e ? e.pos.z : aim.z + (Math.random() - 0.5) * 8;
         const y = g.world.heightAt(x, z);
         this.lightning(x, y, z);
+        g.events.emit('lightning', { pos: new THREE.Vector3(x, y, z) });
         this.areaDamage({ x, y, z }, 1.9, coef, g, { knock: 2, color: '#bfe8ff', fx: 0x8fd3ff, onHit: (en) => { en.slow = Math.max(en.slow, 0.6); } });
         g.fx.shake(0.12);
         g.fx.rumble(0.3, 0.6, 50);
@@ -390,6 +399,7 @@ export class Abilities {
   cast_aegis(g) {
     const p = g.player;
     p.addBarrier(p.stats.maxLife * (0.4 + 0.04 * ((p.skillRanks.aegis ?? 1) - 1)), 6);
+    g.events.emit('aegis', { pos: p.pos });
     g.fx.burst(p.pos.clone().setY(p.pos.y + 1), 0xffcf4a, 30, 4, { up: 3, life: 0.6 });
     g.fx.rumble(0.3, 0.5, 100);
   }
@@ -409,6 +419,7 @@ export class Abilities {
     if (this.pyreTick <= 0 && !p.dead) {
       this.pyreTick = 0.5;
       this.areaDamage(p.pos, 4.2, this.pyreCoef, g, { color: '#ff9a4a', fx: 0xff7a2a, onHit: (e) => { e.burn = 2; } });
+      g.events.emit('pyrePulse', { pos: p.pos.clone(), r: 4.2 });
     }
   }
 }

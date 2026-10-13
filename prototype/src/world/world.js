@@ -26,7 +26,7 @@ export const SHRINE_TYPES = {
   ishtar: { name: 'Shrine of Ishtar', color: 0xff6aa8, buff: 'Blessing of Ishtar: +25% Critical Strike Chance', stats: { critChance: 25 } },
 };
 
-export function buildWorld(scene) {
+export function buildWorld(scene, settings = null) {
   const colliders = new Colliders();
   scene.background = new THREE.Color(ATMOS.sunfields.fog);
   scene.fog = new THREE.Fog(ATMOS.sunfields.fog, ATMOS.sunfields.near, ATMOS.sunfields.far);

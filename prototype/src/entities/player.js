@@ -233,6 +233,7 @@ export class Player {
     g.abilities.cancel();
     if (this.stats.powers.has('nergal')) this.addBarrier(this.stats.maxLife * 0.15, 3);
     g.fx.rumble(0.2, 0.3, 60);
+    g.events.emit('evade', { pos: this.pos, dir: this.evadeDir });
     g.fx.burst(this.pos.clone().setY(this.pos.y + 0.4), 0x7fb2ff, 8, 2, { up: 1, life: 0.35, gravity: 0 });
   }
 
@@ -248,6 +249,7 @@ export class Player {
     const heal = this.stats.maxLife * this.potionHeal;
     this.life = Math.min(this.stats.maxLife, this.life + heal);
     g.fx.number(this.pos, heal, { color: '#7dff8a' });
+    g.events.emit('potion', { pos: this.pos });
     g.fx.burst(this.pos.clone().setY(this.pos.y + 1), 0x7dff8a, 18, 2.5, { up: 3, life: 0.7, gravity: -2 });
   }
 
@@ -269,6 +271,7 @@ export class Player {
     this.flash = 1;
     this.invuln = 0.15;
     g.abilities.interruptChannel();
+    g.events.emit('playerHurt', { amount, pos: this.pos });
     g.fx.number(this.pos, amount, { color: '#ff5d5d' });
     g.fx.shake(Math.min(0.4, 0.12 + amount / this.stats.maxLife));
     g.fx.rumble(0.7, 0.4, 120);
@@ -277,6 +280,7 @@ export class Player {
       this.dead = true;
       this.group.visible = false;
       g.fx.burst(this.pos.clone().setY(this.pos.y + 1), 0x3a64c8, 60, 8, { up: 5, life: 1.2 });
+      g.events.emit('playerDeath', { pos: this.pos });
       g.onPlayerDeath();
     }
     return true;
