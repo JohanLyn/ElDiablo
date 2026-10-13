@@ -8,6 +8,7 @@
 | **M3 – Vertical slice** | Chosen theme, 1 town, 1 procedural dungeon, 1 boss with Slay/Bind/Spare, 1 full class. |
 | **M4 – Content** | 3 classes, Act 1–2, 15+ enemy types, Deedforge crafting. |
 | **M5 – Endgame & polish** | Rift-style endgame, balancing, accessibility, optional co-op. |
+| **Alpha (0.3.0-alpha)** | The prototype looks, sounds and plays like a game: rendering, audio, UI, a scripted and balanced first 15 minutes, and two dungeons. See below. |
 
 ## Direction change (v2)
 Playtest feedback on v1: wave defense in one arena isn't the goal. The game should be an **open-world action RPG that plays like Diablo 3/4**. Prototype v2 rebuilds around the essential features listed in [ARPG_FEATURES.md](ARPG_FEATURES.md) and keeps the Tether as the class's signature mechanic. M2 and parts of M3 were pulled forward.
@@ -57,10 +58,51 @@ Playtest feedback on v1: wave defense in one arena isn't the goal. The game shou
 - [x] Local save/continue, title screen, death and respawn
 - [x] Unit tests (game logic) and an end-to-end simulation (`npm run e2e`)
 
-## Next
-- [ ] Playtest with a real controller; tune damage, XP curve and monster density
+## Alpha (0.3.0-alpha)
+Release notes are in [prototype/CHANGELOG.md](../prototype/CHANGELOG.md).
+
+- [x] Render pipeline with Low / Medium / High / Ultra presets (`?low`, `?quality=`) and a per-region filmic grade
+- [x] Procedural sky, terrain splat shader, wind grass, marsh water, landmarks, town dressing and ambient particles
+- [x] Rig-based animated hero and monsters with spawn and death dissolves
+- [x] Combat VFX: slashes, Tether beam, lightning, wings, Aegis hex shield, telegraphs and loot beams
+- [x] Fully synthesized SFX and adaptive music (no audio files)
+- [x] Ornate HUD, menus, settings, pause menu and an error overlay with WebGL and narrow-screen fallbacks
+- [x] Cold-open title flyover, caravan ambush, contextual tutorial prompts and NPC portraits
+- [x] Eight-quest story chain: Road to Eridu, Ash at the Outpost, Ritual Stones, Waters of Enki, Drowned Cistern, Sting of the Desert, Ganzir Stair, Keeper of the First Gate
+- [x] Cistern of Enki mini-dungeon with The Drowned Voice and a guaranteed first Legendary
+- [x] Data-driven dungeon instances (`src/world/instances.js`)
+- [x] Save format v3 with v2 migration
+- [x] Balance pass (XP curve 100 x L squared, Tether nerf, monster buffs) checked by the balance bot (`e2e/firstfifteen.mjs`)
+- [x] Audio unit tests added to the existing game and maths tests
+
+### Alpha checklist
+Before tagging an alpha build, tick every box.
+
+- [ ] `npm test` passes (game logic, maths, audio theory and recipes)
+- [ ] `npm run build` succeeds and `npm run e2e` (`e2e/sim.mjs`) plays the full quest chain without page errors
+- [ ] `node e2e/firstfifteen.mjs` passes all balance targets (the script checks these):
+  - [ ] Level 2 by 2:30
+  - [ ] Level 4 by 9:00
+  - [ ] Level 5 or higher by 15:00
+  - [ ] A Legendary by 12:00
+  - [ ] Two quests done by 11:00
+  - [ ] No more than 2 deaths
+  - [ ] Average time to kill a normal monster between 1 and 5 seconds
+- [ ] Performance budget, measured in a real browser with a GPU:
+  - [ ] High: at most 600 draw calls and 1.5M triangles
+  - [ ] Low: at most 300 draw calls
+- [ ] Manual controller smoke test on real hardware: title, new game, combat with all six skills, evade, potion, Tether steering, menus, map, pause, disconnect and reconnect
+
+Status: the tests, e2e sim and balance bot exist in the repo. The performance budget and the real-controller test have not been done yet.
+
+## Next (beta)
+- [ ] A second gate and region
+- [ ] More skills and Tether Aspects
+- [ ] Test on real controllers (the alpha only used a simulated gamepad); tune damage, XP curve and monster density from real playtests
+- [ ] Performance on low-end GPUs and software GL; enforce the draw-call and triangle budgets in a script
+- [ ] Code-split the bundle (the main JS chunk is about 1 MB minified)
+- [ ] Map coverage for dungeon interiors
 - [ ] Twist 2: Deedforged items (Unwritten affixes and the deed event bus)
 - [ ] Twist 3: Slay / Bind / Spare on Neti and Aqrabu
 - [ ] Strongholds, side quests, stash, loot filter
-- [ ] Audio (SFX first, then music)
 - [ ] Decide the production engine
