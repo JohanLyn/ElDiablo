@@ -84,7 +84,7 @@ export function createParticles(env, settings) {
           hgt = 9.0; col = vec3(0.2, 0.17, 0.22); size = 0.14 + aRnd.w * 0.1; alpha = 0.6; kind = 1.0;
         } else {                   // dungeon / town motes
           p = base + vec3(sin(t * 0.2 + aRnd.w * 30.0), sin(t * 0.25 + aRnd.w * 9.0) * 0.6, cos(t * 0.18 + aRnd.w * 15.0)) * 1.2;
-          hgt = 5.0; col = vec3(0.75, 0.62, 0.5); size = 0.09 + aRnd.w * 0.05; alpha = 0.3 + 0.2 * sin(t * 0.8 + aRnd.x * 30.0);
+          hgt = 5.0; col = vec3(0.6, 0.5, 0.45); size = 0.07 + aRnd.w * 0.04; alpha = 0.18 + 0.2 * sin(t * 0.8 + aRnd.x * 30.0);
         }
         // Wrap into a box centred on the player.
         vec3 rel = p - uCenter;

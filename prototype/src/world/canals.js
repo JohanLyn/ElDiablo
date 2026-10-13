@@ -46,7 +46,7 @@ export function buildCanals(scene) {
   const bankPos = [], bankCol = [], bankIdx = [];
   const wPos = [], wUv = [], wIdx = [];
   const prof = [[-2.4, 0], [-1.6, 0.34], [-1.0, 0.22], [-0.55, -0.16], [0.55, -0.16], [1.0, 0.22], [1.6, 0.34], [2.4, 0]];
-  const col = [new THREE.Color(0x5a4630), new THREE.Color(0x7a6038), new THREE.Color(0x3b2e22)];
+  const col = [new THREE.Color(0x8a7048), new THREE.Color(0xa88a54), new THREE.Color(0x4a3a28)];
   let dist = 0;
   for (const line of CANAL_LINES) {
     const pts = resample(line, 2.5).filter((p) => !FLATS.some((f) => Math.hypot(p[0] - f.x, p[1] - f.z) < f.r + 2.5));
@@ -85,7 +85,7 @@ export function buildCanals(scene) {
   bankGeo.setAttribute('color', new THREE.Float32BufferAttribute(bankCol, 3));
   bankGeo.setIndex(bankIdx);
   bankGeo.computeVertexNormals();
-  const banks = new THREE.Mesh(bankGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
+  const banks = new THREE.Mesh(bankGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, side: THREE.DoubleSide }));
   banks.receiveShadow = true;
   scene.add(banks);
 
@@ -116,11 +116,10 @@ export function buildCanals(scene) {
       void main() {
         float edge = abs(vUv.y - 0.5) * 2.0;
         float flow = sin(vUv.x * 5.0 - uTime * 1.6 + sin(vUv.y * 6.0) * 1.5) * 0.5 + 0.5;
-        vec3 deep = vec3(0.05, 0.2, 0.22), shallow = vec3(0.14, 0.38, 0.32);
+        vec3 deep = vec3(0.012, 0.06, 0.07), shallow = vec3(0.04, 0.14, 0.11);
         vec3 col = mix(deep, shallow, edge * 0.8 + flow * 0.15);
-        col = mix(col, uSky * 0.9, 0.22 + flow * 0.1);
-        col += uSun * pow(flow, 10.0) * 0.18 * (1.0 - edge);
-        col = mix(col, vec3(0.8, 0.85, 0.7), smoothstep(0.82, 1.0, edge) * 0.35);
+        col = mix(col, uSky * 0.35, 0.12 + flow * 0.06);
+        col += uSun * pow(flow, 12.0) * 0.06 * (1.0 - edge);
         gl_FragColor = vec4(col, 0.9 - edge * 0.2);
         #include <fog_fragment>
       }`,

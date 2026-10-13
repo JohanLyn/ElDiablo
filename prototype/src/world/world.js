@@ -44,9 +44,9 @@ const ATMOS_DEF = {
     grade: { shadow: 0x2d1450, highlight: 0xf0a0b0, split: 0.32, saturation: 0.98, contrast: 1.16 },
   },
   dungeon: {
-    horizon: 0x0d0912, zenith: 0x08060c, near: 22, far: 66, hemi: 0.62, sun: 0, sunColor: 0x8a7aff,
-    hemiSky: 0x4a4a8a, hemiGround: 0x2a1c26, fill: 0.0, fillColor: 0x5a6aff, cloud: 0, glow: 0,
-    grade: { shadow: 0x161a46, highlight: 0xffa86a, split: 0.28, saturation: 1.06, contrast: 1.14 },
+    horizon: 0x15101c, zenith: 0x0c0912, near: 26, far: 80, hemi: 1.25, sun: 0, sunColor: 0x8a7aff,
+    hemiSky: 0x7a78c0, hemiGround: 0x4a3038, fill: 0.0, fillColor: 0x5a6aff, cloud: 0, glow: 0,
+    grade: { shadow: 0x161a46, highlight: 0xffa86a, split: 0.25, saturation: 1.08, contrast: 1.08 },
   },
 };
 const COLOR_KEYS = ['horizon', 'zenith', 'sunColor', 'hemiSky', 'hemiGround', 'fillColor'];
