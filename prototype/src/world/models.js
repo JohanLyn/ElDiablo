@@ -24,19 +24,90 @@ export const merge = (parts) => mergeGeometries(parts, false);
 const cyl = (rt, rb, h, s = 6) => new THREE.CylinderGeometry(rt, rb, h, s);
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 
+
+// A curved leaf with a centre crease. Runs along +Z (arching up then drooping), or
+// along +Y when `upright` (a blade of grass/reed leaning toward +Z).
+export function leafGeo(len, width, { arch = 0.5, droop = 1.1, segs = 5, taper = 1.4, upright = false } = {}) {
+  const pos = [], idx = [];
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs;
+    const w = (width / 2) * Math.max(0.05, Math.sin(Math.PI * Math.min(1, 0.12 + 0.88 * (1 - Math.pow(t, taper)))));
+    const lift = len * (arch * t - droop * t * t * 0.5);
+    if (upright) {
+      const y = len * t, z = len * droop * t * t * 0.5;
+      pos.push(-w, y, z, 0, y, z + width * 0.1, w, y, z);
+    } else {
+      const z = len * t;
+      pos.push(-w, lift, z, 0, lift + width * 0.08, z, w, lift, z);
+    }
+  }
+  for (let i = 0; i < segs; i++) {
+    const a = i * 3, b = (i + 1) * 3;
+    idx.push(a, b, a + 1, a + 1, b, b + 1, a + 1, b + 1, a + 2, a + 2, b + 1, b + 2);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+// Like part(), but colours a base->tip gradient along the geometry's local axis.
+export function gradientPart(geo, c0, c1, { x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1, axis = 'z' } = {}) {
+  const g = geo.index ? geo.toNonIndexed() : geo.clone();
+  g.deleteAttribute('uv');
+  g.computeBoundingBox();
+  const lo = g.boundingBox.min[axis], hi = g.boundingBox.max[axis];
+  const a = new THREE.Color(c0), b = new THREE.Color(c1), c = new THREE.Color();
+  const p = g.attributes.position;
+  const cols = new Float32Array(p.count * 3);
+  const arr = axis === 'x' ? 'getX' : axis === 'y' ? 'getY' : 'getZ';
+  for (let i = 0; i < p.count; i++) {
+    const t = Math.min(1, Math.max(0, (p[arr](i) - lo) / (hi - lo || 1)));
+    c.copy(a).lerp(b, t);
+    cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(sx, sy, sz)));
+  return g;
+}
+
 export const PROP_GEOMETRY = {
   palm() {
-    const parts = [part(cyl(0.16, 0.3, 5.2, 6), 0x7a5a3a, { y: 2.6, rz: 0.06 })];
-    for (let i = 0; i < 7; i++) {
-      const a = (i / 7) * Math.PI * 2;
-      parts.push(part(box(0.5, 0.06, 2.8), 0x4c7a30, { x: Math.sin(a) * 1.2, y: 5.0, z: Math.cos(a) * 1.2, ry: a, rx: 0.42 }));
+    const parts = [];
+    // Curved, ringed trunk.
+    const N = 6, H = 5.4, lean = 0.9;
+    const at = (t) => [lean * t * t, H * t];
+    for (let i = 0; i < N; i++) {
+      const [x0, y0] = at(i / N), [x1, y1] = at((i + 1) / N);
+      const len = Math.hypot(x1 - x0, y1 - y0);
+      const rb = 0.3 - 0.13 * (i / N), rt = 0.3 - 0.13 * ((i + 1) / N);
+      parts.push(part(new THREE.CylinderGeometry(rt, rb, len, 6, 1, true), i % 2 ? 0x7d5d3b : 0x6a4c2f, { x: (x0 + x1) / 2, y: (y0 + y1) / 2, rz: -Math.atan2(x1 - x0, y1 - y0) }));
     }
-    parts.push(part(new THREE.SphereGeometry(0.3, 6, 4), 0x6a4a22, { y: 5.0 }));
+    const [tx, ty] = at(1);
+    // Crown of arching fronds.
+    const n = 10;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + (i % 2) * 0.2;
+      const big = i % 2 === 0;
+      const len = big ? 2.9 : 2.3;
+      const tilt = big ? 0.15 : 0.55;
+      parts.push(gradientPart(leafGeo(len, 0.85, { arch: 0.55 + tilt, droop: 1.3, segs: 4 }), big ? 0x2f5a22 : 0x3a6a26, big ? 0x86a83a : 0x9ab544, { x: tx, y: ty + 0.1, z: 0, ry: a }));
+    }
+    for (let i = 0; i < 4; i++) parts.push(gradientPart(leafGeo(1.6, 0.6, { arch: 1.5, droop: 0.9 }), 0x4a7a2a, 0xa5be4c, { x: tx, y: ty + 0.2, ry: i * 1.57 + 0.7 }));
+    // Dates.
+    parts.push(part(new THREE.SphereGeometry(0.24, 6, 4), 0xa86a22, { x: tx + 0.15, y: ty - 0.1, z: 0.1 }));
+    parts.push(part(new THREE.SphereGeometry(0.2, 6, 4), 0x8a4a1a, { x: tx - 0.15, y: ty - 0.15, z: -0.1 }));
     return merge(parts);
   },
   wheat() {
     const parts = [];
-    for (let i = 0; i < 9; i++) parts.push(part(box(0.08, 0.9, 0.08), i % 3 ? 0xd8b85a : 0xc9a443, { x: (i % 3 - 1) * 0.3, y: 0.45, z: (Math.floor(i / 3) - 1) * 0.3, rz: (i % 2 - 0.5) * 0.2 }));
+    for (let i = 0; i < 9; i++) {
+      const x = ((i % 3) - 1) * 0.26 + ((i * 7) % 3) * 0.04, z = (Math.floor(i / 3) - 1) * 0.26;
+      const h = 0.85 + (i % 3) * 0.1;
+      parts.push(part(new THREE.CylinderGeometry(0.012, 0.022, h, 3, 1, true), 0xcaa845, { x, y: h / 2, z, rz: (i % 2 - 0.5) * 0.18 }));
+      parts.push(part(new THREE.ConeGeometry(0.05, 0.24, 4), i % 3 ? 0xe2c25a : 0xd2a63c, { x: x + (i % 2 - 0.5) * 0.09, y: h + 0.08, z }));
+    }
     return merge(parts);
   },
   bush() {
@@ -47,10 +118,10 @@ export const PROP_GEOMETRY = {
   },
   reed() {
     const parts = [];
-    for (let i = 0; i < 8; i++) {
-      const a = i * 2.4, r = 0.25 + (i % 3) * 0.12, h = 1.6 + (i % 4) * 0.25;
-      parts.push(part(cyl(0.025, 0.04, h, 4), 0x7d8a3c, { x: Math.sin(a) * r, y: h / 2, z: Math.cos(a) * r, rx: Math.sin(a) * 0.1 }));
-      if (i % 2) parts.push(part(cyl(0.06, 0.06, 0.3, 5), 0x5a3a22, { x: Math.sin(a) * r, y: h - 0.1, z: Math.cos(a) * r }));
+    for (let i = 0; i < 12; i++) {
+      const a = i * 2.4, r = 0.18 + (i % 4) * 0.11, h = 1.7 + (i % 5) * 0.28;
+      parts.push(gradientPart(leafGeo(h, 0.11, { droop: 0.3 + (i % 3) * 0.14, segs: 4, taper: 1.0, upright: true }), 0x4d6a2c, i % 3 ? 0x9bb04a : 0xc4c25e, { x: Math.sin(a) * r, z: Math.cos(a) * r, ry: a, axis: 'y' }));
+      if (i % 3 === 1) parts.push(part(cyl(0.055, 0.055, 0.34, 5), 0x6a3f22, { x: Math.sin(a) * r * 1.0, y: h * 0.82, z: Math.cos(a) * r }));
     }
     return merge(parts);
   },
@@ -90,6 +161,89 @@ export const PROP_GEOMETRY = {
     return merge([part(new THREE.DodecahedronGeometry(6, 0), 0x6f6156, { y: 1, sy: 1.1 })]);
   },
 };
+
+// Richer replacements and extra props for the regional dressing.
+const sph = (r, w = 6, h = 4) => new THREE.SphereGeometry(r, w, h);
+Object.assign(PROP_GEOMETRY, {
+  column() {
+    return merge([
+      part(box(2.0, 0.45, 2.0), 0xb99d6e, { y: 0.22 }),
+      part(cyl(0.78, 0.86, 0.5, 8), 0xc9ae80, { y: 0.7 }),
+      part(cyl(0.66, 0.74, 2.2, 8), 0xdcc79c, { y: 1.95 }),
+      part(cyl(0.7, 0.7, 0.14, 8), 0xa88a5c, { y: 1.2 }),
+      part(cyl(0.7, 0.7, 0.14, 8), 0xa88a5c, { y: 2.45 }),
+      part(cyl(0.62, 0.66, 0.9, 8), 0xd3bd90, { y: 3.5, rz: 0.2, x: 0.18 }),
+      part(box(0.9, 0.5, 0.5), 0xcdb487, { x: 0.9, y: 0.22, z: 0.8, ry: 0.5, rz: 0.2 }),
+    ]);
+  },
+  columnFallen() {
+    const parts = [part(box(2.0, 0.45, 2.0), 0xb99d6e, { x: -3.6, y: 0.2, rz: 0.05 })];
+    for (let i = 0; i < 3; i++) parts.push(part(cyl(0.68, 0.7, 1.3, 8), i % 2 ? 0xdcc79c : 0xd3bd90, { x: -1.6 + i * 1.5, y: 0.66 + i * 0.02, z: i * 0.12, rz: Math.PI / 2, ry: i * 0.08 }));
+    parts.push(part(box(1.5, 0.6, 1.3), 0xc9ae80, { x: 3.2, y: 0.45, z: 0.4, ry: 0.4 }));
+    parts.push(part(cyl(0.5, 0.66, 1.0, 8), 0xd3bd90, { x: 4.4, y: 0.5, z: -0.8, rz: Math.PI / 2 - 0.3 }));
+    return merge(parts);
+  },
+  bones() {
+    const parts = [part(cyl(0.05, 0.05, 1.5, 4), 0xddd6c4, { y: 0.07, rz: Math.PI / 2 })];
+    for (let i = 0; i < 5; i++) {
+      const x = -0.55 + i * 0.27, r = 0.42 - Math.abs(i - 2) * 0.06;
+      parts.push(part(new THREE.TorusGeometry(r, 0.035, 4, 8, Math.PI), 0xe8e1ce, { x, y: 0.0, z: 0.0, ry: Math.PI / 2, rx: 0.0, sy: 0.9 }));
+    }
+    parts.push(part(sph(0.22, 6, 5), 0xece5d2, { x: 1.05, y: 0.2, z: 0.2 }));
+    parts.push(part(sph(0.07, 4, 3), 0x1a1418, { x: 1.17, y: 0.27, z: 0.31 }));
+    parts.push(part(sph(0.07, 4, 3), 0x1a1418, { x: 1.17, y: 0.27, z: 0.08 }));
+    parts.push(part(cyl(0.04, 0.04, 0.9, 4), 0xddd6c4, { x: -0.2, y: 0.05, z: 0.6, rz: Math.PI / 2, ry: 0.9 }));
+    parts.push(part(cyl(0.04, 0.04, 0.7, 4), 0xd6cfba, { x: 0.5, y: 0.05, z: -0.6, rz: Math.PI / 2, ry: -0.5 }));
+    return merge(parts);
+  },
+  spike() {
+    const cone = (r, h, seg) => new THREE.ConeGeometry(r, h, seg);
+    return merge([
+      gradientPart(cone(0.75, 3.8, 5), 0x120d1c, 0x5a4488, { y: 1.9, axis: 'y' }),
+      gradientPart(cone(0.42, 2.2, 5), 0x120d1c, 0x6a50a0, { x: 0.8, y: 1.0, rz: -0.3, axis: 'y' }),
+      gradientPart(cone(0.32, 1.5, 4), 0x120d1c, 0x6a50a0, { x: -0.6, y: 0.7, z: 0.3, rz: 0.4, axis: 'y' }),
+    ]);
+  },
+  scarecrow() {
+    return merge([
+      part(cyl(0.05, 0.07, 2.6, 5), 0x6a4a2a, { y: 1.3 }),
+      part(cyl(0.04, 0.04, 1.7, 5), 0x6a4a2a, { y: 1.85, rz: Math.PI / 2 }),
+      part(new THREE.ConeGeometry(0.42, 1.2, 7), 0xcfb15a, { y: 1.4, sy: 1 }),
+      part(cyl(0.45, 0.5, 0.18, 7), 0x2a4f9a, { y: 1.05 }),
+      part(sph(0.26, 7, 5), 0xb96a38, { y: 2.38 }),
+      part(cyl(0.2, 0.28, 0.26, 7), 0xcfb15a, { y: 2.65 }),
+      part(box(0.14, 0.5, 0.04), 0x9a2a2a, { x: 0.7, y: 1.7, z: 0.05, rz: 0.12 }),
+      part(box(0.14, 0.4, 0.04), 0x2a4f9a, { x: -0.7, y: 1.72, z: 0.05, rz: -0.1 }),
+    ]);
+  },
+  jar() {
+    const pts = [[0.0, 0], [0.28, 0], [0.4, 0.2], [0.5, 0.5], [0.4, 0.85], [0.22, 1.0], [0.26, 1.12], [0.3, 1.14]].map(([x, y]) => new THREE.Vector2(x, y));
+    return merge([part(new THREE.LatheGeometry(pts, 8), 0xb8663a, {}), part(cyl(0.41, 0.41, 0.06, 8), 0x7a3f22, { y: 0.52 })]);
+  },
+  reedHut() {
+    const parts = [];
+    const n = 14;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const r = 1.7;
+      parts.push(gradientPart(cyl(0.07, 0.16, 3.6, 5), 0x8a7a40, 0xc8b062, { x: Math.sin(a) * r, y: 1.7, z: Math.cos(a) * r, rz: Math.cos(a) * 0.6, rx: -Math.sin(a) * 0.6, axis: 'y' }));
+    }
+    parts.push(part(new THREE.ConeGeometry(1.0, 1.0, 8), 0xb8a05a, { y: 3.3 }));
+    parts.push(part(box(0.9, 1.5, 0.3), 0x2a1c12, { y: 0.8, z: 1.35 }));
+    parts.push(part(new THREE.TorusGeometry(1.6, 0.07, 4, 14), 0x6a4a2a, { y: 1.5, rx: Math.PI / 2 }));
+    return merge(parts);
+  },
+  sandDrift() {
+    return merge([gradientPart(new THREE.IcosahedronGeometry(1, 1), 0x9a7440, 0xc39a5a, { y: 0.0, sy: 0.22, axis: 'y' })]);
+  },
+  obelisk() {
+    return merge([
+      part(box(1.6, 0.5, 1.6), 0xb99d6e, { y: 0.25 }),
+      part(new THREE.CylinderGeometry(0.34, 0.55, 5.4, 4), 0xcdb487, { y: 3.2, ry: Math.PI / 4 }),
+      part(new THREE.ConeGeometry(0.34, 0.6, 4), 0xd6a740, { y: 6.2, ry: Math.PI / 4 }),
+    ]);
+  },
+});
 
 // A simple robed humanoid for NPCs.
 export function makeNpc({ robe = 0x8a3a2a, trim = 0xd6a740, skin = 0xc98f62, hat = null } = {}) {

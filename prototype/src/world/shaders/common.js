@@ -18,8 +18,11 @@ float fbm3(vec2 p) {
 }
 `;
 
+let ENV = null;
+export const getEnv = () => ENV;
+
 export function createEnv() {
-  return {
+  ENV = {
     uTime: { value: 0 },
     uSunDir: { value: new THREE.Vector3(-0.5, 0.7, 0.4).normalize() },
     uSunColor: { value: new THREE.Color(1, 0.85, 0.6) },
@@ -28,5 +31,7 @@ export function createEnv() {
     uWind: { value: new THREE.Vector2(1, 0.3) },
     uPlayer: { value: new THREE.Vector3() },
     uCloud: { value: 0.28 }, // cloud-shadow strength
+    uPxScale: { value: 800 }, // viewport px per world unit at distance 1 (point sprites)
   };
+  return ENV;
 }

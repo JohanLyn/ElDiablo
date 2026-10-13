@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { Colliders } from './colliders.js';
 import { buildTerrain, buildMapImage } from './terrainMesh.js';
 import { scatterProps } from './props.js';
+import { buildCanals } from './canals.js';
+import { buildLandmarks } from './landmarks.js';
 import { buildTown } from './town.js';
 import { buildDungeon } from './dungeon.js';
 import { makeWaypoint, makeShrine, makeChest, makeGate } from './models.js';
@@ -32,12 +34,12 @@ const ATMOS_DEF = {
     grade: { shadow: 0x1c4a4a, highlight: 0xe6f2b4, split: 0.22, saturation: 1.12, contrast: 1.05 },
   },
   ruins: {
-    horizon: 0xe3c796, zenith: 0x6a98c8, near: 40, far: 150, hemi: 0.92, sun: 2.3, sunColor: 0xfff0d0,
-    hemiSky: 0xd6dcff, hemiGround: 0xa07a4a, fill: 0.3, fillColor: 0xb7c4ff, cloud: 0.18, glow: 1.3,
+    horizon: 0xe3c796, zenith: 0x6a98c8, near: 40, far: 150, hemi: 0.8, sun: 2.0, sunColor: 0xfff0d0,
+    hemiSky: 0xd6dcff, hemiGround: 0xa07a4a, fill: 0.3, fillColor: 0xb7c4ff, cloud: 0.1, glow: 1.3,
     grade: { shadow: 0x5a4650, highlight: 0xfff0d2, split: 0.16, saturation: 0.96, contrast: 1.12 },
   },
   ashen: {
-    horizon: 0x5b3b57, zenith: 0x1d1530, near: 22, far: 90, hemi: 0.6, sun: 1.05, sunColor: 0xff9a78,
+    horizon: 0x5b3b57, zenith: 0x1d1530, near: 22, far: 90, hemi: 0.85, sun: 1.3, sunColor: 0xffa588,
     hemiSky: 0x8a6ab0, hemiGround: 0x2e1d33, fill: 0.5, fillColor: 0x7a56c8, cloud: 0.12, glow: 0.9,
     grade: { shadow: 0x2d1450, highlight: 0xf0a0b0, split: 0.32, saturation: 0.98, contrast: 1.16 },
   },
@@ -95,6 +97,8 @@ export function buildWorld(scene, settings = null) {
   const grass = new Grass(scene, env, settings);
   const particles = createParticles(env, settings);
   scene.add(particles.points);
+  buildCanals(scene);
+  buildLandmarks(scene, colliders);
   scatterProps(scene, colliders);
   const town = buildTown(scene, colliders);
   const dungeon = buildDungeon(scene, colliders);
@@ -227,6 +231,7 @@ export function buildWorld(scene, settings = null) {
           sky.mesh.position.copy(renderer.camera.position);
           const sz = renderer.webgl.getDrawingBufferSize(tmpDir2);
           particles.update(playerPos, partMix, sz.y, renderer.camera.fov);
+          env.uPxScale.value = particles.uniforms.uScale.value;
         }
       }
       const target6 = PARTICLE_MIX[region];

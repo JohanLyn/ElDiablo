@@ -97,11 +97,11 @@ export function createWater(env) {
         col += uSunColor * (spec * 1.6 + spec2);
 
         // Shore foam: soft, slowly breathing lines hugging the bank.
-        float foamZone = 1.0 - smoothstep(0.02, 0.3, depth);
+        float foamZone = 1.0 - smoothstep(0.02, 0.16, depth);
         float lines = sin((depth * 22.0) - t * 1.3 + h0 * 6.0) * 0.5 + 0.5;
         float foamN = vnoise(p * 1.7 + t * 0.15);
-        float foam = foamZone * (smoothstep(0.55, 0.9, lines) * 0.55 + smoothstep(0.1, 0.0, depth) * 0.6) * smoothstep(0.25, 0.7, foamN + 0.25);
-        col = mix(col, vec3(0.86, 0.9, 0.76), clamp(foam, 0.0, 0.85));
+        float foam = foamZone * (smoothstep(0.6, 0.95, lines) * 0.4 + smoothstep(0.07, 0.0, depth) * 0.45) * smoothstep(0.35, 0.75, foamN + 0.2);
+        col = mix(col, vec3(0.86, 0.9, 0.76), clamp(foam, 0.0, 0.6));
 
         float alpha = cover * mix(0.55, 0.93, dk);
         alpha = max(alpha, foam * 0.8 * cover);

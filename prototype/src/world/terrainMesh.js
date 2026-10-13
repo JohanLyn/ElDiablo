@@ -64,11 +64,11 @@ function patchTerrainMaterial(material, env) {
         cM = mix(cM, vbase * 0.55, 0.22);
         // Ruins: sun-bleached sand with soft ripple bands.
         float rip = sin(dot(gp, vec2(0.86, 0.5)) * 2.1 + vnoise(gp * 0.12) * 9.0) * 0.5 + 0.5;
-        vec3 cR = mix(vec3(0.6, 0.43, 0.23), vec3(0.8, 0.64, 0.38), rip * 0.75 + n2 * 0.5) * (0.9 + 0.2 * n1);
+        vec3 cR = mix(vec3(0.5, 0.34, 0.17), vec3(0.78, 0.6, 0.34), rip * 0.75 + n2 * 0.5) * (0.9 + 0.2 * n1);
         cR = mix(cR, vbase, 0.18);
         cR *= 0.94 + 0.12 * nf;
         // Ashen: charred basalt dusted with pale ash.
-        vec3 cA = mix(vec3(0.07, 0.055, 0.075), vec3(0.2, 0.17, 0.2), smoothstep(0.4, 0.75, n2 * 0.7 + n1 * 0.4)) * (0.85 + 0.3 * nf);
+        vec3 cA = mix(vec3(0.11, 0.09, 0.115), vec3(0.3, 0.255, 0.3), smoothstep(0.4, 0.75, n2 * 0.7 + n1 * 0.4)) * (0.85 + 0.3 * nf);
         // Town: packed clay with a flagstone plaza.
         vec3 cT = vec3(0.45, 0.31, 0.19) * (0.88 + 0.24 * n1);
         float plaza = 1.0 - smoothstep(13.0, 19.0, length(gp - vec2(${TOWN.x.toFixed(1)}, ${TOWN.z.toFixed(1)})));
@@ -113,9 +113,9 @@ function patchTerrainMaterial(material, env) {
         vec2 cq = gp * 0.075 + vec2(vnoise(gp * 0.09), vnoise(gp * 0.09 + 9.0)) * 1.1;
         float crackV = crackEdge(cq);
         float crackMask = smoothstep(0.42, 0.66, vnoise(gp * 0.03 + 21.0) + n2 * 0.25);
-        float crack = (1.0 - smoothstep(0.0, 0.035, crackV)) * crackMask * wA * (1.0 - roadK);
+        float crack = (1.0 - smoothstep(0.0, 0.02, crackV)) * crackMask * wA * (1.0 - roadK);
         diffuseColor.rgb *= 1.0 - 0.55 * (1.0 - smoothstep(0.0, 0.14, crackV)) * crackMask * wA;
-        float crackPulse = 1.5 + 0.6 * sin(uTime * 1.3 + n2 * 12.0);
+        float crackPulse = 0.95 + 0.4 * sin(uTime * 1.3 + n2 * 12.0);
       `)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
         roughnessFactor = mix(roughnessFactor, 0.38, wetK);`)

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Rng } from '../core/rng.js';
 import { TOWN } from './layout.js';
 import { makeHouse, makeNpc } from './models.js';
+import { decorateHouse, dressTown } from './townDressing.js';
 
 // Eridu Outpost: a walled mud-brick town with a small temple, market and NPCs.
 export function buildTown(scene, colliders) {
@@ -55,6 +56,7 @@ export function buildTown(scene, colliders) {
     house.position.set(cx + lx, 0.1, cz + lz);
     // Face the plaza.
     house.rotation.y = Math.abs(lx) > Math.abs(lz) ? (lx > 0 ? -Math.PI / 2 : Math.PI / 2) : (lz > 0 ? Math.PI : 0);
+    decorateHouse(house, { w, d, h, rng });
     scene.add(house);
     const rot = Math.abs(Math.sin(house.rotation.y)) > 0.5;
     const hw = (rot ? d : w) / 2, hd = (rot ? w : d) / 2;
@@ -109,6 +111,8 @@ export function buildTown(scene, colliders) {
     scene.add(n.model);
     colliders.addCircle(n.x, n.z, 0.6);
   }
+
+  dressTown(scene, colliders, { cx, cz, r });
 
   // Warm lights.
   for (const [lx, lz] of [[-6, -2], [8, 6], [0, -18]]) {
