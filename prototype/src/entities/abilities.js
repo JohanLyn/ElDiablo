@@ -236,8 +236,9 @@ export class Abilities {
       }
       if (hits) {
         p.anima = Math.min(p.stats.maxAnima, p.anima + SKILLS.strike.gain);
-        g.fx.stop(this.combo === 2 ? 0.08 : 0.045);
-        g.fx.shake(this.combo === 2 ? 0.3 : 0.15);
+        g.fx.stop(this.combo === 2 ? 0.1 : 0.04);
+        g.fx.shake(this.combo === 2 ? 0.34 : 0.15);
+        g.fx.kick(Math.sin(p.facing), Math.cos(p.facing), this.combo === 2 ? 3 : 1.6);
         g.fx.rumble(this.combo === 2 ? 0.7 : 0.35, 0.5, this.combo === 2 ? 110 : 60);
       }
     }
@@ -341,8 +342,8 @@ export class Abilities {
       this.leap = null;
       this.areaDamage(p.pos, 3.4, L.coef, g, { knock: 10, color: '#ffe6a8', fx: 0xffe6a8 });
       g.events.emit('leapLand', { pos: p.pos.clone(), r: 3.4 });
-      g.fx.shake(0.4);
-      g.fx.stop(0.06);
+      g.fx.shake(0.5);
+      g.fx.stop(0.08);
       g.fx.rumble(0.8, 0.6, 140);
       const q = this.queued;
       this.queued = null;

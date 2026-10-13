@@ -72,6 +72,7 @@ export class Rig {
     }
     const mesh = new THREE.SkinnedMesh(merged, material);
     mesh.castShadow = true;
+    mesh.renderOrder = 2; // characters draw after the world and after occlusion silhouettes (fx/silhouette.js)
     this.root.add(mesh);
     mesh.bind(new THREE.Skeleton(this.list));
     // Poses move limbs well outside the rest shape; cull with a roomier sphere.

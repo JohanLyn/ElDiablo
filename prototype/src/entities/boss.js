@@ -23,7 +23,7 @@ export class Neti extends Enemy {
     const p = g.player;
     const mgr = g.enemies;
     if (!this.aggro) {
-      if (dist < 17 && !p.dead) { this.aggro = true; g.hud.banner(this.name, 'boss'); }
+      if (dist < 17 && !p.dead) { this.aggro = true; if (!this.introDone) g.hud.banner(this.name, 'boss'); }
       return;
     }
     if (p.dead) { this.aggro = false; this.hp = this.maxHp; this.setState('idle'); return; }

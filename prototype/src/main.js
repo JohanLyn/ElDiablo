@@ -293,7 +293,8 @@ function boot() {
   let fogTimer = 0, saveTimer = 0;
   // One gameplay tick. Hit-stop freezes gameplay for a moment while effects keep running.
   g.simulate = (realDt) => {
-    const dt = fx.hitstop > 0 ? 0 : realDt;
+    g.bossIntro.tick(realDt); // boss entrances freeze gameplay but advance on this clock (src/fx/bossIntro.js)
+    const dt = fx.hitstop > 0 || g.bossIntro.active ? 0 : realDt * fx.timeScale; // timeScale < 1 during kill slow-mo
     g.time += dt;
     const region = world.regionAt(player.pos.x, player.pos.z);
     g.inSafeZone = region === 'town';
