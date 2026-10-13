@@ -129,7 +129,8 @@ export class Hud {
     // Quest tracker
     const q = g.quests.active;
     const tracker = $('tracker');
-    if (!g.quests.accepted && !g.quests.done) tracker.innerHTML = `<div class="q-title">The First Gate</div><div class="q-obj">Speak with Ninsun in Eridu Outpost</div>`;
+    const pend = g.quests.pending;
+    if (pend) tracker.innerHTML = `<div class="q-title">${escapeHtml(pend.title)}</div><div class="q-obj">Speak with Ninsun in Eridu Outpost</div>`;
     else if (q) tracker.innerHTML = `<div class="q-title">${escapeHtml(q.title)}</div><div class="q-obj">${escapeHtml(g.quests.objectiveText())}</div>`;
     else tracker.innerHTML = `<div class="q-title">The First Gate is open</div><div class="q-obj">Six gates remain. Explore, hunt elites and gather loot.</div>`;
 

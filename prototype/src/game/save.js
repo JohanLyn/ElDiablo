@@ -1,3 +1,5 @@
+import { V2_QUEST_IDS } from './quests.js';
+
 // Local save in the browser. Storage can be unavailable (private windows,
 // sandboxed previews), so every access is guarded and the game runs without it.
 
@@ -49,6 +51,9 @@ export function migrate(data) {
   if (data.version === 2) {
     // v3 adds tutorial/onboarding flags; v2 heroes have already played, so skip the intro.
     data.flags = { ...(data.flags ?? {}), introDone: true, tutorialSkipped: true };
+    // v2 stored the quest by index in a 5-quest chain; v3 stores the quest id.
+    const q = data.quests ?? {};
+    if (q.id === undefined) data.quests = { id: V2_QUEST_IDS[q.index ?? 0] ?? 'done', progress: q.progress ?? 0, accepted: q.accepted ?? false };
     data.version = 3;
   }
   return data.version === SAVE_VERSION ? data : null;

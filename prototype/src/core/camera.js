@@ -25,11 +25,21 @@ export class CameraRig {
     this._tmp = new THREE.Vector3();
   }
 
+  // Scripted camera (title flyover). fn(t) -> { pos: Vector3, look: Vector3 }
+  setCinematic(fn) { this.cinematic = fn; this.cineTime = 0; }
+
   cycleZoom(dir = 1) { this.zoomIndex = (this.zoomIndex + dir + ZOOMS.length) % ZOOMS.length; }
 
   snapTo(pos) { this.update(0, pos, new THREE.Vector3(), null, true); }
 
   update(dt, playerPos, playerVel, fx, instant = false) {
+    if (this.cinematic) {
+      this.cineTime += dt;
+      const shot = this.cinematic(this.cineTime);
+      this.camera.position.copy(shot.pos);
+      this.camera.lookAt(shot.look);
+      return;
+    }
     const k = (rate) => (instant ? 1 : damp(rate, dt));
     this.distance += (ZOOMS[this.zoomIndex] - this.distance) * k(6);
     this.lookAhead.lerp(this._tmp.copy(playerVel).setY(0).multiplyScalar(0.3), k(3));

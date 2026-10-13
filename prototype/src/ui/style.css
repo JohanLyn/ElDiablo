@@ -214,3 +214,21 @@ body[data-device="pad"] .kbm, body:not([data-device="pad"]) .pad { display: none
   #hint { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .start { animation: none; } #banner { transition: none; } }
+
+/* ---------- onboarding ---------- */
+#tutorial { position: absolute; left: 50%; top: 31%; transform: translateX(-50%); max-width: min(560px, calc(100vw - 32px)); display: flex; gap: 12px; align-items: center; padding: 10px 16px; background: linear-gradient(180deg, rgba(30, 22, 14, 0.92), rgba(16, 11, 10, 0.92)); border: 1px solid var(--edge); border-radius: 6px; box-shadow: 0 6px 24px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(243,214,138,0.08); font-size: 16px; line-height: 1.35; }
+#tutorial kbd { font-size: 14px; padding: 4px 9px; white-space: nowrap; }
+#tutorial.pop { animation: tutpop 0.45s ease-out; }
+@keyframes tutpop { 0% { opacity: 0; transform: translate(-50%, 8px) scale(0.96); } 100% { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+#intro { background: radial-gradient(ellipse at center, rgba(8,5,8,0.35), rgba(4,2,4,0.85)); flex-direction: column; }
+.intro-lines { display: flex; flex-direction: column; gap: 18px; align-items: center; text-align: center; max-width: 60ch; }
+.intro-lines p { margin: 0; font: 600 clamp(18px, 2.4vw, 26px) var(--font-display); color: var(--ink); letter-spacing: 0.03em; text-shadow: 0 2px 12px #000; opacity: 0; transform: translateY(6px); transition: opacity 1.4s ease, transform 1.4s ease; text-wrap: balance; }
+.intro-lines p.on { opacity: 1; transform: none; }
+.intro-lines p.title { font-size: clamp(30px, 5vw, 54px); color: var(--gold); }
+.intro-skip { position: absolute; bottom: 28px; right: 32px; color: var(--muted); font-size: 13px; }
+.intro-skip span { font-weight: 700; color: var(--gold-hi); }
+#dialog { display: grid; grid-template-columns: 112px minmax(0, 1fr); column-gap: 16px; }
+#dialog .d-portrait { grid-row: 1 / span 3; width: 112px; height: 112px; border: 2px solid var(--edge); border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 1px #000; }
+#dialog .d-portrait canvas { width: 100%; height: 100%; display: block; }
+#dialog .d-name, #dialog .d-text, #dialog .d-options { grid-column: 2; }
+@media (max-width: 640px) { #dialog { grid-template-columns: 1fr; } #dialog .d-portrait { display: none; } #dialog .d-name, #dialog .d-text, #dialog .d-options { grid-column: 1; } }

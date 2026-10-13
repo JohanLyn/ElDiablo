@@ -16,11 +16,13 @@ import { EnemyManager } from './entities/enemies.js';
 import { Loot } from './game/loot.js';
 import { Interactions } from './game/interact.js';
 import { QuestLog } from './game/quests.js';
-import { generateItem } from './game/items.js';
+import { generateItem, itemScore } from './game/items.js';
 import { loadSave, writeSave, clearSave, encodeBytes, decodeBytes } from './game/save.js';
 import { Hud } from './ui/hud.js';
 import { UI } from './ui/ui.js';
 import { Fog, FOG_RES } from './ui/mapdraw.js';
+import { Story, START } from './game/story.js';
+import { Tutorial } from './game/tutorial.js';
 
 export const VERSION = '0.3.0-alpha';
 
@@ -77,11 +79,27 @@ function boot() {
       loot.clearAll();
       abilities.reset();
       g.started = true;
+      g.tutorial.start();
+      if (!save) {
+        // New hero: cold open over the flyover, then the caravan ambush.
+        hud.show(false);
+        g.started = false;
+        ui.playIntro(() => {
+          rig.setCinematic(null);
+          g.started = true;
+          hud.show(true);
+          g.story.begin();
+          tether.reset(g);
+          g.save();
+        });
+        return;
+      }
+      rig.setCinematic(null);
       hud.show(true);
       const wp = world.waypoints.find((w) => w.id === player.lastWaypoint) ?? world.waypoints[0];
-      g.teleport(wp.x, wp.z + 3);
+      if (g.flags.introDone) g.teleport(wp.x, wp.z + 3); else g.teleport(START.x, START.z);
+      g.story.resume();
       tether.reset(g);
-      if (!save) hud.banner('Eridu Outpost', 'region', 'Speak with Ninsun, High Priestess');
       g.save();
     },
 
@@ -149,14 +167,14 @@ function boot() {
       abilities.reset();
       if (g.inDungeon) g.leaveDungeon();
       const wp = world.waypoints.find((w) => w.id === player.lastWaypoint) ?? world.waypoints[0];
-      g.teleport(wp.x, wp.z + 3);
+      if (g.flags.introDone) g.teleport(wp.x, wp.z + 3); else g.teleport(START.x, START.z);
     },
 
     onEnemyKilled(e) {
       player.gainXp(e.xp, g);
       loot.dropFor(e, g);
       const region = e.camp?.region ?? world.regionAt(e.pos.x, e.pos.z);
-      g.quests.notify({ type: 'kill', region, named: e.named?.id, boss: e.boss ? 'neti' : undefined });
+      g.quests.notify({ type: 'kill', region, enemy: e.type, named: e.named?.id, boss: e.boss ? 'neti' : undefined });
       g.interactions.onKill(e);
       if (e.boss) {
         hud.banner('Neti has fallen', 'boss', 'The First Gate is open');
@@ -181,8 +199,22 @@ function boot() {
     questMarker() {
       const q = g.quests;
       if (q.done) return null;
-      if (!q.accepted) { const n = world.npcs.find((x) => x.id === 'ninsun'); return { x: n.x, z: n.z }; }
+      if (q.pending) { const n = world.npcs.find((x) => x.id === q.pending.giver); return { x: n.x, z: n.z }; }
+      const o = q.active.objective;
+      if (o.type === 'kill' && !g.inDungeon) {
+        // Point at the nearest camp that still holds the monsters you need.
+        let best = null, bd = Infinity;
+        for (const c of enemies.camps) {
+          if (c.region !== o.region || c.state === 'cleared') continue;
+          if (o.enemy && !c.members.includes(o.enemy)) continue;
+          const d = Math.hypot(c.x - player.pos.x, c.z - player.pos.z);
+          if (d < bd) { bd = d; best = c; }
+        }
+        if (best) return { x: best.x, z: best.z };
+      }
       const m = q.active.marker;
+      if (g.questMarkers?.[m]) return g.questMarkers[m];
+      if (m === 'ev-ritual') return { x: world.ritual.x, z: world.ritual.z };
       if (m.startsWith('wp-')) { const w = WAYPOINTS.find((x) => x.id === m); return { x: w.x, z: w.z }; }
       if (m === 'named-aqrabu') return { x: AQRABU.x, z: AQRABU.z };
       if (m === 'boss-neti' && g.inDungeon) return DUNGEON_SPOTS.boss;
@@ -192,12 +224,15 @@ function boot() {
   g.interactions = new Interactions(g);
   const ui = new UI(g);
   g.ui = ui;
+  g.story = new Story(g);
+  g.tutorial = new Tutorial(g);
   window.__game = g; // handy for debugging in the console and for automated smoke tests
+  window.__itemScore = itemScore;
 
   function bindQuestEvents() {
     g.quests.onChange((kind, q) => {
       g.events.emit('questUpdate', { kind, quest: q });
-      if (kind === 'accepted' && g.quests.index > 0) hud.banner(`New quest: ${q.title}`, 'quest', q.objective.text);
+      if (kind === 'accepted') hud.banner(`New quest: ${q.title}`, 'quest', q.objective.text);
       if (kind === 'completed') {
         hud.banner(`Quest complete: ${q.title}`, 'quest', `+${q.reward.xp} XP · +${q.reward.gold} gold`);
         player.gold += q.reward.gold;
@@ -208,15 +243,53 @@ function boot() {
     });
   }
 
-  // Title screen: the camera rests over Eridu Outpost.
+  // Title screen: a slow flyover from the cracked First Gate south to Eridu.
   player.init(null);
   g.teleport(TOWN.x, TOWN.z + 4);
   tether.reset(g);
+  const path = new THREE.CatmullRomCurve3([[0, -150], [-40, -70], [-70, 0], [-20, 50], [30, 100], [8, 168]].map(([x, z]) => new THREE.Vector3(x, 0, z)));
+  rig.setCinematic((t) => {
+    const k = 0.5 - Math.cos((t / 90) * Math.PI) * 0.5; // ease back and forth over 90 s
+    const p = path.getPointAt(Math.min(0.999, k));
+    const ahead = path.getPointAt(Math.min(1, k + 0.04));
+    const h = world.heightAt(p.x, p.z);
+    return { pos: new THREE.Vector3(p.x, h + 34 + Math.sin(t * 0.2) * 4, p.z + 26), look: new THREE.Vector3(ahead.x, world.heightAt(ahead.x, ahead.z), ahead.z - 6) };
+  });
   document.getElementById('loading').remove();
   ui.showTitle(!!loadSave());
 
-  let last = performance.now();
   let fogTimer = 0, saveTimer = 0;
+  // One gameplay tick. Hit-stop freezes gameplay for a moment while effects keep running.
+  g.simulate = (realDt) => {
+    const dt = fx.hitstop > 0 ? 0 : realDt;
+    g.time += dt;
+    const region = world.regionAt(player.pos.x, player.pos.z);
+    g.inSafeZone = region === 'town';
+    g.combatNearby = enemies.list.some((e) => e.alive && e.spawning <= 0 && (e.aggro || e.boss) && e.pos.distanceToSquared(player.pos) < 64);
+    if (input.pressed.zoom || input.pressed.zoomWheel) rig.cycleZoom();
+    if (input.pressed.portal) g.startTownPortal();
+    if (dt > 0) {
+      g.story.update(dt);
+      player.update(dt, g);
+      abilities.update(dt, g);
+      tether.update(dt, g);
+      enemies.update(dt, g);
+      loot.update(dt, g);
+      g.interactions.update(dt);
+      for (let i = g.timers.length - 1; i >= 0; i--) {
+        const t = g.timers[i];
+        t.t -= dt;
+        if (t.t <= 0) { g.timers.splice(i, 1); t.fn(); }
+      }
+    }
+    g.tutorial.update(realDt);
+    fogTimer -= realDt;
+    if (fogTimer <= 0 && !g.inDungeon) { fogTimer = 0.25; g.fog.reveal(player.pos.x, player.pos.z, 30); }
+    saveTimer += realDt;
+    if (saveTimer > 20 && !player.dead) { saveTimer = 0; g.save(); }
+  };
+
+  let last = performance.now();
   function frame(now) {
     const realDt = Math.min(Math.max(0, now - last) / 1000, 1 / 20);
     last = now;
@@ -230,32 +303,8 @@ function boot() {
     }
     ui.update(realDt);
 
-    if (g.started && !ui.open) {
-      const dt = fx.hitstop > 0 ? 0 : realDt;
-      g.time += dt;
-      const region = world.regionAt(player.pos.x, player.pos.z);
-      g.inSafeZone = region === 'town';
-      g.combatNearby = enemies.list.some((e) => e.alive && e.spawning <= 0 && (e.aggro || e.boss) && e.pos.distanceToSquared(player.pos) < 64);
-      if (input.pressed.zoom || input.pressed.zoomWheel) rig.cycleZoom();
-      if (input.pressed.portal) g.startTownPortal();
-      if (dt > 0) {
-        player.update(dt, g);
-        abilities.update(dt, g);
-        tether.update(dt, g);
-        enemies.update(dt, g);
-        loot.update(dt, g);
-        g.interactions.update(dt);
-        for (let i = g.timers.length - 1; i >= 0; i--) {
-          const t = g.timers[i];
-          t.t -= dt;
-          if (t.t <= 0) { g.timers.splice(i, 1); t.fn(); }
-        }
-      }
-      fogTimer -= realDt;
-      if (fogTimer <= 0 && !g.inDungeon) { fogTimer = 0.25; g.fog.reveal(player.pos.x, player.pos.z, 30); }
-      saveTimer += realDt;
-      if (saveTimer > 20 && !player.dead) { saveTimer = 0; g.save(); }
-    }
+    // g.simDriven: an external harness (e2e bot) calls g.simulate itself.
+    if (g.started && !ui.open && !g.simDriven) g.simulate(realDt);
     fx.update(g.started && !ui.open ? realDt : 0);
     world.update(realDt, performance.now() / 1000, player.pos);
     rig.update(realDt, player.pos, player.vel, fx);

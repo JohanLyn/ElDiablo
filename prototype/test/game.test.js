@@ -68,14 +68,19 @@ test('skill ranks need points and levels', () => {
 
 test('quest chain advances on matching events only', () => {
   const log = new QuestLog();
-  assert.equal(log.active, null);
+  assert.equal(log.active.id, 'q0', 'the caravan ambush starts at once');
+  log.notify({ type: 'event', id: 'ambush' });
+  assert.equal(log.active, null, 'q1 waits for Ninsun');
+  assert.equal(log.pending.id, 'q1');
   log.accept();
-  assert.equal(log.active.id, 'q1');
-  log.notify({ type: 'kill', region: 'marsh' });
-  assert.equal(log.progress, 0);
-  for (let i = 0; i < QUESTS[0].objective.count; i++) log.notify({ type: 'kill', region: 'sunfields' });
-  assert.equal(log.active.id, 'q2');
+  log.notify({ type: 'kill', region: 'sunfields', enemy: 'utukku' });
+  log.notify({ type: 'kill', region: 'marsh', enemy: 'gallu' });
+  assert.equal(log.progress, 0, 'only Gallu in the Sunfields count');
+  for (let i = 0; i < QUESTS[1].objective.count; i++) log.notify({ type: 'kill', region: 'sunfields', enemy: 'gallu' });
+  assert.equal(log.active.id, 'q1b');
+  log.notify({ type: 'event', id: 'ev-ritual' });
   log.notify({ type: 'discover', id: 'wp-marsh' });
+  log.notify({ type: 'kill', region: 'marsh', named: 'cistern-guardian' });
   log.notify({ type: 'kill', region: 'ruins', named: 'aqrabu' });
   log.notify({ type: 'enter', id: 'dungeon' });
   assert.equal(log.active.id, 'q5');
@@ -83,13 +88,16 @@ test('quest chain advances on matching events only', () => {
   assert.ok(log.done);
   const restored = new QuestLog(JSON.parse(JSON.stringify(log)));
   assert.ok(restored.done);
+  const mid = new QuestLog({ id: 'q2', progress: 0, accepted: true });
+  assert.equal(mid.active.id, 'q2');
 });
 
 test('save migration upgrades v2 and rejects junk', async () => {
   const { migrate, SAVE_VERSION } = await import('../src/game/save.js');
-  const v2 = { version: 2, player: { level: 3 }, flags: { netiLegendary: true } };
+  const v2 = { version: 2, player: { level: 3 }, flags: { netiLegendary: true }, quests: { index: 2, progress: 0, accepted: true } };
   const m = migrate(v2);
   assert.equal(m.version, SAVE_VERSION);
+  assert.equal(m.quests.id, 'q3', 'v2 index 2 was Sting of the Desert');
   assert.equal(m.flags.introDone, true);
   assert.equal(m.flags.netiLegendary, true);
   assert.equal(migrate({ version: 1, player: {} }), null);

@@ -10,11 +10,11 @@ import { DUNGEON_SPOTS } from '../world/dungeon.js';
 // ai: melee = chase + telegraphed arc, brute = slow chase + ground slam,
 // ranged = keep distance + bolt, caster = keep distance + delayed ground blast.
 export const TYPES = {
-  gallu: { name: 'Gallu', ai: 'melee', hp: 30, dmg: 9, speed: 3.6, radius: 0.55, range: 1.9, windup: 0.55, recover: 0.6, xp: 1, color: 0x7a1f1f },
-  utukku: { name: 'Utukku', ai: 'melee', hp: 14, dmg: 5, speed: 5.3, radius: 0.45, range: 1.5, windup: 0.3, recover: 0.45, xp: 0.6, color: 0x8fb8b0 },
-  lilitu: { name: 'Lilitu', ai: 'caster', hp: 22, dmg: 13, speed: 3.0, radius: 0.5, keep: 9, cooldown: 3.4, windup: 0.6, recover: 0.5, xp: 1.1, color: 0x4a2a5a },
-  scorpion: { name: 'Girtablullu', ai: 'ranged', hp: 24, dmg: 8, speed: 3.0, radius: 0.55, keep: 8, cooldown: 2.4, windup: 0.6, recover: 0.5, xp: 1.1, color: 0x6b5a2a, projSpeed: 12 },
-  asag: { name: 'Asag Stoneborn', ai: 'brute', hp: 80, dmg: 17, speed: 2.4, radius: 0.95, range: 2.8, windup: 1.0, recover: 0.9, xp: 2.2, color: 0x5a5048 },
+  gallu: { name: 'Gallu', ai: 'melee', hp: 36, dmg: 10, speed: 3.6, radius: 0.55, range: 1.9, windup: 0.55, recover: 0.6, xp: 1, color: 0x7a1f1f },
+  utukku: { name: 'Utukku', ai: 'melee', hp: 16, dmg: 6, speed: 5.3, radius: 0.45, range: 1.5, windup: 0.3, recover: 0.45, xp: 0.6, color: 0x8fb8b0 },
+  lilitu: { name: 'Lilitu', ai: 'caster', hp: 26, dmg: 14, speed: 3.0, radius: 0.5, keep: 9, cooldown: 3.4, windup: 0.6, recover: 0.5, xp: 1.1, color: 0x4a2a5a },
+  scorpion: { name: 'Girtablullu', ai: 'ranged', hp: 28, dmg: 9, speed: 3.0, radius: 0.55, keep: 8, cooldown: 2.4, windup: 0.6, recover: 0.5, xp: 1.1, color: 0x6b5a2a, projSpeed: 12 },
+  asag: { name: 'Asag Stoneborn', ai: 'brute', hp: 95, dmg: 18, speed: 2.4, radius: 0.95, range: 2.8, windup: 1.0, recover: 0.9, xp: 2.2, color: 0x5a5048 },
   neti: { name: 'Neti, Keeper of the First Gate', ai: 'boss', hp: 1000, dmg: 22, speed: 3.2, radius: 1.5, xp: 30, color: 0x6a5a8a },
 };
 

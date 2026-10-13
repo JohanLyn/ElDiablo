@@ -176,6 +176,7 @@ export class Interactions {
       R.state = 'idle';
       R.cooldown = 180;
       g.hud.banner('Event complete!', 'event');
+      g.quests.notify({ type: 'event', id: 'ev-ritual' });
       const ilvl = monsterLevelFor(REGIONS.sunfields.level, p.level);
       g.loot.dropChest(3, new THREE.Vector3(W.x, g.world.heightAt(W.x, W.z), W.z), g, ilvl);
       p.gainXp(60 + ilvl * 20, g);

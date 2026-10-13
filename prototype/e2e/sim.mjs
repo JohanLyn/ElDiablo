@@ -15,6 +15,7 @@ await page.goto(URL);
 await page.waitForFunction(() => window.__game, null, { timeout: 60000 });
 await page.evaluate(() => {
   const g = window.__game;
+  g.simDriven = true;
   window.sim = {
     step(n, each) {
       const dt = 1 / 30;
@@ -25,12 +26,8 @@ await page.evaluate(() => {
         g.input.aim = { x: 0, z: 0, mag: 0, active: false, mouse: false };
         g.input.device = 'pad';
         each?.(i);
-        const region = g.world.regionAt(g.player.pos.x, g.player.pos.z);
-        g.inSafeZone = region === 'town';
-        g.combatNearby = g.enemies.list.some((e) => e.alive && e.spawning <= 0 && (e.aggro || e.boss) && e.pos.distanceToSquared(g.player.pos) < 64);
-        g.time += dt;
-        g.player.update(dt, g); g.abilities.update(dt, g); g.tether.update(dt, g); g.enemies.update(dt, g); g.loot.update(dt, g); g.interactions.update(dt);
-        for (let j = g.timers.length - 1; j >= 0; j--) { const t = g.timers[j]; t.t -= dt; if (t.t <= 0) { g.timers.splice(j, 1); t.fn(); } }
+        g.simulate(dt);
+        g.fx.update(dt);
       }
     },
     // Walk toward the nearest live enemy and attack; optional skills; optional god mode.
@@ -55,7 +52,12 @@ await page.evaluate(() => {
 });
 const log = async (label, fn) => { const r = await page.evaluate(fn); console.log(label.padEnd(18), JSON.stringify(r)); };
 
-await log('start', () => { const g = window.__game; g.ui.startGame(true); return sim.s(); });
+await log('start', () => { const g = window.__game; g.ui.startGame(true); g.ui.finishIntro(); return sim.s(); });
+await log('caravan ambush', () => {
+  const g = window.__game;
+  sim.fight(900, { god: false });
+  return { introDone: !!g.flags.introDone, ...sim.s() };
+});
 await log('talk ninsun', () => { const g = window.__game; g.ui.talk(g.world.npcs[0]); g.ui.dialog.focus = 0; g.ui.chooseOption(); return sim.s(); });
 await log('sunfields fight', () => {
   const g = window.__game;

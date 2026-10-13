@@ -1,8 +1,8 @@
 import { Menus } from './menus.js';
 import { drawMap } from './mapdraw.js';
 import { escapeHtml } from './hud.js';
-import { QUESTS } from '../game/quests.js';
 import { HALF } from '../world/layout.js';
+import { portrait } from './portraits.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -65,6 +65,7 @@ export class UI {
     if (this.mode === 'map') return this.updateMap();
     if (this.mode === 'dialog') return this.updateDialog();
     if (this.mode === 'title') return this.updateTitle();
+    if (this.mode === 'intro') { this.updateIntro(dt); return; }
     if (this.mode === 'death' && (input.pressed.confirm || input.pressed.skill1)) this.respawn();
   }
 
@@ -124,10 +125,11 @@ export class UI {
     let text, options;
     if (npc.id === 'ninsun') {
       p.potions = p.maxPotions;
-      if (!q.accepted && !q.done) {
-        text = QUESTS[0].intro;
+      const pend = q.pending;
+      if (pend && pend.giver === 'ninsun') {
+        text = pend.intro;
         options = [
-          { label: `Accept: ${QUESTS[0].title}`, run: () => { q.accept(); g.hud.banner(`Quest: ${QUESTS[0].title}`, 'quest', QUESTS[0].objective.text); g.save(); } },
+          { label: `Accept: ${pend.title}`, run: () => { q.accept(); g.save(); } },
           { label: 'Not yet', run: () => {} },
         ];
       } else {
@@ -159,6 +161,8 @@ export class UI {
     const el = $('dialog');
     el.hidden = false;
     el.querySelector('.d-name').textContent = npc.name;
+    const pf = el.querySelector('.d-portrait');
+    pf.replaceChildren(portrait(npc.id));
     el.querySelector('.d-text').innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
     this.renderDialog();
   }
@@ -215,6 +219,38 @@ export class UI {
     $('title').hidden = true;
     this.closed();
     this.g.start(fresh);
+  }
+
+  // Cold open: story cards over the flyover, then hand control to the hero.
+  playIntro(onDone) {
+    const lines = [
+      ['In the days when the gods still walked the land between the rivers…', ''],
+      ['the First of the Seven Gates of Kur cracked open.', ''],
+      ['Its servants pour across the plains of Eridu, and the caravans burn.', ''],
+      ['The Seven Gates of Kur', 'title'],
+    ];
+    const box = $('intro').querySelector('.intro-lines');
+    box.innerHTML = lines.map(([t, c]) => `<p class="${c}">${t}</p>`).join('');
+    $('intro').hidden = false;
+    this.mode = 'intro';
+    this.intro = { t: 0, onDone, els: [...box.children] };
+  }
+
+  updateIntro(dt) {
+    const I = this.intro;
+    I.t += dt;
+    I.els.forEach((el, i) => el.classList.toggle('on', I.t > 0.6 + i * 2.6));
+    const input = this.g.input;
+    if (I.t > 13 || input.pressed.confirm || input.pressed.back || input.pressed.skill1) this.finishIntro();
+  }
+
+  finishIntro() {
+    if (this.mode !== 'intro') return;
+    $('intro').hidden = true;
+    this.closed();
+    const done = this.intro.onDone;
+    this.intro = null;
+    done?.();
   }
 
   showDeath() { this.mode = 'death'; $('death').hidden = false; }

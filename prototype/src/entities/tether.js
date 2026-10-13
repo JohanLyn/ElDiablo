@@ -8,8 +8,8 @@ import { rollDamage } from '../game/stats.js';
 // spirit sweeps toward nearby enemies by itself at reduced power.
 const MAX_REACH = 6.5;
 const HEIGHT = 1.1;
-const HIT_INTERVAL = 0.25;
-const TICK_COEF = 0.32;
+const HIT_INTERVAL = 0.3;
+const TICK_COEF = 0.2;
 const AUTO_MULT = 0.6;
 const MAX_PATCHES = 70;
 
@@ -119,7 +119,7 @@ export class Tether {
     this.B.y = g.world.heightAt(this.B.x, this.B.z) + HEIGHT + Math.sin(g.time * 3) * 0.12;
 
     const tipSpeed = dt > 0 ? this.prevB.distanceTo(this.B) / dt : 0;
-    const targetSweep = this.mode === 'manual' ? clamp((tipSpeed - 5) / 14, 0, 1.5) : 0;
+    const targetSweep = this.mode === 'manual' ? clamp((tipSpeed - 5) / 14, 0, 1) : 0;
     this.sweep += (targetSweep - this.sweep) * damp(targetSweep > this.sweep ? 20 : 5, dt);
 
     const len = Math.hypot(this.B.x - this.A.x, this.B.z - this.A.z);
@@ -156,7 +156,7 @@ export class Tether {
       e.tetherCd = HIT_INTERVAL;
       g.fx.burst(this._tmp.set(r.cx, this.A.y, r.cz), this.aspect(g).color, 3, 3, { life: 0.3 });
       g.events.emit('tetherHit', { pos: this._tmp.clone(), aspect: this.aspect(g).id, enemy: e });
-      const coef = TICK_COEF * (id === 'lapis' ? 1.5 : id === 'bulwark' ? 0.6 : 1);
+      const coef = TICK_COEF * (id === 'lapis' ? 1.3 : id === 'bulwark' ? 0.6 : 1);
       const { amount, crit } = rollDamage(stats, coef, Math.random, mult);
       let knockX = 0, knockZ = 0;
       if (id === 'chain') {

@@ -21,7 +21,7 @@ export const STAT_INFO = {
 // XP needed to go from `level` to `level + 1`.
 export function xpToNext(level) {
   if (level >= MAX_LEVEL) return Infinity;
-  return Math.round(60 * Math.pow(level, 1.6));
+  return Math.round(100 * level * level);
 }
 
 // XP granted for killing a monster.

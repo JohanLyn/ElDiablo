@@ -283,7 +283,7 @@ export class Menus {
     const q = this.g.quests;
     const cur = q.active;
     const list = QUESTS.map((x, i) => `<div class="${i < q.index ? 'done' : ''}">${i < q.index ? '✓' : i === q.index ? '◆' : '·'} ${x.title}</div>`).join('');
-    const body = !q.accepted ? `<h2>The First Gate</h2><p>Ninsun, High Priestess of Eridu Outpost, waits for you by the temple.</p>`
+    const body = q.pending ? `<h2>${escapeHtml(q.pending.title)}</h2><p>Ninsun, High Priestess of Eridu Outpost, waits for you by the temple.</p>`
       : cur ? `<h2>${cur.title}</h2><p>${escapeHtml(cur.intro)}</p><p><b>${escapeHtml(q.objectiveText())}</b></p><p class="tt-type">Reward: ${cur.reward.xp} XP, ${cur.reward.gold} gold${cur.reward.item ? `, a ${cur.reward.item.rarity} item` : ''}</p>`
         : `<h2>The First Gate is open</h2><p>Neti has fallen. Six gates remain, and the land is still full of things to kill. Hunt elites, clear the Ganzir Stair again for better loot, and finish the Ritual of the Gallu.</p>`;
     return `<div class="quest-log"><div>${body}</div><div><h3>Main story</h3>${list}</div></div>`;
