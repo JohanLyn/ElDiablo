@@ -3,6 +3,7 @@
 // follow how fast the player whips the tether. The graph is created lazily and torn
 // down after it has been silent for a few seconds, so an idle tether costs nothing.
 const ASPECT_INDEX = { lapis: 0, fire: 1, chain: 2, bulwark: 3 };
+const ASPECT_GAIN = [1, 1, 4, 0.55]; // loudness balance between the four timbres
 
 export class TetherHum {
   constructor(eng) {
@@ -60,7 +61,7 @@ export class TetherHum {
     const chainG = gain(0);
     const chainBP = bq('bandpass', 700, 5);
     const c1 = osc('square', 180), c2 = osc('square', 181.7);
-    const cs = gain(0.07);
+    const cs = gain(0.17);
     c1.connect(cs); c2.connect(cs);
     chain(cs, chainBP, chainG);
     const rattleAM = gain(0.5);
@@ -68,7 +69,7 @@ export class TetherHum {
     const rattleLfoG = gain(0.5);
     rattleLfo.connect(rattleLfoG);
     rattleLfoG.connect(rattleAM.gain);
-    chain(noise(this.eng.noise.white), bq('highpass', 3800), rattleAM, gain(0.1), chainG);
+    chain(noise(this.eng.noise.white), bq('highpass', 3800), rattleAM, gain(0.06), chainG);
 
     // 3 bulwark: deep hum
     const bulG = gain(0);
@@ -107,9 +108,9 @@ export class TetherHum {
     if (!this.nodes) this.build();
     const n = this.nodes, t = this.ctx.currentTime, tc = 0.05;
     const s = Math.min(1.5, sweep);
-    n.out.gain.setTargetAtTime(this.level * 0.2, t, tc);
+    n.out.gain.setTargetAtTime(this.level * 0.085, t, tc);
     const ai = ASPECT_INDEX[aspect] ?? 0;
-    n.groups.forEach((g, i) => g.gain.setTargetAtTime(i === ai ? 1 : 0, t, 0.12));
+    n.groups.forEach((g, i) => g.gain.setTargetAtTime(i === ai ? ASPECT_GAIN[i] : 0, t, 0.12));
     // pitch / brightness rise with the whip
     const f = 520 * (1 + s * 0.9);
     n.l1.frequency.setTargetAtTime(f, t, tc);

@@ -86,7 +86,7 @@ const COMBAT_OSTINATO = [0, -1, 0, -1, 1, -1, 0, -1, 0, -1, 4, -1, 1, -1, 0, 3];
 const BOSS_OSTINATO = [0, 0, -1, 0, 1, 0, -1, 0, 0, 0, -1, 4, 1, -1, 3, 1];
 
 export class Music {
-  constructor(eng, synth, seed = 20260901) {
+  constructor(eng, synth, seed = Math.floor(Math.random() * 2 ** 31)) {
     this.eng = eng;
     this.S = synth;
     this.ctx = eng.ctx;
@@ -112,6 +112,7 @@ export class Music {
     this.hidden = false;
     this.levelsDirty = true;
     this.stats = { notes: 0, ticks: 0, resyncs: 0 };
+    this.maxGap = 0.025;
     this.buildLayers();
     this.buildBeds();
   }
@@ -266,7 +267,8 @@ export class Music {
   }
 
   // ---- scheduler -----------------------------------------------------------------------------------
-  lookahead() { return this.hidden ? 1.2 : 0.12; }
+  // Look-ahead grows when the main thread is busy (timer ticks arrive late), so notes never underrun.
+  lookahead() { return this.hidden ? 1.2 : clamp(0.1 + this.maxGap * 1.4, 0.12, 0.9); }
 
   stepDur() {
     const P = PROFILES[this.profileId ?? this.pendingId];
@@ -277,6 +279,12 @@ export class Music {
   tick(now = this.ctx.currentTime, lookahead = this.lookahead()) {
     if (!this.running && !this.manual) return;
     this.stats.ticks++;
+    const wall = performance.now();
+    if (this.lastTickMs !== undefined && !this.manual) {
+      const gap = (wall - this.lastTickMs) / 1000;
+      this.maxGap = Math.max(gap > 0.5 ? 0.5 : gap, this.maxGap * 0.995); // slowly forgets
+    }
+    this.lastTickMs = wall;
     if (this.nextTime < now - 0.1) { this.nextTime = now + 0.02; this.stats.resyncs++; }
     const horizon = now + lookahead;
     let guard = 0;
@@ -399,7 +407,7 @@ export class Music {
     this.stats.notes++;
     switch (ev.kind) {
       case 'pad': choir(S, this.layers.pad.in, { midis: ev.midis, dur: Math.max(1, ev.dur * 0.55), a: Math.min(2.5, ev.dur * 0.3), r: Math.min(3, ev.dur * 0.4), vowel: P.pad.vowel, g: 0.1 }); break;
-      case 'lyre': lyre(S, this.layers.lyre.in, { midi: ev.midi, g: 0.2 * (ev.vel ?? 1), bright: P.lyre?.bright ?? 0.5, damp: P.lyre?.damp ?? 0.996, dur: 2.6 }); break;
+      case 'lyre': lyre(S, this.layers.lyre.in, { midi: ev.midi, g: 0.2 * (ev.vel ?? 1), bright: P.lyre?.bright ?? 0.5, damp: P.lyre?.damp ?? 0.996, dur: 2.2 }); break;
       case 'reed': reed(S, this.layers.reed.in, { midi: ev.midi, dur: Math.max(0.2, ev.dur * sd * 0.92), g: 0.075 * (ev.vel ?? 1), from: ev.from ?? null }); break;
       case 'bell': S.bell(this.layers.bell.in, { f: midiToHz(ev.midi), g: 0.09 * (ev.vel ?? 1), dur: 2.8, vary: false }); break;
       case 'horn': horn(S, this.layers[this.boss > 0.5 ? 'boss' : 'combat'].in, { midi: ev.midi, dur: ev.dur, g: 0.17, open: 1500, a: 0.1, r: 0.5 }); break;

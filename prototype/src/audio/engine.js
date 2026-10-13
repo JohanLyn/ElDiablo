@@ -165,7 +165,7 @@ export class Engine {
     const c = this.ctx;
     const L = this.listener;
     let sp = { audible: true, dist: 0, gain: 1, pan: 0, lp: 20000 };
-    if (pos) sp = spatialize(pos.x - L.x, pos.z - L.z, L.rx, L.rz);
+    if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) sp = spatialize(pos.x - L.x, pos.z - L.z, L.rx, L.rz);
     if (!sp.audible) return null;
     const input = c.createGain();
     input.gain.value = gain * sp.gain;

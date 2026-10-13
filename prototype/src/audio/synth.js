@@ -149,7 +149,7 @@ export class Synth {
       buf = c.createBuffer(1, data.length, c.sampleRate);
       buf.copyToChannel(data, 0);
       this.pluckCache.set(key, buf);
-      if (this.pluckCache.size > 160) this.pluckCache.delete(this.pluckCache.keys().next().value);
+      if (this.pluckCache.size > 64) this.pluckCache.delete(this.pluckCache.keys().next().value);
     }
     const src = c.createBufferSource();
     src.buffer = buf;

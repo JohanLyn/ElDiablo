@@ -15,6 +15,9 @@ export const VOICE_LIMITS = {
   windup: 4, attack: 4, projectile: 3, hazard: 4, boss: 1, coin: 4, loot: 3, pickup: 3, stinger: 2, die: 4, chest: 2, portal: 1,
 };
 
+// Sound types dropped first when many voices are already playing
+const LOW_PRIORITY = new Set(['footstep', 'tether', 'coin', 'pickup', 'pyrePulse', 'projectile']);
+
 const HIT_SOUND = { gallu: 'hitDemon', utukku: 'hitGhost', lilitu: 'hitFlesh', scorpion: 'hitChitin', asag: 'hitStone', neti: 'hitBoss' };
 const SURFACE = { town: 'stone', sunfields: 'dirt', marsh: 'mud', ruins: 'sand', ashen: 'dust', dungeon: 'stone' };
 
@@ -26,7 +29,7 @@ export class Audio {
     this.synth = null;
     this.music = null;
     this.hum = null;
-    this.limiter = new VoiceLimiter(VOICE_LIMITS, 4, 40);
+    this.limiter = new VoiceLimiter(VOICE_LIMITS, 4, 32);
     this.unlocked = false;
     this.failed = false;
     this.lastHit = new WeakMap();
@@ -93,10 +96,12 @@ export class Audio {
     if (!this.live) return null;
     const def = SFX[name];
     if (!def) return null;
-    this.counts[name] = (this.counts[name] ?? 0) + 1;
     try {
       const eng = this.eng, S = this.synth;
       const now = eng.now;
+      // Under heavy load drop the least important chatter first (steps, tether ticks, pickups...).
+      if (LOW_PRIORITY.has(def.type) && this.limiter.voices.length >= 20) return null;
+      this.counts[name] = (this.counts[name] ?? 0) + 1;
       const vs = this.limiter.acquire(def.type, now, def.dur, def.gap);
       if (!vs) return null;
       const v = eng.voice({ pos: o.pos ?? null, bus: def.bus ?? 'sfx', send: (def.send ?? 0.2) * (o.send ?? 1), gain: (def.gain ?? 1) * (o.gain ?? 1) });
@@ -207,8 +212,13 @@ export class Audio {
   }
 
   // ---- per-frame --------------------------------------------------------------------------------------
-  update(dt) {
+  update() {
     const g = this.g;
+    // Audio runs on real elapsed time: the game clamps its own dt at 50 ms, which would make
+    // fades and the heartbeat crawl on a slow machine.
+    const nowMs = performance.now();
+    const dt = Math.min(0.25, Math.max(0, (nowMs - (this.lastMs ?? nowMs)) / 1000));
+    this.lastMs = nowMs;
     this.time += dt;
     // Unlock on a gamepad press too (keyboard/mouse are handled by DOM listeners).
     if (!this.unlocked || (this.ctx && this.ctx.state !== 'running' && !document.hidden)) {
@@ -283,7 +293,7 @@ export class Audio {
 
   // Debug / measurement
   stats() {
-    return { voices: this.limiter.voices.length, stolen: this.limiter.stolen, rejected: this.limiter.rejected, musicNotes: this.music?.stats.notes ?? 0, state: this.ctx?.state, counts: this.counts };
+    return { voices: this.limiter.voices.length, pendingCleanups: this.eng?.cleanups.length, stolen: this.limiter.stolen, rejected: this.limiter.rejected, musicNotes: this.music?.stats.notes ?? 0, state: this.ctx?.state, counts: this.counts };
   }
 }
 
