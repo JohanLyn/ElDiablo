@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Rng } from '../core/rng.js';
 import { damp, angleDelta } from '../core/util.js';
-import { makeEnemyModel } from './enemyModels.js';
+import { makeEnemyModel, driveEnemy } from './enemyModels.js';
 import { monsterLevelFor, monsterLifeMult, monsterDamageMult, monsterXp } from '../game/stats.js';
 import { REGIONS, ROSTER, AQRABU, PLAY_LIMIT, TOWN, WAYPOINTS, flatSpots } from '../world/layout.js';
 import { regionAt, roadDistance } from '../world/terrain.js';
@@ -70,8 +70,11 @@ export class Enemy {
     this.facing = Math.random() * Math.PI * 2;
     this.affixTimer = 2 + Math.random() * 3;
 
-    this.group = makeEnemyModel(type, elite || named ? shade(this.def.color) : this.def.color);
+    const auraAffix = (named?.affixes ?? elite)?.[0];
+    const aura = auraAffix && ELITE_AFFIXES[auraAffix] ? parseInt(ELITE_AFFIXES[auraAffix].color.slice(1), 16) : (elite || named ? 0xf2d24b : 0);
+    this.group = makeEnemyModel(type, elite || named ? shade(this.def.color) : this.def.color, { aura: elite || named ? aura : 0 });
     this.group.scale.setScalar(this.scale);
+    if (this.group.userData.aura) this.group.userData.aura.holder.scale.setScalar(this.def.radius * 1.7);
     this.mat = this.group.userData.mat;
     this.group.position.set(x, -2, z);
     this.pos = this.group.position;
@@ -372,14 +375,31 @@ export class EnemyManager {
     const p = g.player;
     const ground = g.world.heightAt(e.pos.x, e.pos.z);
     if (e.spawning > 0) {
+      // Rise from the ground while dissolving in (reverse of the death dissolve).
+      if (!e.spawnTotal) e.spawnTotal = Math.max(e.spawning, 0.01);
       e.spawning -= dt;
-      e.pos.y = ground - 2 * Math.max(0, e.spawning / SPAWN_TIME);
+      const k = Math.max(0, e.spawning / e.spawnTotal);
+      e.pos.y = ground - 0.9 * k;
+      e.group.visible = true;
+      const u = e.group.userData.mat.userData.u;
+      u.uDissolve.value = k > 0 ? Math.min(1, k * 1.05) : 0;
+      u.uBase.value = ground - 0.2;
+      driveEnemy(e, dt, g, Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z));
       return;
     }
     if (!e.alive) {
+      // Collapse, then burn away in a noise dissolve with an ember edge.
+      if (!e.dyingTotal) { e.dyingTotal = e.boss ? 1.8 : 0.62; e.dying = e.dyingTotal; if (e.group.userData.aura) e.group.userData.aura.holder.visible = false; }
       e.dying -= dt;
-      const k = Math.max(0, e.dying / 0.5);
-      e.group.scale.set(e.scale * (1 + (1 - k) * 0.3), e.scale * k, e.scale * (1 + (1 - k) * 0.3));
+      const k = 1 - Math.max(0, e.dying) / e.dyingTotal;
+      const u = e.group.userData.mat.userData.u;
+      const d = Math.min(1, Math.max(0, (k - (e.boss ? 0.45 : 0.22)) / (e.boss ? 0.55 : 0.78)));
+      u.uDissolve.value = d;
+      u.uBase.value = e.pos.y;
+      e.flash = Math.max(0, e.flash - dt * 6);
+      e.mat.emissive.setRGB(e.flash, e.flash * 0.9, e.flash * 0.8);
+      if (d > 0.3 && !e.shadowOff) { e.shadowOff = true; e.group.userData.rig.setShadows(false); }
+      driveEnemy(e, dt, g, 0);
       return;
     }
     const dist = Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z);
@@ -442,15 +462,20 @@ export class EnemyManager {
     e.group.rotation.y = e.facing;
     e.flash = Math.max(0, e.flash - dt * 6);
     e.mat.emissive.setRGB(e.flash + (e.burn > 0 ? 0.25 : 0), e.flash * 0.9 + (e.burn > 0 ? 0.08 : 0), e.flash * 0.8 + (e.slow > 0 ? 0.3 : 0) + (e.vulnerable > 0 ? 0.15 : 0));
+    // Far enemies animate at a third of the rate and drop their shadows.
+    e.animDt = (e.animDt || 0) + dt;
+    if (dist < 46 || ((e.id + (e.animTick = (e.animTick || 0) + 1)) % 3 === 0)) {
+      driveEnemy(e, e.animDt, g, dist);
+      e.animDt = 0;
+    }
+    const wantShadow = dist < 34;
+    if (wantShadow !== e.shadowOn) { e.shadowOn = wantShadow; e.group.userData.rig.setShadows(wantShadow); }
     if (!e.boss) {
-      const wobble = e.state === 'windup' ? Math.sin(e.stateTime * 40) * 0.05 : 0;
-      e.group.scale.set(e.scale * (1 + wobble), e.scale * (1 - wobble), e.scale * (1 + wobble));
       e.bar.visible = e.hp < e.maxHp || !!(e.elite || e.named);
-      e.bar.position.set(e.pos.x, e.pos.y + 2.4 * e.scale + 0.2, e.pos.z);
+      e.bar.position.set(e.pos.x, e.pos.y + e.group.userData.height * e.scale + 0.2, e.pos.z);
       e.barFill.scale.x = Math.max(0.001, e.hp / e.maxHp);
       e.barFill.position.x = -0.53 * (1 - e.barFill.scale.x);
     }
-    if (e.group.userData.orb) e.group.userData.orb.scale.setScalar(e.state === 'windup' ? 1.6 : 1);
   }
 
   idle(e, dt) {

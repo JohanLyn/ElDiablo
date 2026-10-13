@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { computeStats, xpToNext, MAX_LEVEL, armorReduction } from '../game/stats.js';
 import { startingWeapon, KIND_SLOTS } from '../game/items.js';
 import { angleDelta, damp } from '../core/util.js';
+import { HeroModel } from './anim/hero.js';
 
 const RADIUS = 0.5;
 const EVADE_SPEED = 20;
@@ -13,26 +14,11 @@ export const INVENTORY_SIZE = 30;
 export class Player {
   constructor(scene) {
     this.group = new THREE.Group();
-    const skin = new THREE.MeshStandardMaterial({ color: 0xc98f62, roughness: 0.7 });
-    this.cloakMat = new THREE.MeshStandardMaterial({ color: 0x3a64c8, roughness: 0.6 });
-    const gold = new THREE.MeshStandardMaterial({ color: 0xd6a740, metalness: 0.85, roughness: 0.3 });
-    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 0.9, 4, 10), this.cloakMat);
-    body.position.y = 0.95;
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), skin);
-    head.position.y = 1.75;
-    const helm = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.5, 10), gold);
-    helm.position.y = 2.05;
-    const belt = new THREE.Mesh(new THREE.TorusGeometry(0.43, 0.06, 6, 16), gold);
-    belt.rotation.x = Math.PI / 2;
-    belt.position.y = 0.95;
-    const cape = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.3, 0.06), new THREE.MeshStandardMaterial({ color: 0x8a2a2a, roughness: 0.9 }));
-    cape.position.set(0, 1.05, -0.42);
-    cape.rotation.x = 0.12;
-    this.weaponPivot = new THREE.Group();
-    this.weaponPivot.position.y = 1.1;
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 1.5), gold);
-    blade.position.set(0.55, 0, 0.75);
-    this.weaponPivot.add(blade);
+    // The Gatewalker is built on the procedural rig (see anim/hero.js).
+    this.model = new HeroModel();
+    this.anim = this.model.anim;
+    this.cloakMat = this.model.material; // flashed on hit
+    this.weaponPivot = new THREE.Group(); // legacy handle (abilities still writes to it); the rig animates the real weapon
     this.trailMat = new THREE.MeshBasicMaterial({ color: 0xffe2a0, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
     this.trail = new THREE.Mesh(new THREE.RingGeometry(1.0, 2.6, 24, 1, -0.9, 1.8), this.trailMat);
     this.trail.rotation.set(-Math.PI / 2, 0, -Math.PI / 2);
@@ -40,11 +26,10 @@ export class Player {
     this.barrierMat = new THREE.MeshBasicMaterial({ color: 0xffcf4a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
     this.barrierMesh = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 12), this.barrierMat);
     this.barrierMesh.position.y = 1.0;
-    for (const m of [body, head, helm, belt, blade, cape]) m.castShadow = true;
     // Warm carried light, only lit in dark places (dungeon, Ashen Approach).
     this.torch = new THREE.PointLight(0xffb070, 0, 14, 1.4);
     this.torch.position.set(0, 3, 0.5);
-    this.group.add(body, head, helm, belt, cape, this.weaponPivot, this.trail, this.barrierMesh, this.torch);
+    this.group.add(this.model.root, this.weaponPivot, this.trail, this.barrierMesh, this.torch);
     scene.add(this.group);
     this.pos = this.group.position;
     this.vel = new THREE.Vector3();
@@ -217,7 +202,7 @@ export class Player {
     const wantTorch = g.inDungeon ? 22 : g.world.regionAt(this.pos.x, this.pos.z) === 'ashen' ? 8 : 0;
     this.torch.intensity += (wantTorch - this.torch.intensity) * damp(4, dt);
     this.barrierMat.opacity = this.barrier > 0 ? 0.18 + Math.sin(g.time * 6) * 0.05 : Math.max(0, this.barrierMat.opacity - dt * 2);
-    if (this.state !== 'attack') this.weaponPivot.rotation.y += (0.6 - this.weaponPivot.rotation.y) * damp(12, dt);
+    this.model.update(this, dt, g);
   }
 
   setState(s) { this.state = s; this.stateTime = 0; }
