@@ -122,7 +122,7 @@ await log('dungeon + neti', () => {
   g.enterDungeon(); sim.step(60);
   const boss = g.enemies.list.find((e) => e.boss);
   g.teleport(boss.pos.x, boss.pos.z + 8); sim.step(60);
-  sim.fight(4000, { skills: [2, 3, 4, 5, 6], filter: (e) => e.boss || e.pos.distanceTo(boss.pos) < 14 });
+  sim.fight(8000, { skills: [2, 3, 4, 5, 6], filter: (e) => e.boss || e.pos.distanceTo(boss.pos) < 14 });
   return { bossHp: Math.round(boss.hp), bossAlive: boss.alive, shielded: boss.shielded, exitPortal: !!g.interactions.exitPortal, legendaryDropped: g.loot.items.some((L) => L.item.rarity === 'legendary' && L.pos.distanceTo(boss.pos) < 15), ...sim.s() };
 });
 await log('menus/map/dialog', () => {
