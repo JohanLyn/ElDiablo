@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { F } from './atlas.js';
-import { TAU, rr, smooth, clamp01 } from './shared.js';
+import { TAU, rr, clamp01 } from './shared.js';
 import { angleDelta, damp } from '../core/util.js';
 import { driveEnemy } from '../entities/enemyModels.js';
 
@@ -18,6 +18,7 @@ const NETI = { kind: 'neti', name: 'NETI', sub: 'Keeper of the First Gate', dur:
 const VOICE = { kind: 'voice', name: 'The Drowned Voice', sub: 'Singer of the Cistern of Enki', dur: 3.8, trigger: 18, dist: 12, height: 3.4, look: 2.0, dist2: 9, height2: 2.6, look2: 2.4 };
 
 const _v = new THREE.Vector3();
+const ease = (t) => { t = clamp01(t); return t * t * (3 - 2 * t); };
 
 export class BossIntro {
   constructor(g, v) {
@@ -66,6 +67,7 @@ export class BossIntro {
     const g = this.g, v = this.v;
     this.active = true; this.e = e; this.cfg = cfg; this.t = 0; this.stage = 0; this.roar = 0; this.skipped = false;
     e.introDone = true;
+    e.group.visible = true; // far-away monsters are hidden until the simulation ticks them
     const bx = e.pos.x, bz = e.pos.z, by = v.ground(bx, bz);
     e.introGround = by;
     const p = g.player.pos;
@@ -172,7 +174,7 @@ export class BossIntro {
       g.events.emit('bossIntro', { stage: 'roar', boss: this.e, kind: 'neti', name: this.cfg.name, pos: this.e.pos });
     }
     // Rear back, hold, settle.
-    this.roar = smooth(clamp01((t - 1.0) / 0.3)) * (1 - smooth(clamp01((t - 2.1) / 0.8)));
+    this.roar = ease(clamp01((t - 1.0) / 0.3)) * (1 - ease(clamp01((t - 2.1) / 0.8)));
   }
 
   roarBurst(bx, gy, bz, hex) {
@@ -194,11 +196,11 @@ export class BossIntro {
   // ------------------------------------------------------------ Drowned Voice
   playVoice(t, dt, bx, bz, gy) {
     const g = this.g, v = this.v, e = this.e;
-    const k = smooth(clamp01((t - 0.1) / 1.7));
+    const k = ease(clamp01((t - 0.1) / 1.7));
     const u = e.group.userData.mat.userData.u;
     e.pos.y = gy - 3.2 * (1 - k) + 0.1;
     e.spawning = Math.max(0.0001, 1 - k);
-    u.uDissolve.value = 1 - smooth(clamp01((t - 0.15) / 1.5));
+    u.uDissolve.value = 1 - ease(clamp01((t - 0.15) / 1.5));
     u.uBase.value = gy - 3.4;
     if (this.stage === 0 && t > 0.05) {
       this.stage = 1;
@@ -230,7 +232,7 @@ export class BossIntro {
       this.roarBurst(bx, gy, bz, 0x5fe0ff);
       g.events.emit('bossIntro', { stage: 'roar', boss: e, kind: 'voice', name: this.cfg.name, pos: e.pos });
     }
-    this.roar = smooth(clamp01((t - 1.65) / 0.3)) * (1 - smooth(clamp01((t - 2.6) / 0.8))) * 0.9;
+    this.roar = ease(clamp01((t - 1.65) / 0.3)) * (1 - ease(clamp01((t - 2.6) / 0.8))) * 0.9;
   }
 
   // ------------------------------------------------------------------ camera
@@ -238,14 +240,14 @@ export class BossIntro {
     const t = this.t, cfg = this.cfg, S = this.shot;
     const tail = 0.8, mid = cfg.dur - tail;
     if (t < 0.9) {
-      const k = smooth(t / 0.9);
+      const k = ease(t / 0.9);
       S.pos.lerpVectors(this.p0, this.p1, k); S.look.lerpVectors(this.l0, this.l1, k);
     } else if (t < mid) {
-      const k = smooth((t - 0.9) / (mid - 0.9));
+      const k = ease((t - 0.9) / (mid - 0.9));
       S.pos.lerpVectors(this.p1, this.p2, k); S.look.lerpVectors(this.l1, this.l2, k);
       S.pos.add(this.g.fx.shakeOffset(_v));
     } else {
-      const k = smooth(Math.min(1, (t - mid) / tail));
+      const k = ease(Math.min(1, (t - mid) / tail));
       S.pos.lerpVectors(this.p2, this.p0, k); S.look.lerpVectors(this.l2, this.l0, k);
     }
     return S;
