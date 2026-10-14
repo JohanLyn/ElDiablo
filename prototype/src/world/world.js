@@ -19,6 +19,7 @@ import { TimeOfDay } from './timeofday.js';
 import { FOG, installFog } from './shaders/fog.js';
 import { createLook, copyLook, blendLook, keyElevation, EnvBaker, LOOK_COLORS, LOOK_NUMS } from './env.js';
 import { createShafts } from './shafts.js';
+import { createLiving } from './life.js'; // living-world hook (1/3): set pieces + critters
 
 // Atmosphere = time-of-day look (env.js keyframes, driven by world.tod) +
 // a per-region modifier (this table) layered on top. Each region keeps its
@@ -179,6 +180,7 @@ export function buildWorld(scene, settings = null) {
   buildLandmarks(scene, colliders);
   scatterProps(scene, colliders);
   const shafts = createShafts(scene, env, settings);
+  const living = createLiving({ scene, env, lights, tod, settings }); // living-world hook (2/3)
   const town = buildTown(scene, colliders, lights);
   const dungeon = buildDungeon(scene, colliders, lights);
   const mapImage = buildMapImage();
@@ -393,6 +395,7 @@ export function buildWorld(scene, settings = null) {
 
       dungeon.cutaway.uPlayer.value.copy(playerPos);
       dungeon.update(t, region === 'dungeon' ? 'ganzir' : region === 'cistern' ? 'cistern' : null);
+      living.update(dt, t, playerPos, renderer); // living-world hook (3/3)
       lights.update(t, playerPos, tod);
       // Nearby lantern light for the marsh water's reflections.
       for (let i = 0; i < 4; i++) {

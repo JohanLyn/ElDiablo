@@ -112,7 +112,7 @@ export function buildTown(scene, colliders, lights) {
     colliders.addCircle(n.x, n.z, 0.6);
   }
 
-  dressTown(scene, colliders, { cx, cz, r });
+  dressTown(scene, colliders, { cx, cz, r }, lights);
 
   // Warm lights.
   for (const [lx, lz] of [[-6, -2], [8, 6], [0, -18]]) {

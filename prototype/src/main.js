@@ -25,6 +25,7 @@ import { Story, START } from './game/story.js';
 import { Tutorial } from './game/tutorial.js';
 import { Audio as GameAudio } from './audio/audio.js';
 import { Vfx } from './fx/vfx.js';
+import { Reveal } from './game/reveal.js'; // region reveal hook (1/4)
 
 export const VERSION = '0.3.0-alpha';
 
@@ -256,8 +257,10 @@ function boot() {
   settings.onChange((k) => { if (k === 'timeOfDay') applyTime(); });
   g.story = new Story(g);
   g.tutorial = new Tutorial(g);
+  g.reveal = new Reveal(g); // region reveal hook (2/4)
   g.audio = new GameAudio(g);
   installSystem(g); // pause on blur, pad-disconnect prompt, UI scale + colour-blind hooks
+  scene.userData.living?.bind(g); // living world (thunder events, fx) talks to the game through g
   window.__game = g; // handy for debugging in the console and for automated smoke tests
   window.__itemScore = itemScore;
 
@@ -285,7 +288,11 @@ function boot() {
     const p = path.getPointAt(Math.min(0.999, k));
     const ahead = path.getPointAt(Math.min(1, k + 0.04));
     const h = world.heightAt(p.x, p.z);
-    return { pos: new THREE.Vector3(p.x, h + 34 + Math.sin(t * 0.2) * 4, p.z + 26), look: new THREE.Vector3(ahead.x, world.heightAt(ahead.x, ahead.z), ahead.z - 6) };
+    const look = new THREE.Vector3(ahead.x, world.heightAt(ahead.x, ahead.z), ahead.z - 6);
+    // The flyover opens on the storm brewing over the First Gate, then swings south toward Eridu.
+    const w = 1 - Math.min(1, Math.max(0, (t - 3) / 12)) ** 2 * (3 - 2 * Math.min(1, Math.max(0, (t - 3) / 12)));
+    look.lerp(new THREE.Vector3(0, 46, -204), w);
+    return { pos: new THREE.Vector3(p.x, h + 34 + Math.sin(t * 0.2) * 4, p.z + 26), look };
   });
   document.getElementById('loading').remove();
   ui.showTitle(!!loadSave());
@@ -337,10 +344,11 @@ function boot() {
     g.audio.update(realDt);
 
     // g.simDriven: an external harness (e2e bot) calls g.simulate itself.
-    if (g.started && !ui.open && !g.simDriven) g.simulate(realDt);
+    if (g.started && !ui.open && !g.simDriven && !g.revealing) g.simulate(realDt); // (3/4) paused during a region reveal
     fx.update(g.started && !ui.open ? realDt : 0);
     g.vfx.update(g.started && !ui.open ? realDt : 0);
     world.update(realDt, performance.now() / 1000, player.pos, renderer);
+    g.reveal.update(realDt); // region reveal hook (4/4): after world.update, before the camera
     rig.update(realDt, player.pos, player.vel, fx);
     loot.updateLabels(g, camera, g.highlightedLoot);
     if (g.started) hud.update(realDt, g);

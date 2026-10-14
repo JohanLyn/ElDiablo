@@ -6,7 +6,8 @@ import { flatSpots, WAYPOINTS, HALF } from './layout.js';
 import { canalDistance } from './canals.js';
 import { LANDMARKS, addBlocked } from './spots.js';
 import { patchLit } from './shaders/lit.js';
-import { getEnv } from './shaders/common.js';
+import { getEnv, NOISE_GLSL } from './shaders/common.js';
+import { STORM, ZIG, ZIG_BEACONS } from './setpieces.js';
 
 // Hand-built regional landmarks and set dressing: the broken lamassu and the
 // half-buried ziggurat in the Dune Ruins, the First Gate silhouette over the
@@ -120,7 +121,20 @@ function buildZiggurat(scene, colliders) {
     const a = rng.float(0, 6.28), r = rng.float(8, 18);
     stone.push(P(new THREE.DodecahedronGeometry(rng.float(0.7, 2.0), 0), i % 4, { x: Math.cos(a) * r, y: rng.float(0, 1.2), z: Math.sin(a) * r, sy: 0.75, ry: a }));
   }
-  for (let i = 0; i < 7; i++) stone.push(P(box(rng.float(1.2, 2.4), rng.float(0.8, 1.6), rng.float(1.2, 2.4)), i % 4, { x: rng.float(-3.5, 3.5), y: 4 * H - 0.3 + 0.6, z: rng.float(-3.5, 3.5), ry: rng.float(0, 3), rz: rng.float(-0.3, 0.3) }));
+  for (let i = 0; i < 7; i++) {
+    const bg = box(rng.float(1.2, 2.4), rng.float(0.8, 1.6), rng.float(1.2, 2.4)), o = { x: rng.float(-3.5, 3.5), y: 4 * H - 0.3 + 0.6, z: rng.float(-3.5, 3.5), ry: rng.float(0, 3), rz: rng.float(-0.3, 0.3) };
+    // Keep the summit fire bowls clear of the rubble (rng draws stay identical).
+    if (!ZIG_BEACONS.some(([bx, bz]) => Math.hypot(bx - o.x, bz - o.z) < 2.0) && Math.hypot(o.x, o.z) > 2.4) stone.push(P(bg, i % 4, o));
+  }
+  // Beacon bowls: a stone drum and a gold fire bowl at each corner, a larger pyre in the middle.
+  for (const [bx, bz] of ZIG_BEACONS) {
+    stone.push(P(cyl(0.55, 0.75, 0.7, 8), 3, { x: bx, y: ZIG.topY + 0.3, z: bz }));
+    accent.push(part(cyl(0.95, 0.55, 0.45, 10), GOLD, { x: bx, y: ZIG.topY + 0.88, z: bz }));
+    accent.push(part(new THREE.TorusGeometry(0.93, 0.07, 4, 12), LAPIS, { x: bx, y: ZIG.topY + 1.1, z: bz, rx: Math.PI / 2 }));
+  }
+  stone.push(P(cyl(1.5, 1.9, 0.6, 10), 3, { y: ZIG.topY + 0.25 }));
+  accent.push(part(cyl(1.7, 1.1, 0.6, 12), GOLD, { y: ZIG.topY + 0.8 }));
+  accent.push(part(new THREE.TorusGeometry(1.68, 0.1, 4, 14), LAPIS, { y: ZIG.topY + 1.08, rx: Math.PI / 2 }));
   // Sand pooled against the sides.
   for (let i = 0; i < 14; i++) {
     const side = i % 4, t = rng.float(-14, 14);
@@ -130,8 +144,8 @@ function buildZiggurat(scene, colliders) {
   addMesh(g, merge(stone), stoneMaterial());
   addMesh(g, merge(accent), accentMaterial());
   // Half-buried: tilt into the dune and sink the back.
-  g.position.set(Z.x, heightAt(Z.x, Z.z) - 2.6, Z.z);
-  g.rotation.set(0.05, 0.25, -0.06);
+  g.position.set(Z.x, heightAt(Z.x, Z.z) - ZIG.drop, Z.z);
+  g.rotation.set(...ZIG.rot);
   scene.add(g);
   colliders.addBox(Z.x - 13.5, Z.z - 13.5, Z.x + 13.5, Z.z + 13.5);
   return g;
@@ -159,20 +173,25 @@ function buildGiantGate(scene, colliders) {
   for (let i = -4; i <= 4; i++) stone.push(gradientPart(new THREE.ConeGeometry(1.6, 6, 4), base, top, { x: i * 5.6, y: 68.5, axis: 'y' }));
   addMesh(g, merge(stone), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
   addMesh(g, merge(accent), accentMaterial(), { cast: false });
-  // Faint violet glow in the opening, brightest at the bottom.
+  // Violet energy in the opening: breathes slowly, streams upward and flares with the lightning.
   const glow = new THREE.Mesh(
     new THREE.PlaneGeometry(26, 56),
     new THREE.ShaderMaterial({
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
-      uniforms: { uTime: getEnv().uTime },
+      uniforms: { uTime: getEnv().uTime, uFlash: STORM.flash },
       vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-      fragmentShader: `varying vec2 vUv; uniform float uTime;
+      fragmentShader: `varying vec2 vUv; uniform float uTime, uFlash;
+        ${NOISE_GLSL}
         void main() {
           float v = 1.0 - vUv.y;
-          float side = 1.0 - smoothstep(0.35, 0.5, abs(vUv.x - 0.5));
+          float side = 1.0 - smoothstep(0.32, 0.5, abs(vUv.x - 0.5));
           float swirl = sin(vUv.x * 9.0 + uTime * 0.5 + vUv.y * 5.0) * 0.5 + 0.5;
-          float a = (pow(v, 1.6) * 0.65 + 0.06) * side * (0.75 + swirl * 0.25);
-          gl_FragColor = vec4(vec3(0.42, 0.14, 0.9) * a * 1.5, a);
+          float stream = fbm3(vec2(vUv.x * 5.0, vUv.y * 3.0 - uTime * 0.35));
+          float breathe = 0.78 + 0.22 * sin(uTime * 0.8) + 0.08 * sin(uTime * 2.3);
+          float a = (pow(v, 1.6) * 0.65 + 0.06) * side * (0.6 + swirl * 0.2 + stream * 0.45) * breathe;
+          a += uFlash * side * (0.25 + v * 0.4);
+          vec3 c = mix(vec3(0.42, 0.14, 0.9), vec3(0.75, 0.55, 1.0), pow(stream, 2.0) * 0.8 + uFlash * 0.5);
+          gl_FragColor = vec4(c * a * 1.6, a);
         }`,
     }),
   );
