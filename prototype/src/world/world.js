@@ -43,7 +43,7 @@ const MOD_DEF = {
     lightTint: 0xfff6e6, skyTint: 0xfff8ee, hazeCol: 0xf0d6a0, hazeMix: 0.1, fogMul: 0.85, satMul: 1.06, shaftMul: 1.0,
   },
   marsh: { // teal-green mist hugging the hollows
-    lightTint: 0xe2fff0, skyTint: 0xc4efe0, groundTint: 0xb8d8b0, hazeCol: 0x7fb09c, hazeMix: 0.42, fogMul: 1.5, hD: 0.04, hB: 0.5, hRef: 0.0,
+    lightTint: 0xe2fff0, skyTint: 0xc4efe0, groundTint: 0xb8d8b0, hazeCol: 0x7fb09c, hazeMix: 0.36, fogMul: 1.25, hD: 0.03, hB: 0.5, hRef: 0.0,
     sunMul: 0.84, expMul: 0.98, bloomMul: 1.2, shaftMul: 1.6, satMul: 1.02, glowMul: 0.8, envMul: 0.9,
     gShadow: 0x1a4a4a, gHigh: 0xe6f2b4, gMix: 0.5,
   },
@@ -52,7 +52,7 @@ const MOD_DEF = {
     gShadow: 0x5a4650, gHigh: 0xfff0d2, gMix: 0.4,
   },
   ashen: { // bruised violet, ember glow underneath
-    lightTint: 0xffb6a8, skyTint: 0xa896c8, groundTint: 0xff7050, hazeCol: 0x6a4670, hazeMix: 0.55, fogMul: 1.4, hD: 0.05, hB: 0.35, hRef: 0.6,
+    lightTint: 0xffb6a8, skyTint: 0xa896c8, groundTint: 0xff7050, hazeCol: 0x6a4670, hazeMix: 0.45, fogMul: 1.1, hD: 0.035, hB: 0.35, hRef: 0.6,
     sunMul: 0.75, hemiMul: 1.05, expMul: 0.97, bloomMul: 1.25, satMul: 0.9, conAdd: 0.03, shaftMul: 0.9, glowMul: 1.3, envMul: 0.85,
     gShadow: 0x2a1a40, gHigh: 0xf0c4b4, gMix: 0.6,
   },
