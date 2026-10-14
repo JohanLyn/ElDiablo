@@ -101,8 +101,11 @@ await log('aqrabu', () => {
   const hits = { n: 0 };
   g.events.on('hit', (e) => { if (e.enemy === aq && aq.untouchable) hits.n++; });
   const t0 = g.time;
-  sim.fight(5000, { skills: [2, 3, 4, 5, 6], filter: (e) => aq.alive ? (e === aq || e.camp === c) : true });
-  const kill = +(g.time - t0).toFixed(1);
+  let killedAt = null;
+  g.events.on('kill', (e) => { if (e.enemy === aq) killedAt = g.time; });
+  sim.fight(5000, { skills: [2, 3, 4, 5, 6], filter: (e) => aq.alive && (e === aq || e.camp === c) });
+  const kill = killedAt === null ? null : +(killedAt - t0).toFixed(1);
+  sim.step(150); // the guaranteed first-kill drop lands: a Rare weapon "Sting of Aqrabu"
   const sting = g.loot.items.find((L) => L.item.name === 'Sting of Aqrabu');
   return { camp: c.state, introActive, seen, killSeconds: kill, aqDead: !aq.alive, hitsWhileBurrowed: hits.n, sting: sting ? `${sting.item.rarity} ${sting.item.base.name}` : null, ...sim.s() };
 });
