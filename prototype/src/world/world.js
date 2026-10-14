@@ -43,7 +43,7 @@ const MOD_DEF = {
     lightTint: 0xfff6e6, skyTint: 0xfff8ee, hazeCol: 0xf0d6a0, hazeMix: 0.1, fogMul: 0.85, satMul: 1.06, shaftMul: 1.0,
   },
   marsh: { // teal-green mist hugging the hollows
-    lightTint: 0xe2fff0, skyTint: 0xc4efe0, groundTint: 0xb8d8b0, hazeCol: 0x7fb09c, hazeMix: 0.36, fogMul: 1.25, hD: 0.03, hB: 0.5, hRef: 0.0,
+    lightTint: 0xe6fff2, skyTint: 0xcdf0e4, groundTint: 0xb8d8b0, hazeCol: 0x7fb09c, hazeMix: 0.3, fogMul: 1.2, hD: 0.05, hB: 0.5, hRef: 0.0,
     sunMul: 0.84, expMul: 0.98, bloomMul: 1.2, shaftMul: 1.6, satMul: 1.02, glowMul: 0.8, envMul: 0.9,
     gShadow: 0x1a4a4a, gHigh: 0xe6f2b4, gMix: 0.5,
   },
@@ -52,8 +52,8 @@ const MOD_DEF = {
     gShadow: 0x5a4650, gHigh: 0xfff0d2, gMix: 0.4,
   },
   ashen: { // bruised violet, ember glow underneath
-    lightTint: 0xffb6a8, skyTint: 0xa896c8, groundTint: 0xff7050, hazeCol: 0x6a4670, hazeMix: 0.45, fogMul: 1.1, hD: 0.035, hB: 0.35, hRef: 0.6,
-    sunMul: 0.75, hemiMul: 1.05, expMul: 0.97, bloomMul: 1.25, satMul: 0.9, conAdd: 0.03, shaftMul: 0.9, glowMul: 1.3, envMul: 0.85,
+    lightTint: 0xffc4b0, skyTint: 0xb8a0c8, groundTint: 0xff6a40, hazeCol: 0x80486a, hazeMix: 0.3, fogMul: 1.0, hD: 0.05, hB: 0.35, hRef: 0.6,
+    sunMul: 0.8, hemiMul: 0.85, expMul: 0.97, bloomMul: 1.35, satMul: 0.95, conAdd: 0.1, shaftMul: 0.9, glowMul: 2.0, envMul: 0.8,
     gShadow: 0x2a1a40, gHigh: 0xf0c4b4, gMix: 0.6,
   },
 };
@@ -95,22 +95,28 @@ export const SHRINE_TYPES = {
   ishtar: { name: 'Shrine of Ishtar', color: 0xff6aa8, buff: 'Blessing of Ishtar: +25% Critical Strike Chance', stats: { critChance: 25 } },
 };
 
+const _w = new THREE.Color();
 const _lum = (c) => c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722;
 // Layers the (damped) region modifier `M` on the day's look `L`, writing `F`.
 function applyMod(F, L, M, tmp) {
-  F.sunColor.copy(L.sunColor).multiply(M.lightTint);
-  F.hemiSky.copy(L.hemiSky).multiply(M.lightTint);
+  // Region tints fade at night so the moon stays blue-silver everywhere.
+  const nk = Math.min(1, L.moonK), tk = 1 - 0.7 * nk;
+  _w.set(0xffffff).lerp(M.lightTint, tk);
+  F.sunColor.copy(L.sunColor).multiply(_w);
+  F.hemiSky.copy(L.hemiSky).multiply(_w);
   F.fillColor.copy(L.fillColor);
   F.hemiGround.copy(L.hemiGround).multiply(M.groundTint);
-  F.zenith.copy(L.zenith).multiply(M.skyTint);
-  F.horizon.copy(L.horizon).multiply(M.skyTint);
-  if (M.hazeMix > 0.001) {
+  _w.set(0xffffff).lerp(M.skyTint, tk);
+  F.zenith.copy(L.zenith).multiply(_w);
+  F.horizon.copy(L.horizon).multiply(_w);
+  const hz = M.hazeMix * (1 - 0.65 * nk);
+  if (hz > 0.001) {
     // Region haze keeps its hue but takes the brightness of the time of day.
     const hl = _lum(M.hazeCol) || 1;
     tmp.copy(M.hazeCol).multiplyScalar(_lum(F.horizon) / hl);
-    F.horizon.lerp(tmp, M.hazeMix);
+    F.horizon.lerp(tmp, hz);
     tmp.copy(M.hazeCol).multiplyScalar(_lum(F.zenith) / hl * 1.0);
-    F.zenith.lerp(tmp, M.hazeMix * 0.35);
+    F.zenith.lerp(tmp, hz * 0.35);
   }
   F.glow.copy(L.glow);
   F.cloudLit.copy(L.cloudLit);

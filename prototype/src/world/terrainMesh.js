@@ -68,7 +68,7 @@ function patchTerrainMaterial(material, env) {
         cR = mix(cR, vbase, 0.18);
         cR *= 0.94 + 0.12 * nf;
         // Ashen: charred basalt dusted with pale ash.
-        vec3 cA = mix(vec3(0.11, 0.09, 0.115), vec3(0.3, 0.255, 0.3), smoothstep(0.4, 0.75, n2 * 0.7 + n1 * 0.4)) * (0.85 + 0.3 * nf);
+        vec3 cA = mix(vec3(0.045, 0.036, 0.055), vec3(0.2, 0.165, 0.21), smoothstep(0.4, 0.75, n2 * 0.7 + n1 * 0.4)) * (0.85 + 0.3 * nf);
         // Town: packed clay with a flagstone plaza.
         vec3 cT = vec3(0.45, 0.31, 0.19) * (0.88 + 0.24 * n1);
         float plaza = 1.0 - smoothstep(13.0, 19.0, length(gp - vec2(${TOWN.x.toFixed(1)}, ${TOWN.z.toFixed(1)})));
@@ -129,12 +129,12 @@ function patchTerrainMaterial(material, env) {
           normal = normalize(normal + (viewMatrix * vec4(dW, 0.0)).xyz);
         }`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-        totalEmissiveRadiance += vec3(0.62, 0.16, 1.0) * crack * crackPulse * 0.4;`)
+        totalEmissiveRadiance += (vec3(1.0, 0.3, 0.04) * 0.95 + vec3(0.62, 0.16, 1.0) * 0.18) * crack * crackPulse + vec3(0.5, 0.14, 0.9) * (1.0 - smoothstep(0.0, 0.16, crackV)) * crackMask * wA * (1.0 - roadK) * 0.16;`)
       .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
         reflectedLight.directDiffuse *= cloudSh;
         reflectedLight.directSpecular *= cloudSh;`);
   };
-  material.customProgramCacheKey = () => 'terrain-v1';
+  material.customProgramCacheKey = () => 'terrain-v2';
 }
 
 export function buildTerrain(scene, env) {

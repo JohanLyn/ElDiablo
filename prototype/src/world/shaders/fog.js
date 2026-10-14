@@ -44,9 +44,12 @@ vec4 kurFog(vec3 wpos, vec3 camPos, float density, vec3 baseColor, vec4 H, vec4 
   float ep = exp(clamp(-H.y * (wpos.y - H.z), -40.0, 20.0));
   float bdy = H.y * ray.y;
   float k = abs(bdy) < 1e-3 ? ec : (ec - ep) / bdy;
-  float tauH = H.x * k * dist;
-  float tauB = density * dist;
+  // Nothing near the hero: height fog ramps in over 25-55 m, distance fog starts at 30 m,
+  // and opacity is capped at 0.35 inside 50 m (it only closes in toward the horizon).
+  float tauH = H.x * k * dist * smoothstep(25.0, 55.0, dist);
+  float tauB = density * 1.3 * max(dist - 30.0, 0.0);
   float amt = 1.0 - exp(-(tauB * tauB + tauH));
+  amt = min(amt, mix(0.35, 1.0, smoothstep(50.0, 115.0, dist)));
   float sd = max(dot(dir, S.xyz), 0.0);
   float lobe = pow(sd, S.w) * 0.85 + pow(sd, 1.5) * 0.15;
   return vec4(baseColor + G * lobe * H.w, amt);
