@@ -264,6 +264,7 @@ function boot() {
   scene.userData.living?.bind(g); // living world (thunder events, fx) talks to the game through g
   window.__game = g; // handy for debugging in the console and for automated smoke tests
   window.__itemScore = itemScore;
+  window.__genItem = generateItem; // test harnesses kit out heroes with level-appropriate gear
 
   function bindQuestEvents() {
     g.quests.onChange((kind, q) => {

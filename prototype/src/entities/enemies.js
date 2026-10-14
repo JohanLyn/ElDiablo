@@ -18,7 +18,7 @@ export const TYPES = {
   lilitu: { name: 'Lilitu', ai: 'caster', hp: 26, dmg: 14, speed: 3.0, radius: 0.5, keep: 9, cooldown: 3.4, windup: 0.6, recover: 0.5, xp: 1.1, color: 0x4a2a5a },
   scorpion: { name: 'Girtablullu', ai: 'ranged', hp: 28, dmg: 9, speed: 3.0, radius: 0.55, keep: 8, cooldown: 2.4, windup: 0.6, recover: 0.5, xp: 1.1, color: 0x6b5a2a, projSpeed: 12 },
   asag: { name: 'Asag Stoneborn', ai: 'brute', hp: 95, dmg: 18, speed: 2.4, radius: 0.95, range: 2.8, windup: 1.0, recover: 0.9, xp: 2.2, color: 0x5a5048 },
-  neti: { name: 'Neti, Keeper of the First Gate', ai: 'boss', hp: 1000, dmg: 22, speed: 3.2, radius: 1.5, xp: 30, color: 0x6a5a8a },
+  neti: { name: 'Neti, Keeper of the First Gate', ai: 'boss', hp: 2000, dmg: 22, speed: 3.2, radius: 1.5, xp: 30, color: 0x6a5a8a },
 };
 
 export const ELITE_AFFIXES = {
@@ -228,7 +228,7 @@ export class EnemyManager {
         const type = rng.weighted(ROSTER[inst.roster]);
         const isElite = k === 0 && inst.elitePacks.includes(i);
         const e = new Enemy(isElite ? inst.eliteType : type, {
-          level: level + (isElite ? 1 : 0),
+          level, // elites are already tougher; no extra level on top
           elite: isElite ? Object.assign(pickAffixes(rng, 2), { prefix: rng.pick(ELITE_PREFIX) }) : null,
           x: spot.x + rng.float(-3, 3), z: spot.z + rng.float(-3, 3),
         }, this.scene);

@@ -6,7 +6,7 @@ import { CISTERN_ENTRANCE } from './layout.js';
 
 export const INSTANCES = {
   ganzir: {
-    id: 'ganzir', name: 'The Ganzir Stair', region: 'dungeon', level: 9, roster: 'dungeon',
+    id: 'ganzir', name: 'The Ganzir Stair', region: 'dungeon', level: 7, roster: 'dungeon',
     origin: { x: 0, z: -600 },
     rects: [
       [0, 0, 18, 18], // entry hall

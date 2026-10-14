@@ -234,7 +234,8 @@ export class Interactions {
   // Each instance ends in a guardian: Neti in the Ganzir Stair, a named champion elsewhere.
   spawnBoss(inst = INSTANCES.ganzir) {
     const g = this.g;
-    const level = monsterLevelFor(REGIONS[inst.region].level, g.player.level) + 2;
+    // Guardians sit a little above the hero; Neti only one level, so the first gate is a test, not a wall.
+    const level = monsterLevelFor(REGIONS[inst.region].level, g.player.level) + (inst.guardian ? 2 : 1);
     const at = inst.spots.boss;
     let boss;
     if (inst.guardian) {

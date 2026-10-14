@@ -10,7 +10,7 @@ export const REGIONS = {
   marsh: { name: 'Reed Marsh', level: 3, ground: [0.27, 0.37, 0.26] },
   ruins: { name: 'Dune Ruins', level: 5, ground: [0.7, 0.55, 0.36] },
   ashen: { name: 'Ashen Approach', level: 7, ground: [0.30, 0.25, 0.28] },
-  dungeon: { name: 'The Ganzir Stair', level: 9, ground: [0.2, 0.17, 0.2] },
+  dungeon: { name: 'The Ganzir Stair', level: 7, ground: [0.2, 0.17, 0.2] },
   cistern: { name: 'Cistern of Enki', level: 3, ground: [0.2, 0.26, 0.25] },
 };
 
