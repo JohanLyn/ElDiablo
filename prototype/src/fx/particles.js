@@ -113,6 +113,8 @@ class Layer {
       uniforms: { uAtlas: { value: atlas }, uK: { value: 0.4 } },
       vertexShader: VERT, fragmentShader: FRAG,
       transparent: true, depthWrite: false,
+      // Ground decals (mode 1/2) are built facing down from above's point of view; without this they are back-face culled and never show.
+      side: THREE.DoubleSide,
       // Glow layer: premultiplied with a partial "over" term (uK) so saturated colours
       // survive on bright sand instead of washing out to white like pure additive.
       blending: additive ? THREE.CustomBlending : THREE.NormalBlending,
