@@ -344,7 +344,7 @@ export class Gidim {
       e.pos.x = s.x + (dx / d) * R;
       e.pos.z = s.z + (dz / d) * R;
       e.vel.x = e.vel.z = 0;
-      e.knock.set((dx / d) * 3, 0, (dz / d) * 3);
+      e.knock.set((dx / d) * 6, 0, (dz / d) * 6); // shrinks back a pace
       if (G.hissCd <= 0) {
         G.hissCd = 1.6;
         this.stats.recoils++;

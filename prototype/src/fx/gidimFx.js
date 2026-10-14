@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { U, PREMULT, TAU, rr, clamp01, col0, col1 } from './shared.js';
+import { U, PREMULT, TAU, clamp01, col0, col1 } from './shared.js';
 import { F } from './atlas.js';
 import { VARIANTS } from '../game/gidimRules.js';
 
@@ -90,7 +90,7 @@ const MARK_FRAG = /* glsl */`
     float ringR = 0.12 + 0.86 * (1.0 - flare);
     float ring = smoothstep(0.1, 0.0, abs(r - ringR)) * flare * smoothstep(1.0, 0.7, r);
     float vis = uVis;
-    vec3 glow = vTint * (gl * (0.16 + 2.4 * vis * pulse) + char * vis * 0.3 + ring * 2.6 + flare * gl * 3.2);
+    vec3 glow = vTint * (gl * (0.16 + 2.4 * vis * pulse) + char * vis * 0.12 + ring * 2.6 + flare * gl * 3.2);
     float a = char * (0.5 - 0.2 * vis) + gl * 0.2 * (1.0 - vis);
     if (a + max(glow.r, max(glow.g, glow.b)) < 0.004) discard;
     gl_FragColor = vec4(glow, a);
@@ -234,7 +234,7 @@ export class GidimFx {
       const ay = this.surface(ch.ax, ch.az) + 0.25;
       const d = Math.hypot(e.pos.x - ch.ax, e.pos.z - ch.az);
       const slack = clamp01(1 - d / ch.len);
-      C.chain(ch.ax, ay, ch.az, e.pos.x, e.pos.y + 1.0, e.pos.z, slack + (e.gidim.tell > 0 ? 0 : 0), this.t);
+      C.chain(ch.ax, ay, ch.az, e.pos.x, e.pos.y + 1.0, e.pos.z, slack, this.t);
     }
     C.end();
   }
@@ -335,4 +335,3 @@ export class GidimFx {
   }
 }
 
-export { rr };

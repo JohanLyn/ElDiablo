@@ -546,12 +546,14 @@ export class EnemyManager {
     e.state = 'idle';
   }
 
-  // A gidim whose prey is inside a sanctuary: it hangs at the edge, watching, and does not attack.
+  // A gidim whose prey is inside a sanctuary: it presses toward the edge, slowly, and does not attack.
   hover(e, dt, g) {
     const p = g.player;
-    e.facing += angleDelta(e.facing, Math.atan2(p.pos.x - e.pos.x, p.pos.z - e.pos.z)) * damp(6, dt);
-    e.vel.x -= e.vel.x * damp(8, dt);
-    e.vel.z -= e.vel.z * damp(8, dt);
+    const dx = p.pos.x - e.pos.x, dz = p.pos.z - e.pos.z, d = Math.hypot(dx, dz) || 1;
+    const sp = e.def.speed * e.speedMult * 0.5;
+    e.facing += angleDelta(e.facing, Math.atan2(dx, dz)) * damp(6, dt);
+    e.vel.x += ((dx / d) * sp - e.vel.x) * damp(5, dt);
+    e.vel.z += ((dz / d) * sp - e.vel.z) * damp(5, dt);
     if (e.state !== 'chase') e.setState('chase');
     this.hideArc(e);
     e.cooldown = Math.max(e.cooldown, 0.6);
