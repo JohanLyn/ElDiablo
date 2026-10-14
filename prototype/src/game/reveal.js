@@ -17,7 +17,7 @@ const SHOTS = {
   town: { target: [0, 3, 152], lift: 30, back: 16, look: 0.85, fog: 140 },
   marsh: { target: [-108, 5, 26], lift: 26, back: 16, look: 0.9, fog: 220 },
   ruins: { target: [162, 17, 14], lift: 34, back: 18, look: 0.9, fog: 320 },
-  ashen: { target: [0, 42, -199], lift: 30, back: 18, look: 0.92, fog: 400 },
+  ashen: { target: [0, 58, -199], lift: 30, back: 18, look: 0.92, fog: 400 },
   dungeon: { target: null, lift: 30, back: 6, look: 1, fog: 0, ahead: [0, -16], },
   cistern: { target: null, lift: 30, back: 6, look: 1, fog: 0, ahead: [0, -16] },
 };
