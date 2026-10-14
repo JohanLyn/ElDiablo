@@ -108,7 +108,8 @@ function tremor(g, B, dt) {
   const v = g.vfx, gy = v.ground(B.px, B.pz);
   v.puffs(B.px, gy + 0.2, B.pz, 3, 0.5, 1.6, 1.4, SAND, 0.7, 1.9, 0.9, 0.55);
   v.motes(B.px, gy + 0.2, B.pz, 2, 0.4, 1.2, 2.5, 0xe8d4a0, 0x8a6a3a, 0.2, 0.55, 12, F.SHARD);
-  v.decal(B.px, B.pz, 1.8, F.CRACK, 0x1a1208, 0.6, 1.1, false);
+  v.decal(B.px, B.pz, 2.6, F.CRACK, 0x1a1208, 0.7, 1.8, false);
+  v.decal(B.px, B.pz, 2.2, F.CRACK, 0x9aff3a, 0.5, 0.5, true, 1.2); // the venom glints along the crack
   g.fx.shake(0.012);
 }
 

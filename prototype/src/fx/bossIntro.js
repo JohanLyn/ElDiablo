@@ -19,7 +19,7 @@ const NETI = { kind: 'neti', name: 'NETI', sub: 'Keeper of the First Gate', dur:
 const VOICE = { kind: 'voice', name: 'The Drowned Voice', sub: 'Singer of the Cistern of Enki', dur: 3.8, trigger: 18, dist: 12, height: 3.4, look: 2.0, dist2: 9, height2: 2.6, look2: 2.4 };
 
 // Aqrabu the Venomed rears up in the middle of his pillar ring (overworld: no dungeon, no instance).
-const AQRABU = { kind: 'aqrabu', name: 'AQRABU', sub: 'the Venomed', dur: 3.7, trigger: 16, dist: 11.5, height: 3.4, look: 2.1, dist2: 9, height2: 3.0, look2: 2.5 };
+const AQRABU = { kind: 'aqrabu', name: 'AQRABU', sub: 'the Venomed', dur: 3.7, trigger: 16, dist: 12.5, height: 4.8, look: 2.0, dist2: 9.5, height2: 4.1, look2: 2.5 };
 
 const _v = new THREE.Vector3();
 const ease = (t) => { t = clamp01(t); return t * t * (3 - 2 * t); };
@@ -200,12 +200,12 @@ export class BossIntro {
     this.roar = ease(clamp01((t - 1.0) / 0.3)) * (1 - ease(clamp01((t - 2.1) / 0.8)));
   }
 
-  roarBurst(bx, gy, bz, hex, hot = 0xe0d0ff, pulse = 0xc9b0ff) {
+  roarBurst(bx, gy, bz, hex, hot = 0xe0d0ff) {
     const g = this.g, v = this.v;
     g.fx.shake(0.75);
     g.fx.fovPunch(30);
     g.fx.rumble(0.9, 0.7, 500);
-    g.renderer.pulse(pulse, 0.28);
+    g.renderer.pulse(0xc9b0ff, 0.28);
     v.combat.waveT[2] = -9;
     v.combat.shock(bx, gy + 2.5, bz, 0.05, 24, 1.0, 2);
     v.ringFlat(bx, 0.12, bz, 2, 24, 1.0, hex, 1, 1.7);
@@ -245,8 +245,16 @@ export class BossIntro {
     }
     if (this.stage === 2 && t > 1.25) {
       this.stage = 3;
-      this.roarBurst(bx, gy, bz, 0x9aff3a, 0xeaffb0, 0xb8ff6a);
-      v.puffs(bx, gy + 0.3, bz, 18, 1.4, 7, 2.4, 0xcdb487, 1.2, 4, 1.2, 0.55);
+      // A shrill roar: a venom-green ring and column over a burst of sand (gentler than the dungeon bosses: the desert is bright).
+      g.fx.shake(0.6); g.fx.fovPunch(26); g.fx.rumble(0.9, 0.7, 500);
+      g.renderer.pulse(0xb8ff6a, 0.16);
+      v.combat.waveT[2] = -9;
+      v.combat.shock(bx, gy + 2.5, bz, 0.04, 22, 0.9, 2);
+      v.ringFlat(bx, 0.12, bz, 2, 22, 1.0, 0x9aff3a, 0.9, 1.5);
+      v.pillar(bx, gy, bz, 0x8fe030, 0xeaffb0, 1.1, 9, 0.9, 0.35);
+      v.puffs(bx, gy + 0.3, bz, 22, 1.4, 7, 2.4, 0xcdb487, 1.2, 4, 1.2, 0.5);
+      v.motes(bx, gy + 0.5, bz, 18, 1.6, 4, 7, 0xeaffb0, 0x58a020, 0.28, 1.0, 8, F.DOT);
+      v.flashLight(bx, gy + 3, bz, 0x9aff3a, 18, 0.5);
       g.events.emit('bossIntro', { stage: 'roar', boss: e, kind: 'aqrabu', name: this.cfg.name, pos: e.pos });
     }
     this.roar = ease(clamp01((t - 1.0) / 0.3)) * (1 - ease(clamp01((t - 2.3) / 0.8)));
