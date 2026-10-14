@@ -89,10 +89,22 @@ await log('ruins elites', () => {
 await log('aqrabu', () => {
   const g = window.__game;
   if (g.quests.active?.id === 'q2') { const w = g.world.waypoints.find((w) => w.id === 'wp-marsh'); g.teleport(w.x, w.z + 3); sim.step(10); }
+  const seen = { intro: 0, burrow: 0, erupt: 0, telegraph: 0 };
+  g.events.on('bossIntro', (e) => { if (e.kind === 'aqrabu' && e.stage === 'start') seen.intro++; });
+  g.events.on('aqrabuBurrow', () => seen.burrow++);
+  g.events.on('aqrabuEmerge', () => seen.erupt++);
+  g.events.on('aqrabuTelegraph', () => seen.telegraph++);
   const c = g.enemies.camps.find((c) => c.id === 'camp-aqrabu');
   g.teleport(c.x + 5, c.z + 5); sim.step(30);
-  sim.fight(2500, { skills: [2, 3, 4, 5, 6] });
-  return { camp: c.state, ...sim.s() };
+  const aq = c.enemies.find((e) => e.named?.id === 'aqrabu');
+  const introActive = g.bossIntro.active;
+  const hits = { n: 0 };
+  g.events.on('hit', (e) => { if (e.enemy === aq && aq.untouchable) hits.n++; });
+  const t0 = g.time;
+  sim.fight(5000, { skills: [2, 3, 4, 5, 6], filter: (e) => aq.alive ? (e === aq || e.camp === c) : true });
+  const kill = +(g.time - t0).toFixed(1);
+  const sting = g.loot.items.find((L) => L.item.name === 'Sting of Aqrabu');
+  return { camp: c.state, introActive, seen, killSeconds: kill, aqDead: !aq.alive, hitsWhileBurrowed: hits.n, sting: sting ? `${sting.item.rarity} ${sting.item.base.name}` : null, ...sim.s() };
 });
 await log('ritual event', () => {
   const g = window.__game;
@@ -100,6 +112,35 @@ await log('ritual event', () => {
   const started = g.interactions.ritual.state;
   sim.fight(2400, { skills: [2, 3] });
   return { started, state: g.interactions.ritual.state, kills: g.interactions.ritual.kills, cooldown: Math.round(g.interactions.ritual.cooldown), ...sim.s() };
+});
+await log('wailing pyres', () => {
+  const g = window.__game, I = g.interactions, P = I.pyres, W = I.pyreWorld;
+  g.player.life = g.player.stats.maxLife;
+  g.teleport(W.center.x + 12, W.center.z + 12); sim.step(30);
+  const hint = document.getElementById('event').hidden === false && /Wailing/.test(document.getElementById('event').textContent);
+  const rewardBefore = g.loot.items.length;
+  let completed = 0, lit = 0, startEv = 0;
+  g.events.on('pyresComplete', () => completed++);
+  g.events.on('pyreLit', () => lit++);
+  g.events.on('pyresStart', () => startEv++);
+  // Walk up to the first pyre and kindle it with the interact key.
+  const first = W.spots[0];
+  g.teleport(first.x, first.z + 2); sim.step(2);
+  const prompt = g.interactTarget?.label ?? null;
+  sim.step(1, () => { g.input.pressed.interact = true; });
+  const started = P.state;
+  // Stand beside each pyre in turn (god mode); proximity lights it in ~3 s while waves arrive.
+  let waves = 0;
+  for (let k = 0; k < 3; k++) {
+    const sp = W.spots[k];
+    g.teleport(sp.x, sp.z - 1.8);
+    sim.step(105, () => { g.player.life = g.player.stats.maxLife; });
+    waves = Math.max(waves, P.wave);
+  }
+  sim.step(5);
+  const mobs = g.enemies.list.filter((e) => e.pyreMob && e.alive).length;
+  const rewards = g.loot.items.slice(rewardBefore).map((L) => L.item.rarity);
+  return { hint, prompt, started, lit, startEv, completed, state: P.state, flag: !!g.flags.pyresDone, cooldown: Math.round(P.cooldown), waves, rewards, visualLit: W.lit.map((v) => +v.toFixed(2)), flamesAlive: mobs, ...sim.s() };
 });
 await log('cistern + guardian', () => {
   const g = window.__game;

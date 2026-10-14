@@ -6,7 +6,7 @@ import { createFlames, createGlow } from './shaders/glow.js';
 import { ARENA } from './spots.js';
 
 // Aqrabu's arena: a ring of broken pillars and leaning standing stones around his camp,
-// swept with drifts of sand, two braziers at the western approach and a few venom-green
+// swept with drifts of sand, two braziers flanking the west door and a few venom-green
 // war banners. Three draw calls (stone, flames, halos) and a handful of pooled-light
 // emitters; the colliders leave wide gaps (at least 4 m) so the fight never pins the hero.
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
@@ -17,13 +17,15 @@ const BRONZE = 0x9a6a2a, CLOTH = 0x5f8a2e, DARK = 0x2a1c12;
 
 export const ARENA_RING = 10.5;
 
-// Ring slots. Two wide entrances (west toward the road, north toward the gate) stay open.
+// Ring slots. The doors stay open: the west door (angle 2.7 rad) takes every approach from the
+// crossroads, the road end and the Cistern; the north-west door (-2.43 rad) faces the Ashen
+// Approach and the gate; a small east door is the way out the back.
+const DOORS = [[2.7, 0.5], [-2.43, 0.34], [0.4, 0.34]];
 function ringSlots(rng) {
   const N = 12, slots = [];
-  const gaps = [Math.PI, -2.43, 0.4];
   for (let i = 0; i < N; i++) {
     const a = (i / N) * Math.PI * 2 + 0.13;
-    const nearGap = gaps.some((c) => Math.abs(Math.atan2(Math.sin(a - c), Math.cos(a - c))) < 0.34);
+    const nearGap = DOORS.some(([c, w]) => Math.abs(Math.atan2(Math.sin(a - c), Math.cos(a - c))) < w);
     if (nearGap) continue;
     slots.push({ a: a + rng.float(-0.05, 0.05), r: ARENA_RING + rng.float(-0.5, 0.8), kind: rng.weighted([['pillar', 4], ['stub', 3], ['stone', 3]]) });
   }
@@ -81,7 +83,7 @@ export function buildAqrabuArena(g) {
   }
 
   // War banners on stakes inside the ring (venom-green cloth), and a skull cairn.
-  const stakes = [[-4.2, -3.4], [4.5, -2.6], [0.5, 5.2]];
+  const stakes = [[2.5, 4.4], [-0.6, 5.0], [4.4, -2.4]]; // off the doors' lines
   for (const [dx, dz] of stakes) {
     const x = ARENA.x + dx, z = ARENA.z + dz, y = ground(x, z);
     stone.push(part(cyl(0.06, 0.09, 3.4, 5), DARK, { x, y: y + 1.6, z }));
@@ -101,7 +103,7 @@ export function buildAqrabuArena(g) {
 
   // Two braziers flank the western approach. Their lights are pooled emitters (lit from dusk).
   const flames = [], halos = [], emitters = [];
-  const braz = [[ARENA_RING + 0.5, Math.PI - 0.42], [ARENA_RING + 0.5, Math.PI + 0.42]];
+  const braz = [[ARENA_RING + 0.5, DOORS[0][0] - 0.38], [ARENA_RING + 0.5, DOORS[0][0] + 0.38]];
   const bricks = [];
   for (const [r, a] of braz) {
     const x = ARENA.x + Math.cos(a) * r, z = ARENA.z + Math.sin(a) * r, y = ground(x, z);

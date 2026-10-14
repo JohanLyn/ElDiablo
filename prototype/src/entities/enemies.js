@@ -50,7 +50,7 @@ export class Enemy {
     const eliteMult = named ? (named.hpMult ?? 6) : elite ? 3.0 : 1;
     this.maxHp = Math.round(this.def.hp * monsterLifeMult(level) * eliteMult);
     this.hp = this.maxHp;
-    this.dmg = this.def.dmg * monsterDamageMult(level) * (elite ? 1.4 : 1);
+    this.dmg = this.def.dmg * monsterDamageMult(level) * (elite ? 1.4 : 1) * (named?.dmgMult ?? 1);
     this.speedMult = elite?.includes('fast') ? 1.4 : 1;
     this.scale = this.boss ? 1 : named ? 1.5 : elite ? 1.3 : 1;
     this.radius = this.def.radius * this.scale;
@@ -169,7 +169,7 @@ export class EnemyManager {
     // Aqrabu the Venomed and his guard.
     this.camps.push({
       id: 'camp-aqrabu', x: AQRABU.x, z: AQRABU.z, region: 'ruins', members: ['scorpion', 'scorpion', 'scorpion', 'gallu'],
-      named: { id: AQRABU.id, name: 'Aqrabu the Venomed', type: 'scorpion', affixes: ['fast', 'storm'], hpMult: 14, firstDrop: { flag: 'aqrabuSting', rarity: 'rare', kind: 'weapon', name: 'Sting of Aqrabu' } }, state: 'dormant', clearedAt: 0, enemies: [],
+      named: { id: AQRABU.id, name: 'Aqrabu the Venomed', type: 'scorpion', affixes: ['fast', 'storm'], hpMult: 30, dmgMult: 0.7, firstDrop: { flag: 'aqrabuSting', rarity: 'rare', kind: 'weapon', name: 'Sting of Aqrabu' } }, state: 'dormant', clearedAt: 0, enemies: [],
     });
   }
 
@@ -596,7 +596,7 @@ export class EnemyManager {
           if (def.ai === 'ranged') {
             this.fire(e.pos, e.facing, def.projSpeed, e.dmg, e.level);
             g.events.emit('enemyProjectile', { pos: e.pos, enemy: e });
-            if (e.named) { this.fire(e.pos, e.facing + 0.25, def.projSpeed, e.dmg, e.level); this.fire(e.pos, e.facing - 0.25, def.projSpeed, e.dmg, e.level); }
+            if (e.named && (!e.aqrabu || e.aqrabu.phase > 1)) { this.fire(e.pos, e.facing + 0.25, def.projSpeed, e.dmg, e.level); this.fire(e.pos, e.facing - 0.25, def.projSpeed, e.dmg, e.level); }
             this.hideArc(e);
           } else {
             this.hazard({ x: e.castAt.x, z: e.castAt.z, r: 2.3, delay: 1.0, dmg: e.dmg, color: 0xb04dff, level: e.level, onHit: () => this.onEnemyHit(e, g) });
