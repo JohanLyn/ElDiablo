@@ -204,6 +204,7 @@ body.colorblind .rmark.r-legendary::before, body.colorblind .loot-label.r-legend
 .t-foot { position: absolute; z-index: 1; bottom: 40px; left: 0; right: 0; text-align: center; color: var(--shell-dim); font-size: 13px; margin: 0; text-shadow: 0 1px 4px #000; }
 .t-corner { position: absolute; bottom: 40px; z-index: 1; font: 500 12px var(--font-body); letter-spacing: 0.06em; color: var(--shell-dim); text-shadow: 0 1px 3px #000; }
 .t-corner.l { left: 20px; } .t-corner.r { right: 20px; }
+@media (max-width: 760px) { .t-foot { bottom: 70px; } }
 .t-version { font: 600 12px var(--font-display); letter-spacing: 0.12em; color: var(--gold-lo); }
 
 /* ---------- pause / credits ---------- */
