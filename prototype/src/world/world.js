@@ -71,13 +71,13 @@ const FIXED_DEF = {
   dungeon: {
     sunColor: 0x8a7aff, hemiSky: 0x7a78c0, hemiGround: 0x4a3038, fillColor: 0x5a6aff,
     zenith: 0x0c0912, horizon: 0x1c1428, glow: 0x6a50c0, cloudLit: 0x2a2038, cloudDark: 0x120e1c, gShadow: 0x161a46, gHighlight: 0xffa86a,
-    sun: 0, hemi: 1.1, fill: 0, fogD: 0.02, glowAmt: 0, exposure: 1.04, envI: 0.55, bloom: 0.8, bloomThr: 0.7, bloomRad: 0.6,
+    sun: 0, hemi: 1.35, fill: 0, fogD: 0.02, glowAmt: 0, exposure: 1.04, envI: 0.55, bloom: 0.8, bloomThr: 0.7, bloomRad: 0.6,
     shaft: 0, stars: 0, cloudCover: 0, cloudShadow: 0, gSplit: 0.25, gSat: 1.08, gContrast: 1.1, vign: 0.42, grain: 0.04, ca: 0.8, lantern: 1, discK: 0, moonK: 0,
   },
   cistern: {
     sunColor: 0x7fe8ff, hemiSky: 0x6ab0b8, hemiGround: 0x2a4040, fillColor: 0x5fd0ff,
     zenith: 0x081416, horizon: 0x10262a, glow: 0x3fb0c0, cloudLit: 0x1a3038, cloudDark: 0x0a1a1e, gShadow: 0x0e3240, gHighlight: 0xc8fff0,
-    sun: 0, hemi: 1.1, fill: 0, fogD: 0.019, exposure: 1.04, envI: 0.6, glowAmt: 0, bloom: 0.8, bloomThr: 0.7, bloomRad: 0.6,
+    sun: 0, hemi: 1.35, fill: 0, fogD: 0.019, exposure: 1.04, envI: 0.6, glowAmt: 0, bloom: 0.8, bloomThr: 0.7, bloomRad: 0.6,
     shaft: 0, stars: 0, cloudCover: 0, cloudShadow: 0, gSplit: 0.24, gSat: 1.06, gContrast: 1.08, vign: 0.42, grain: 0.04, ca: 0.8, lantern: 1, discK: 0, moonK: 0,
   },
 };
@@ -262,6 +262,8 @@ export function buildWorld(scene, settings = null) {
     dungeon,
     tod,
     lights,
+    shafts,
+    envBake: baker, // { b: EnvBaker } for diagnostics (bakes, ms)
     heightAt,
     regionAt,
     sun,
