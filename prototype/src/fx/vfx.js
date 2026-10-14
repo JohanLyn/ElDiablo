@@ -10,6 +10,8 @@ import { makeGhost, makeWings } from './models.js';
 import { getTelegraphs, styleForColor } from './telegraph.js';
 import { ASPECTS } from '../game/skills.js';
 import { RARITY_FX } from './rarity.js';
+import { CombatFx } from './combat.js';
+import { BossIntro } from './bossIntro.js';
 
 const _col = new THREE.Color();
 const _v = new THREE.Vector3();
@@ -38,6 +40,7 @@ export class Vfx {
     this.ps.heightAt = this.surface;
     this.A = this.ps.add;
     this.B = this.ps.alpha;
+    this.G = this.ps.ground; // dark ground decals, under the telegraphs
     this.frame = 0;
     this.now = 0;
     this.hitBudget = MAX_HIT_FX;
@@ -47,6 +50,8 @@ export class Vfx {
     this.lastPulse = -1;
     this.later = [];
 
+    this.combat = new CombatFx(this);
+    g.bossIntro = this.intro = new BossIntro(g, this); // advanced from g.simulate (main.js)
     this.ribbons = new RibbonBatch(this.scene);
     this.slashes = new SlashPool(this.scene, 7);
 
@@ -217,7 +222,7 @@ export class Vfx {
 
   // Ground stain / crack on the terrain, alpha-blended (dark) or additive (glowing).
   decal(x, z, size, frame, hex, a, life, glow = false, k = 1) {
-    const L = glow ? this.A : this.B;
+    const L = glow ? this.A : this.G;
     const t = L.begin(frame);
     t.x = x; t.y = 0.05; t.z = z; t.s0 = t.s1 = size; t.life = life; t.a = a; t.mode = 1; t.rot = Math.random() * 6.28;
     t.fp = glow ? 1.5 : 0.6; t.fin = 0.02; c0(t, hex, k);
@@ -332,6 +337,9 @@ export class Vfx {
       this.motes(x, y + 0.2, z, 8, 1.4, 3, 4, 0xffd27a, 0xff8a2a, 0.3, 0.8, 8, F.SHARD, 1.2);
       this.flashLight(x, y + 1.6, z, 0xffb050, 26, 0.22);
       this.g.renderer.pulse(0xffd070, 0.07);
+      this.combat.shock(x, y + 0.6, z, 0.026, 7, 0.5, 1);
+      this.g.fx.kick(sf, cf, 7);
+      this.g.fx.fovPunch(14);
     }
   }
 
@@ -369,11 +377,11 @@ export class Vfx {
       this.ringBill(x, y, z, 0.5, 3.2, 0.2, 0xffe29a, 0.9, 1.8);
       this.glow(x, y, z, 4.2, 0xffcf6a, 0.14, 0.6, 1.5);
       this.motes(x, y, z, 6, 0.3, 4, 3, 0xffe6a0, 0xff9a2a, 0.28, 0.6, 9, F.SHARD, 1.3);
-      g.fx.stop(0.045);
-      g.fx.shake(0.1);
+      this.combat.critFeel(x, y, z, dx, dz, en.elite || en.boss || !!en.named);
       if (this.now - this.lastPulse > 0.18) { this.lastPulse = this.now; g.renderer.pulse(0xffffff, 0.09); }
       this.flashLight(x, y + 0.6, z, 0xffd890, 14, 0.15);
     }
+    this.combat.hit(en, e, x, y, z, dx, dz, crit, direct);
   }
 
   // ---------------------------------------------------------------------
@@ -427,6 +435,7 @@ export class Vfx {
     this.ringBill(b.x, b.y, b.z, 0.5, 4.5, 0.3, hex, 1, 1.8);
     this.ringFlat(b.x, b.y - 0.1, b.z, 0.5, 6.5, 0.4, hex, 0.9, 1.5, F.WAVE, 2);
     this.flashLight(b.x, b.y + 0.8, b.z, hex, 18, 0.22);
+    if (e.hits) this.combat.shock(b.x, b.y, b.z, 0.017, 5, 0.38, 0);
     if (e.aspect === 'fire') this.motes(b.x, b.y, b.z, 14, 1.4, 3, 5, 0xffd06a, 0xff4a10, 0.32, 0.9, -1);
   }
 
@@ -456,6 +465,7 @@ export class Vfx {
     this.sparks(p.x, gy + 0.3, p.z, 0, 0, 14, 11, 0, 0xffffff, 0x58b8ff, 0.3, 0.5, 14);
     this.puffs(p.x, gy + 0.2, p.z, 3, 0.4, 1.4, 0.6, 0x9a9aa6, 0.6, 1.5, 0.8, 0.25);
     this.flashLight(p.x, gy + 3, p.z, 0xa8dcff, 55, 0.3);
+    this.combat.shock(p.x, gy + 0.6, p.z, 0.014, 4.6, 0.34, 0);
   }
 
   genBolt(b) {
@@ -537,6 +547,8 @@ export class Vfx {
     this.sparks(p.x, gy + 0.4, p.z, 0, 0, 20, 10, 0, 0xffffff, 0xffc050, 0.34, 0.5);
     this.flash(p.x, gy + 0.8, p.z, 5.5, 0xffe9b0, 0.22, 2.2);
     this.flashLight(p.x, gy + 2.4, p.z, 0xffd48a, 30, 0.28);
+    this.combat.shock(p.x, gy + 0.5, p.z, 0.036, r * 2.8, 0.55, 1);
+    this.g.fx.fovPunch(22);
   }
 
   updateWings(dt) {
@@ -577,6 +589,7 @@ export class Vfx {
     this.flash(p.x, p.y + 1, p.z, 4.5, 0xffe9a0, 0.25, 2.2);
     this.flashLight(p.x, p.y + 2, p.z, 0xffcf60, 22, 0.35);
     this.barrierMat.uniforms.uHit.value = 1;
+    this.combat.shock(p.x, p.y + 1, p.z, 0.016, 6, 0.45, 0);
   }
 
   updateBarrier(dt) {
@@ -750,6 +763,12 @@ export class Vfx {
     const style = styleForColor(e.color);
     const gy = this.ground(x, z);
     this.hitBudget = Math.max(this.hitBudget, 0);
+    // Slams (Asag, Neti): big ground blasts ring the screen. Small blasts and the Seven Seals stay quiet.
+    if (r >= 3 && style !== 'storm') {
+      this.combat.shock(x, gy + 0.5, z, 0.018 + r * 0.004, r * 2.6, 0.5, 1);
+      this.g.fx.kick(x - this.g.player.pos.x, z - this.g.player.pos.z, 4 + r);
+      if (r >= 4) this.g.fx.fovPunch(20);
+    }
     if (style === 'void') {
       this.ringFlat(x, 0.1, z, r * 0.6, r * 2.5, 0.45, 0xc47dff, 1, 1.7, F.WAVE);
       this.decal(x, z, r * 2.2, F.GLYPH_B, 0xe0b0ff, 0.9, 0.55, true, 1.8);
@@ -807,6 +826,11 @@ export class Vfx {
       this.pillar(b.pos.x, gy, b.pos.z, 0x9a6bff, 0xe0d0ff, 2.0, 14, 1.2, 0.8);
       this.wisps(b.pos.x, gy, b.pos.z, 24, 4, 0xd9b0ff, 0x6a2bd8, 1.6, 1.6);
       this.flashLight(b.pos.x, gy + 3, b.pos.z, 0xb48aff, 40, 0.5);
+      this.combat.waveT[2] = -9;
+      this.combat.shock(b.pos.x, gy + 1.5, b.pos.z, 0.05, 24, 0.9, 2);
+      g.fx.shake(0.45);
+      g.fx.fovPunch(30);
+      g.fx.kick(0, 1, 6);
     }
   }
 
@@ -827,14 +851,15 @@ export class Vfx {
       this.decal(x, z, 7, F.GLYPH_A, 0xc9a0ff, 0.9, 1.4, true, 1.5);
       this.flashLight(x, y + 2, z, 0xb48aff, 30, 0.5);
     }
-    if (en.boss) {
+    this.combat.deathMoment(en);
+    if (big === 3 || this.combat.tierOf(en) === 3) {
       const g = this.g;
       this.pillar(x, y, z, 0xa070ff, 0xe8d8ff, 2.2, 16, 3.0, 0.9, 1);
       this.ringFlat(x, 0.1, z, 2, 28, 1.1, 0xe0c8ff, 1, 1.8);
       this.ringFlat(x, 0.12, z, 1, 18, 0.8, 0xffffff, 0.8, 2);
       this.schedule(0.4, () => { this.wisps(x, y + 0.5, z, 26, 3.5, 0xe0b8ff, 0x7a3bff, 1.7, 2.2, 5); this.ringFlat(x, 0.1, z, 2, 30, 1.0, 0xc9a0ff, 0.9, 1.6); });
       this.schedule(1.0, () => { this.motes(x, y + 0.5, z, 60, 3, 3, 9, 0xffe39a, 0xd6a740, 0.34, 2.2, -0.5); });
-      g.renderer.pulse(0xe9d8ff, 0.55);
+      g.renderer.pulse(0xe9d8ff, 0.32);
       g.fx.shake(0.7);
     }
   }
@@ -846,7 +871,7 @@ export class Vfx {
     const rar = e.item.rarity;
     const cfg = RARITY_FX[rar] ?? RARITY_FX.common;
     const p = e.pos;
-    this.schedule(0.42, () => {
+    this.schedule(e.fall ?? 0.42, () => {
       const gy = this.ground(p.x, p.z);
       this.puffs(p.x, gy + 0.1, p.z, 3 + cfg.tier * 2, 0.2, 1.2, 0.5, 0xcdb48a, 0.5, 1.2, 0.5, 0.35);
       this.ringFlat(p.x, 0.1, p.z, 0.4, 1.6 + cfg.tier * 0.8, 0.45, cfg.hex, 0.9, 1.6, F.WAVE);
@@ -871,6 +896,7 @@ export class Vfx {
       const dx = L.pos.x - player.x, dz = L.pos.z - player.z;
       if (dx * dx + dz * dz > 1600) continue; // far away: skip ambient effects
       if (L.t < 1) {
+        if (L.arc > 2 && L.delay <= 0 && Math.random() < 0.9) this.glow(L.mesh.position.x, L.mesh.position.y, L.mesh.position.z, 1.1, cfg.hex, 0.28, 0.9);
         if (cfg.tier >= 1 && Math.random() < 0.7) this.glow(L.mesh.position.x, L.mesh.position.y, L.mesh.position.z, 0.9, cfg.hex, 0.2, 0.8);
         continue;
       }
@@ -983,6 +1009,7 @@ export class Vfx {
     this.now += dt;
     U.time.value = (U.time.value + dt) % 3600;
     this.hitBudget = MAX_HIT_FX;
+    this.combat.frame();
     this.ps.q = g.settings.quality.particles;
 
     for (let i = this.later.length - 1; i >= 0; i--) {

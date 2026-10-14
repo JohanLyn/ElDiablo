@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ParticleSystem } from '../fx/particles.js';
 import { F } from '../fx/atlas.js';
+import { SlowMo } from './slowmo.js';
 
 const _c = new THREE.Color();
 
@@ -13,6 +14,13 @@ export class Fx {
     this.overlay = overlay;
     this.trauma = 0;
     this.hitstop = 0;
+    // Slow-motion: a game-time scale (main.js multiplies simulate's dt by it). It is driven by the
+    // real dt passed to update(), so it always expires, even if a harness steps simulate by hand.
+    this.slowState = new SlowMo();
+    this.timeScale = 1;
+    // Directional camera kick (springs back) and a brief field-of-view punch.
+    this.kx = 0; this.kz = 0; this.kvx = 0; this.kvz = 0;
+    this.punchV = 0; this.punch = 0; this.baseFov = camera.fov;
     this.ps = new ParticleSystem(scene);
     this.numbers = [];
     this._v = new THREE.Vector3();
@@ -59,12 +67,43 @@ export class Fx {
 
   shake(amount) { if (this.settings?.get('screenShake') === false) return; this.trauma = Math.min(1, this.trauma + amount); }
   stop(seconds) { this.hitstop = Math.max(this.hitstop, seconds); }
+
+  // Push the camera along (dx, dz) (a world direction); it springs back. Respects the screen-shake setting.
+  kick(dx, dz, amount) {
+    if (this.settings?.get('screenShake') === false) return;
+    const l = Math.hypot(dx, dz) || 1;
+    this.kvx += (dx / l) * amount; this.kvz += (dz / l) * amount;
+  }
+
+  // Short field-of-view squeeze (positive = zoom in) for big impacts.
+  fovPunch(amount) {
+    if (this.settings?.get('screenShake') === false) return;
+    this.punchV += amount;
+  }
+
+  // Game-time slow motion: `scale` (0.2..1) held for `seconds` of real time with eased edges.
+  // A stronger or longer request wins; they never stack into a long freeze.
+  slowmo(scale, seconds) { this.slowState.request(scale, seconds); }
   rumble(strong, weak, ms) { this.input.rumble(strong, weak, ms); }
 
   // Called with real (unscaled) dt so effects keep animating during hit-stop.
   update(dt) {
     this.ps.q = this.settings?.quality.particles ?? 1;
-    this.ps.update(dt);
+
+    this.timeScale = this.slowState.update(this.hitstop > 0 ? 0 : dt); // the freeze-frame comes first, then the slow-motion plays out
+    // Sparks and dust linger a little in slow motion, but never freeze.
+    this.ps.update(dt * (0.35 + 0.65 * this.timeScale));
+
+    // Camera kick spring (critically damped with a touch of overshoot) and FOV punch.
+    this.kvx -= (this.kx * 260 + this.kvx * 17) * dt; this.kvz -= (this.kz * 260 + this.kvz * 17) * dt;
+    this.kx += this.kvx * dt; this.kz += this.kvz * dt;
+    this.punchV -= (this.punch * 300 + this.punchV * 19) * dt;
+    this.punch += this.punchV * dt;
+    if (Math.abs(this.punch) > 0.002 || Math.abs(this.punchV) > 0.01) {
+      this.camera.fov = this.baseFov - Math.max(-3, Math.min(5, this.punch));
+      this.camera.updateProjectionMatrix();
+      this.fovDirty = true;
+    } else if (this.fovDirty) { this.camera.fov = this.baseFov; this.camera.updateProjectionMatrix(); this.fovDirty = false; }
 
     const w = this.overlay.clientWidth, h = this.overlay.clientHeight;
     for (let i = this.numbers.length - 1; i >= 0; i--) {
@@ -86,6 +125,6 @@ export class Fx {
   // Random camera offset from trauma (squared so small hits stay subtle).
   shakeOffset(out) {
     const s = this.trauma * this.trauma * 0.6;
-    return out.set((Math.random() - 0.5) * s, (Math.random() - 0.5) * s, (Math.random() - 0.5) * s);
+    return out.set((Math.random() - 0.5) * s + this.kx, (Math.random() - 0.5) * s, (Math.random() - 0.5) * s + this.kz);
   }
 }

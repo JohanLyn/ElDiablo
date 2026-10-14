@@ -15,6 +15,10 @@ export const smooth = (a, b, v) => { const t = clamp01((v - a) / (b - a)); retur
 const _c = new THREE.Color();
 export function rgb(hex) { return _c.set(hex); }
 
+// Set a particle template's start / end colour from a hex, with an HDR multiplier.
+export function col0(t, hex, k = 1) { _c.set(hex); t.r0 = _c.r * k; t.g0 = _c.g * k; t.b0 = _c.b * k; }
+export function col1(t, hex, k = 1) { _c.set(hex); t.r1 = _c.r * k; t.g1 = _c.g * k; t.b1 = _c.b * k; }
+
 // Premultiplied "glow over": rgb is added, and `alpha` (usually a fraction of the
 // glow strength) darkens what is behind. Keeps saturated colours readable on bright ground.
 export const PREMULT = {

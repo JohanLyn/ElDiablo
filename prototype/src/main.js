@@ -300,7 +300,8 @@ function boot() {
   let fogTimer = 0, saveTimer = 0;
   // One gameplay tick. Hit-stop freezes gameplay for a moment while effects keep running.
   g.simulate = (realDt) => {
-    const dt = fx.hitstop > 0 ? 0 : realDt;
+    g.bossIntro.tick(realDt); // boss entrances freeze gameplay but advance on this clock (src/fx/bossIntro.js)
+    const dt = fx.hitstop > 0 || g.bossIntro.active ? 0 : realDt * fx.timeScale; // timeScale < 1 during kill slow-mo
     g.time += dt;
     const region = world.regionAt(player.pos.x, player.pos.z);
     g.inSafeZone = region === 'town';
@@ -352,6 +353,8 @@ function boot() {
     rig.update(realDt, player.pos, player.vel, fx);
     loot.updateLabels(g, camera, g.highlightedLoot);
     if (g.started) hud.update(realDt, g);
+    // Cinematics (boss entrances, region reveals) clear the HUD except the title banner.
+    document.body.classList.toggle('cinematic', !!(g.bossIntro?.active || g.revealing));
     const lifeFrac = player.life / player.stats.maxLife;
     renderer.render(realDt, { hurt: g.started && !player.dead && lifeFrac < 0.35 ? (0.35 - lifeFrac) * 1.6 * (0.75 + Math.sin(performance.now() / 180) * 0.25) : 0 });
     requestAnimationFrame(frame);

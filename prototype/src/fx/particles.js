@@ -113,6 +113,8 @@ class Layer {
       uniforms: { uAtlas: { value: atlas }, uK: { value: 0.4 } },
       vertexShader: VERT, fragmentShader: FRAG,
       transparent: true, depthWrite: false,
+      // Ground decals (mode 1/2) are built facing down from above's point of view; without this they are back-face culled and never show.
+      side: THREE.DoubleSide,
       // Glow layer: premultiplied with a partial "over" term (uK) so saturated colours
       // survive on bright sand instead of washing out to white like pure additive.
       blending: additive ? THREE.CustomBlending : THREE.NormalBlending,
@@ -206,10 +208,12 @@ export class ParticleSystem {
     this.atlas = buildAtlas();
     this.add = new Layer(scene, this.atlas, addMax, true, 6);
     this.alpha = new Layer(scene, this.atlas, alphaMax, false, 5);
+    // Dark ground stains (ichor, scorch, cracks) draw UNDER the telegraphs (renderOrder 3) so danger zones stay readable.
+    this.ground = new Layer(scene, this.atlas, 220, false, 2);
     this.q = 1; // quality multiplier (settings.quality.particles)
   }
 
-  set heightAt(fn) { this.add.heightAt = fn; this.alpha.heightAt = fn; }
+  set heightAt(fn) { this.add.heightAt = fn; this.alpha.heightAt = fn; this.ground.heightAt = fn; }
 
   // Scale an emit count by quality and back-pressure, with stochastic rounding.
   n(count) {
@@ -222,5 +226,6 @@ export class ParticleSystem {
   update(dt) {
     this.add.update(dt);
     this.alpha.update(dt);
+    this.ground.update(dt);
   }
 }

@@ -178,6 +178,11 @@ uniform float uGlow;
 uniform vec3 uShield;
 uniform float uFill;
 uniform float uRim;
+uniform vec3 uRimTint;
+uniform float uRimMix;
+uniform float uRimUp;
+uniform vec3 uHitColor;
+uniform float uHit;
 varying float vGlow;
 varying vec3 vMatP;
 varying vec3 vWP;
@@ -208,6 +213,13 @@ export function rigMaterial({ transparent = false, opacity = 1, tint = 0xffffff,
     uShield: { value: new THREE.Color(0x000000) },
     uFill: { value: 0.16 },
     uRim: { value: 0.45 },
+    // Rim colour: 0 = the surface's own colour (monsters), 1 = uRimTint (the hero's warm rim light).
+    uRimTint: { value: new THREE.Color(1.0, 0.72, 0.4) },
+    uRimMix: { value: 0 },
+    uRimUp: { value: 0 }, // 1 = rim fades toward the underside, like light from above
+    // Hit flash: a short white-hot add on top of the emissive flinch (see Enemy hit feel).
+    uHitColor: { value: new THREE.Color(1.0, 0.86, 0.62) },
+    uHit: { value: 0 },
   };
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, mat.userData.u);
@@ -240,7 +252,9 @@ export function rigMaterial({ transparent = false, opacity = 1, tint = 0xffffff,
         #endif
         totalEmissiveRadiance += diffuseColor.rgb * uFill;
         float rimK = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 2.4);
-        totalEmissiveRadiance += diffuseColor.rgb * (1.0 + vMatP.x) * 1.5 * rimK * uRim;
+        rimK *= mix(1.0, 0.45 + 0.55 * clamp(inverseTransformDirection(normal, viewMatrix).y * 0.5 + 0.6, 0.0, 1.0), uRimUp);
+        totalEmissiveRadiance += mix(diffuseColor.rgb * (1.0 + vMatP.x) * 1.5, uRimTint * (0.9 + vMatP.x * 0.7), uRimMix) * rimK * uRim;
+        totalEmissiveRadiance += uHitColor * (uHit * (0.55 + 0.45 * dot(diffuseColor.rgb, vec3(0.33))));
         totalEmissiveRadiance += uEdge * dEdge * 3.2;
         totalEmissiveRadiance += uShield * step(0.55, vMatP.x);`);
   };

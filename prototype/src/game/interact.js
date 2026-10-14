@@ -239,7 +239,9 @@ export class Interactions {
     let boss;
     if (inst.guardian) {
       boss = new Enemy(inst.guardian.type, { level, named: inst.guardian, x: at.x, z: at.z }, g.scene);
-      boss.spawning = 0.01;
+      // Hidden under the pool until the hero approaches: src/fx/bossIntro.js raises it with a title card.
+      boss.spawning = boss.spawnTotal = 1e5;
+      boss.group.userData.rig.setShadows(false);
     } else {
       boss = new Neti(level, at.x, at.z, g.scene);
     }

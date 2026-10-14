@@ -34,6 +34,8 @@ export class Loot {
     const lvl = enemy.level;
     const pos = enemy.pos;
     const mf = enemy.boss ? 2 : enemy.named ? 1.5 : enemy.elite ? 1 : 0;
+    // Guardians (Neti, the Drowned Voice) spray their loot in a fountain of arcs instead of popping it out.
+    const fountain = enemy.boss || (enemy.named && g.instance?.guardian?.id === enemy.named.id);
     let items = 0, minRarity = 'common';
     if (enemy.boss) { items = 5; minRarity = 'rare'; } else if (enemy.named) { items = 3; minRarity = 'rare'; } else if (enemy.elite) { items = 2; minRarity = 'magic'; } else if (this.rng.chance(0.13)) items = 1;
     for (let i = 0; i < items; i++) {
@@ -42,13 +44,13 @@ export class Loot {
       const guaranteed = flag && i === 0 && !g.flags[flag];
       const item = generateItem({ ilvl: lvl, rarity: guaranteed ? 'legendary' : rollRarity(this.rng, { magicFind: mf, minRarity, ilvl: lvl }), rng: this.rng });
       if (guaranteed) item.firstClearFlag = flag; // set on pickup (interact.js)
-      this.dropItem(item, pos, g);
+      this.dropItem(item, pos, g, fountain ? { delay: 0.35 + i * 0.22 } : null);
     }
     if (enemy.boss || enemy.named || enemy.elite || this.rng.chance(0.4)) {
       const piles = enemy.boss ? 8 : enemy.elite || enemy.named ? 3 : 1;
-      for (let i = 0; i < piles; i++) this.dropGold(Math.round(this.rng.float(3, 8) * lvl), pos, g);
+      for (let i = 0; i < piles; i++) this.dropGold(Math.round(this.rng.float(3, 8) * lvl), pos, g, !!fountain);
     }
-    if (enemy.boss || ((enemy.elite || enemy.named) && this.rng.chance(0.6)) || this.rng.chance(0.045)) this.dropOrb(pos, g);
+    if (enemy.boss || ((enemy.elite || enemy.named) && this.rng.chance(0.6)) || this.rng.chance(0.045)) this.dropOrb(pos, g, !!fountain);
   }
 
   dropChest(tier, pos, g, ilvl) {
@@ -59,11 +61,12 @@ export class Loot {
     if (tier >= 2) this.dropOrb(pos, g);
   }
 
-  dropItem(item, pos, g) {
+  // fountain: { delay } launches the item later, higher and slower, in a long arc.
+  dropItem(item, pos, g, fountain = null) {
     const kindGeo = item.kind === 'weapon' ? this.geos.weapon : item.kind === 'ring' || item.kind === 'amulet' ? this.geos.jewel : this.geos.armor;
     const color = new THREE.Color(RARITY[item.rarity].color);
     const mesh = new THREE.Mesh(kindGeo, new THREE.MeshStandardMaterial({ color, emissive: color.clone().multiplyScalar(item.rarity === 'common' ? 0.2 : 0.55), metalness: 0.5, roughness: 0.4 }));
-    const a = this.rng.float(0, Math.PI * 2), r = this.rng.float(0.8, 2.4);
+    const a = this.rng.float(0, Math.PI * 2), r = fountain ? this.rng.float(2.2, 4.8) : this.rng.float(0.8, 2.4);
     const x = pos.x + Math.cos(a) * r, z = pos.z + Math.sin(a) * r;
     const target = new THREE.Vector3(x, g.world.heightAt(x, z), z);
     g.world.colliders.resolve(target, 0.3, g.inDungeon);
@@ -84,30 +87,33 @@ export class Loot {
     label.textContent = item.name;
     label.hidden = true;
     this.overlay.appendChild(label);
-    this.items.push({ item, mesh, beam, label, pos: target, t: 0, from: mesh.position.clone() });
+    const L = { item, mesh, beam, label, pos: target, t: 0, from: mesh.position.clone(), rate: fountain ? 1.05 : 2.2, arc: fountain ? 5.2 : 1.5, delay: fountain?.delay ?? 0 };
+    if (L.delay > 0) mesh.visible = false;
+    this.items.push(L);
     if (item.rarity === 'legendary') g.hud.notify(`Legendary: ${item.name}`, 'legendary');
-    g.events.emit('lootDrop', { item, pos: target });
+    g.events.emit('lootDrop', { item, pos: target, fall: L.delay + 1 / L.rate - 0.03 });
   }
 
-  dropGold(amount, pos, g) { this.dropPickup('gold', amount, pos, g); }
-  dropOrb(pos, g) { this.dropPickup('orb', 1, pos, g); }
+  dropGold(amount, pos, g, fountain = false) { this.dropPickup('gold', amount, pos, g, fountain); }
+  dropOrb(pos, g, fountain = false) { this.dropPickup('orb', 1, pos, g, fountain); }
 
-  dropPickup(kind, amount, pos, g) {
+  dropPickup(kind, amount, pos, g, fountain = false) {
     const mesh = new THREE.Mesh(kind === 'gold' ? this.geos.gold : this.geos.orb, kind === 'gold' ? this.goldMat : this.orbMat);
-    const a = this.rng.float(0, Math.PI * 2), sp = this.rng.float(1.5, 3.5);
+    const a = this.rng.float(0, Math.PI * 2), sp = fountain ? this.rng.float(2.5, 6) : this.rng.float(1.5, 3.5);
     mesh.position.set(pos.x, (pos.y ?? 0) + 1, pos.z);
     this.scene.add(mesh);
-    this.pickups.push({ kind, amount, mesh, pos: mesh.position, vel: new THREE.Vector3(Math.cos(a) * sp, 5, Math.sin(a) * sp), age: 0 });
+    this.pickups.push({ kind, amount, mesh, pos: mesh.position, vel: new THREE.Vector3(Math.cos(a) * sp, fountain ? this.rng.float(9, 13) : 5, Math.sin(a) * sp), age: 0 });
   }
 
   // ---- per frame -------------------------------------------------------------------
   update(dt, g, camera) {
     const p = g.player;
     for (const L of this.items) {
-      L.t = Math.min(1, L.t + dt * 2.2);
+      if (L.delay > 0) { L.delay -= dt; if (L.delay > 0) continue; L.mesh.visible = true; }
+      L.t = Math.min(1, L.t + dt * L.rate);
       const k = L.t;
       L.mesh.position.lerpVectors(L.from, L.pos, k);
-      L.mesh.position.y = L.from.y + (L.pos.y + 0.35 - L.from.y) * k + Math.sin(k * Math.PI) * 1.5;
+      L.mesh.position.y = L.from.y + (L.pos.y + 0.35 - L.from.y) * k + Math.sin(k * Math.PI) * L.arc;
       if (k >= 1) {
         // Landing: a couple of damped bounces, then a gentle hover.
         L.b = (L.b ?? 0) + dt;

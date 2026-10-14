@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Builder, shapes, part, rigMaterial } from './mesh.js';
+import { addOcclusionOutline } from '../../fx/silhouette.js';
 import { Rig, Animator, MODE, humanoid, to, add, mix, smooth, easeOut, easeIn, clamp01, range } from '../rig.js';
 
 // The Gatewalker: lapis robes over bronze scale, gold pauldrons, horned crown helm,
@@ -333,7 +334,12 @@ export class HeroModel {
   constructor() {
     const def = heroDef();
     this.material = rigMaterial({ glow: 1.2 });
+    // Warm rim light: the hero's edges catch a golden glow so the silhouette reads against sand, marsh and dungeon dark alike.
+    const u = this.material.userData.u;
+    u.uRim.value = 1.05; u.uRimMix.value = 0.7; u.uRimUp.value = 1; u.uFill.value = 0.2;
+    u.uRimTint.value.setRGB(1.0, 0.7, 0.34);
     this.rig = new Rig(def, this.material);
+    this.outline = addOcclusionOutline(this.rig.meshes[0], 'hero'); // lapis/gold silhouette when something stands in front
     this.anim = new Animator(this.rig, HERO_P, 'player');
     this.anim.near = true;
     // glowing accents tinted by chest / helm rarity
@@ -342,6 +348,7 @@ export class HeroModel {
     const gem = new THREE.OctahedronGeometry(0.06, 0);
     const c = new THREE.Mesh(gem, this.chestMat); c.scale.set(1, 1.3, 0.7);
     const h = new THREE.Mesh(new THREE.OctahedronGeometry(0.04, 0), this.helmMat); h.scale.set(1, 1.4, 0.7);
+    c.renderOrder = h.renderOrder = 2;
     this.rig.b.accentC.add(c); this.rig.b.accentH.add(h);
     this.weaponMat = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, flatShading: true, roughness: 0.5, metalness: 0.5, emissive: 0x000000 });
     this.weaponMat.onBeforeCompile = (sh) => {
@@ -354,6 +361,7 @@ export class HeroModel {
     this.weaponMat.customProgramCacheKey = () => 'heroWeapon';
     this.weaponMesh = new THREE.Mesh(weaponGeo('Sapara Sickle-Sword'), this.weaponMat);
     this.weaponMesh.castShadow = true;
+    this.weaponMesh.renderOrder = 2;
     this.rig.b.wpn.add(this.weaponMesh);
     this.weaponName = 'Sapara Sickle-Sword';
     this.weaponRarity = null;

@@ -8,6 +8,7 @@ import { regionAt, roadDistance } from '../world/terrain.js';
 import { INSTANCES } from '../world/instances.js';
 import { getTelegraphs, styleForColor } from '../fx/telegraph.js';
 import { makeEnemyBolt } from '../fx/models.js';
+import { addOcclusionOutline } from '../fx/silhouette.js';
 
 // ai: melee = chase + telegraphed arc, brute = slow chase + ground slam,
 // ranged = keep distance + bolt, caster = keep distance + delayed ground blast.
@@ -78,6 +79,10 @@ export class Enemy {
     this.group.scale.setScalar(this.scale);
     if (this.group.userData.aura) this.group.userData.aura.holder.scale.setScalar(this.def.radius * 1.7);
     this.mat = this.group.userData.mat;
+    this.u = this.mat.userData.u; // rig material uniforms (hit flash)
+    this.sq = 0; this.sqv = 0; this.sqOn = false; // hit squash spring
+    // Elites, champions and guardians keep a faint ember outline when something stands in front of them.
+    if (elite || named || this.boss) this.group.userData.outline = addOcclusionOutline(this.group.userData.rig.meshes[0], this.boss || named?.id === 'cistern-guardian' ? 'boss' : 'foe');
     this.group.position.set(x, -2, z);
     this.pos = this.group.position;
     scene.add(this.group);
@@ -258,7 +263,10 @@ export class EnemyManager {
     if (e.vulnerable > 0) amount *= 1.2;
     if (e.shielded) amount *= 0.25;
     e.hp -= amount;
-    e.flash = 1;
+    e.flash = crit ? 1.35 : 1;
+    // Squash-and-rebound: the body compresses on the blow and springs back (heavier foes barely flinch).
+    e.sqv += (crit ? 15 : 9) * (e.boss ? 0.3 : e.elite || e.named ? 0.65 : 1) * (silent ? 0.25 : 1);
+    e.sqOn = true;
     if (!e.boss) { e.knock.x += knockX; e.knock.z += knockZ; }
     if (!silent || crit) g.fx.number(e.pos, amount, { color: crit ? '#ffd166' : color, big: crit });
     g.fx.burst(e.pos.clone().setY(e.pos.y + 1), 0xffc27a, silent ? 2 : 7, 4, { life: 0.35 });
@@ -282,7 +290,7 @@ export class EnemyManager {
     if (e.bar) e.bar.visible = false;
     g.fx.burst(e.pos.clone().setY(e.pos.y + 1), 0xd6a740, 22, 6, { up: 4, life: 0.9 });
     g.fx.burst(e.pos.clone().setY(e.pos.y + 0.8), 0x5a2bd8, 12, 3, { up: 6, life: 1.1, gravity: -2 });
-    g.fx.stop(e.boss ? 0.3 : 0.03);
+    g.fx.stop(e.boss ? 0.16 : e.named ? 0.1 : e.elite ? 0.08 : 0.04);
     g.fx.rumble(0.25, 0.4, 60);
     if (e.elite?.includes('molten')) this.hazard({ x: e.pos.x, z: e.pos.z, r: 3.6, delay: 1.3, dmg: e.dmg * 1.6, color: 0xff6a1a, level: e.level });
     if (e.burn > 0 && g.player.stats.powers.has('gibil')) {
@@ -388,6 +396,7 @@ export class EnemyManager {
       const k = Math.max(0, e.spawning / e.spawnTotal);
       e.pos.y = ground - 0.9 * k;
       e.group.visible = true;
+      if (e.group.userData.outline) e.group.userData.outline.visible = false;
       const u = e.group.userData.mat.userData.u;
       u.uDissolve.value = k > 0 ? Math.min(1, k * 1.05) : 0;
       u.uBase.value = ground - 0.2;
@@ -405,6 +414,9 @@ export class EnemyManager {
       u.uBase.value = e.pos.y;
       e.flash = Math.max(0, e.flash - dt * 6);
       e.mat.emissive.setRGB(e.flash * 0.55, e.flash * 0.45, e.flash * 0.35);
+      e.u.uHit.value = Math.min(0.4, e.flash * e.flash * 0.4);
+      if (e.sqOn) this.squash(e, dt);
+      if (e.group.userData.outline) e.group.userData.outline.visible = false;
       if (d > 0.3 && !e.shadowOff) { e.shadowOff = true; e.group.userData.rig.setShadows(false); }
       driveEnemy(e, dt, g, 0);
       return;
@@ -468,8 +480,11 @@ export class EnemyManager {
     // Visuals
     e.group.rotation.y = e.facing;
     e.flash = Math.max(0, e.flash - dt * 6);
+    e.u.uHit.value = Math.min(0.4, e.flash * e.flash * 0.4); // white-hot on the blow, gone within ~0.12 s
+    if (e.sqOn) this.squash(e, dt);
+    if (e.group.userData.outline) e.group.userData.outline.visible = dist < 40;
     // Hit flash stays warm and partial so the silhouette still reads.
-    e.mat.emissive.setRGB(e.flash * 0.55 + (e.burn > 0 ? 0.25 : 0), e.flash * 0.45 + (e.burn > 0 ? 0.08 : 0), e.flash * 0.35 + (e.slow > 0 ? 0.3 : 0) + (e.vulnerable > 0 ? 0.15 : 0));
+    e.mat.emissive.setRGB(e.flash * 0.3 + (e.burn > 0 ? 0.25 : 0), e.flash * 0.22 + (e.burn > 0 ? 0.08 : 0), e.flash * 0.15 + (e.slow > 0 ? 0.3 : 0) + (e.vulnerable > 0 ? 0.15 : 0));
     // Far enemies animate at a third of the rate and drop their shadows.
     e.animDt = (e.animDt || 0) + dt;
     if (dist < 46 || ((e.id + (e.animTick = (e.animTick || 0) + 1)) % 3 === 0)) {
@@ -484,6 +499,16 @@ export class EnemyManager {
       e.barFill.scale.x = Math.max(0.001, e.hp / e.maxHp);
       e.barFill.position.x = -0.53 * (1 - e.barFill.scale.x);
     }
+  }
+
+  // Critically-damped-ish spring on the body scale: sq > 0 squashes (shorter, wider), < 0 stretches.
+  squash(e, dt) {
+    e.sqv += (-e.sq * 430 - e.sqv * 22) * dt;
+    e.sq += e.sqv * dt;
+    if (e.sq > 1) e.sq = 1; else if (e.sq < -0.5) e.sq = -0.5;
+    const s = e.scale;
+    if (Math.abs(e.sq) < 0.004 && Math.abs(e.sqv) < 0.06) { e.sq = e.sqv = 0; e.sqOn = false; e.group.scale.setScalar(s); return; }
+    e.group.scale.set(s * (1 + 0.2 * e.sq), s * (1 - 0.3 * e.sq), s * (1 + 0.2 * e.sq));
   }
 
   idle(e, dt) {
