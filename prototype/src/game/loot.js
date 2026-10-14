@@ -6,6 +6,21 @@ import { RARITY_FX } from '../fx/rarity.js';
 
 const LABEL_RANGE = 16;
 
+// A named champion's guaranteed first drop (Aqrabu's "Sting of Aqrabu"): a rare with a fixed
+// name and a venom-drinking pair of affixes (crit damage, life per hit), claimed on pickup.
+function namedFirstDrop(fd, ilvl, rng) {
+  let item;
+  for (let i = 0; i < 60; i++) {
+    item = generateItem({ ilvl, rarity: fd.rarity, kind: fd.kind, rng });
+    const stats = item.affixes.map((a) => a.stat);
+    if (stats.includes('lifeOnHit') && stats.includes('critDmg')) break;
+  }
+  item.name = fd.name;
+  if (item.base.min !== undefined) item.base.name = 'Venom-Barbed Spear';
+  item.firstClearFlag = fd.flag; // set on pickup (interact.js)
+  return item;
+}
+
 // Items, gold and potion orbs lying on the ground.
 export class Loot {
   constructor(scene, overlay) {
@@ -46,6 +61,8 @@ export class Loot {
       if (guaranteed) item.firstClearFlag = flag; // set on pickup (interact.js)
       this.dropItem(item, pos, g, fountain ? { delay: 0.35 + i * 0.22 } : null);
     }
+    const fd = enemy.named?.firstDrop;
+    if (fd && !g.flags[fd.flag]) this.dropItem(namedFirstDrop(fd, lvl, this.rng), pos, g, { delay: 0.25 });
     if (enemy.boss || enemy.named || enemy.elite || this.rng.chance(0.4)) {
       const piles = enemy.boss ? 8 : enemy.elite || enemy.named ? 3 : 1;
       for (let i = 0; i < piles; i++) this.dropGold(Math.round(this.rng.float(3, 8) * lvl), pos, g, !!fountain);

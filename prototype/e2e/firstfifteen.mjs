@@ -40,6 +40,10 @@ await page.evaluate((seed) => {
   g.events.on('potion', () => stats.potions++);
   g.events.on('evade', () => stats.evades++);
   g.events.on('waypoint', (e) => mark(`waypoint ${e.id}`));
+  g.events.on('bossIntro', (e) => { if (e.stage === 'start') mark(`boss intro: ${e.name}`); });
+  g.events.on('aqrabuBurrow', () => mark('Aqrabu burrows'));
+  g.events.on('aqrabuEmerge', () => mark('Aqrabu erupts'));
+  g.events.on('pyresComplete', () => mark('pyres complete'));
   g.events.on('hit', (e) => { stats.hits++; if (!stats.firstHit.has(e.enemy)) stats.firstHit.set(e.enemy, t()); });
   g.events.on('kill', (e) => {
     const en = e.enemy;
@@ -47,6 +51,7 @@ await page.evaluate((seed) => {
     const t0 = stats.firstHit.get(en);
     if (t0 !== undefined) (en.elite || en.named || en.boss ? stats.eliteTtk : stats.ttk).push(t() - t0);
     if (en.elite || en.named) { stats.eliteKills++; mark(`killed ${en.name}`); }
+    if (en.named?.id === 'aqrabu' && t0 !== undefined) mark(`Aqrabu fight lasted ${(t() - t0).toFixed(0)} s (first hit to kill)`);
     if (en.boss) mark(`killed ${en.name}`);
   });
   g.events.on('pickup', (e) => {
@@ -56,7 +61,7 @@ await page.evaluate((seed) => {
   });
 
   const SKILL_PRIORITY = ['javelin', 'snap', 'wings', 'storm', 'aegis', 'pyre', 'strike', 'javelin', 'snap', 'storm'];
-  const bot = { busy: 0, stuck: 0, lastPos: P.pos.clone(), sidestep: 0, stuckRun: 0, sideDir: 1, reactAt: null, lootTarget: null };
+  const bot = { skipLoot: new Set(), lootTarget: null, lootSince: 0, lootBest: Infinity, busy: 0, stuck: 0, lastPos: P.pos.clone(), sidestep: 0, stuckRun: 0, sideDir: 1, reactAt: null };
 
   function spendPoints() {
     for (const id of SKILL_PRIORITY) {
@@ -85,6 +90,16 @@ await page.evaluate((seed) => {
       if (!e.alive || e.spawning > 0) continue;
       const d = Math.hypot(e.pos.x - P.pos.x, e.pos.z - P.pos.z);
       if (d < bd && (e.aggro || d < 12)) { bd = d; best = e; }
+    }
+    return best;
+  }
+
+  function nearestLoot(range) {
+    let best = null, bd = range;
+    for (const L of g.loot.items) {
+      if (L.t < 1 || bot.skipLoot.has(L)) continue;
+      const d = Math.hypot(L.pos.x - P.pos.x, L.pos.z - P.pos.z);
+      if (d < bd) { bd = d; best = L; }
     }
     return best;
   }
@@ -173,9 +188,14 @@ await page.evaluate((seed) => {
     } else {
       stats.idleTime += DT;
       // Loot nearby items first.
-      const L = g.loot.nearestItem(P.pos, 12);
+      const L = nearestLoot(12);
       if (L && P.inventory.length < 28) {
-        if (moveToward(L.pos.x, L.pos.z, 1.2)) g.input.pressed.interact = true;
+        // Give up on loot that does not get closer (landed behind a wall): a human would walk on.
+        if (bot.lootTarget !== L) { bot.lootTarget = L; bot.lootSince = t(); bot.lootBest = Infinity; }
+        const dl = Math.hypot(L.pos.x - P.pos.x, L.pos.z - P.pos.z);
+        if (dl < bot.lootBest - 0.5) { bot.lootBest = dl; bot.lootSince = t(); }
+        if (t() - bot.lootSince > 6) { bot.skipLoot.add(L); mark(`gave up on unreachable loot at ${Math.round(L.pos.x)},${Math.round(L.pos.z)}`); }
+        else if (moveToward(L.pos.x, L.pos.z, 1.2)) g.input.pressed.interact = true;
       } else {
         let m = g.questMarker();
         // Leave or enter Eridu through its gates instead of walking into the wall.
@@ -200,8 +220,9 @@ await page.evaluate((seed) => {
       const moved = P.pos.distanceTo(bot.lastPos);
       if (g.input.move.mag > 0 && moved < 1.5) {
         bot.sidestep = 1.2; bot.sideDir = Math.random() < 0.5 ? 1 : -1; stats.stuckEvents++;
+        if (enemy) bot.stuckRun = 0; // dancing around a fight is not a navigation failure
         // A long run of stuck checks means a navigation bug, not a stray prop: say where.
-        if (++bot.stuckRun === 20) { const m = g.questMarker(); mark(`stuck at ${Math.round(P.pos.x)},${Math.round(P.pos.z)} heading for ${m ? `${Math.round(m.x)},${Math.round(m.z)}` : 'nothing'}`); }
+        if (!enemy && ++bot.stuckRun === 20) { const m = g.questMarker(); mark(`stuck at ${Math.round(P.pos.x)},${Math.round(P.pos.z)} heading for ${m ? `${Math.round(m.x)},${Math.round(m.z)}` : 'nothing'}`); }
       } else bot.stuckRun = 0;
       bot.lastPos.copy(P.pos);
     }
@@ -253,6 +274,7 @@ const checks = [
   ['deaths <= 2', report.metrics.deaths <= 2],
   ['normal TTK 1-5 s', report.metrics.avgTtkNormal !== null && report.metrics.avgTtkNormal >= 1 && report.metrics.avgTtkNormal <= 5],
 ];
+checks.push(['no stuck marks on quest legs', !report.timeline.some((e) => /^stuck at/.test(e.what))]);
 console.log('--- targets ---');
 for (const [name, ok] of checks) console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}`);
 console.log('errors:', errors.length ? errors.slice(0, 5).join('\n') : 'none');

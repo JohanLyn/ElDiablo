@@ -54,6 +54,14 @@ export const EVENT = { id: 'ev-ritual', name: 'Ritual of the Gallu', x: -55, z: 
 export const AQRABU = { id: 'aqrabu', x: 160, z: -30 };
 
 export const GATE = { x: 0, z: -176 };
+
+// World event on the Ashen Approach: three cold pyres a stone's throw east of the road to the gate.
+// (r: radius of the ring the pyres stand on.)
+export const PYRES = { id: 'ev-pyres', name: 'The Wailing Pyres', x: 18, z: -128, r: 5.5 };
+export const PYRE_SPOTS = [0, 1, 2].map((i) => {
+  const a = Math.PI / 2 + (i / 3) * Math.PI * 2;
+  return { x: PYRES.x + Math.cos(a) * PYRES.r, z: PYRES.z + Math.sin(a) * PYRES.r };
+});
 // The well-house over the Cistern of Enki, in the Reed Marsh near the Shrine of Enki waypoint
 // (instances.js holds the same point as the cistern's entrance).
 export const CISTERN_ENTRANCE = { x: -108, z: 26 };
@@ -68,6 +76,8 @@ export function flatSpots() {
     { x: EVENT.x, z: EVENT.z, r: EVENT.r + 5 },
     { x: GATE.x, z: GATE.z, r: 22 },
     { x: CISTERN_ENTRANCE.x, z: CISTERN_ENTRANCE.z + 2, r: 7 },
+    { x: AQRABU.x, z: AQRABU.z, r: 12 }, // Aqrabu's arena
+    { x: PYRES.x, z: PYRES.z, r: PYRES.r + 3.5 }, // the Wailing Pyres
   ];
 }
 

@@ -1,4 +1,4 @@
-import { HALF, REGIONS } from '../world/layout.js';
+import { HALF, REGIONS, PYRES } from '../world/layout.js';
 import { INSTANCES } from '../world/instances.js';
 
 // Fog of war: 4 m cells over the overworld, revealed around the hero.
@@ -92,6 +92,7 @@ export function drawMap(ctx, g, { cx, cz, scale, width, height, full = false, se
     for (const s of g.world.shrines) if (seen(s.x, s.z)) icon(ctx, toX(s.x), toY(s.z), s.cooldown > 0 ? 'shrineUsed' : 'shrine', scale);
     for (const c of g.world.chests) if (!c.opened && seen(c.x, c.z)) icon(ctx, toX(c.x), toY(c.z), 'chest', scale);
     if (seen(g.world.ritual.x, g.world.ritual.z)) icon(ctx, toX(g.world.ritual.x), toY(g.world.ritual.z), 'event', scale);
+    if (seen(PYRES.x, PYRES.z)) icon(ctx, toX(PYRES.x), toY(PYRES.z), g.flags.pyresDone ? 'pyreLit' : 'pyre', scale);
     for (const { entrance: e } of Object.values(INSTANCES)) if (seen(e.x, e.z)) icon(ctx, toX(e.x), toY(e.z), 'dungeon', scale);
     for (const n of g.world.npcs) icon(ctx, toX(n.x), toY(n.z), 'npc', scale);
     if (g.interactions.portal) icon(ctx, toX(g.interactions.portal.mesh.position.x), toY(g.interactions.portal.mesh.position.z), 'portal', scale);
@@ -166,6 +167,14 @@ function icon(ctx, x, y, kind, scale, selected = false) {
     case 'event':
       ctx.strokeStyle = '#ff7a52'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, s + 1, 0, Math.PI * 2); ctx.stroke();
       break;
+    case 'pyre': case 'pyreLit': {
+      // A flame in a ring: spectral blue (lit once completed), grey while the pyres are cold.
+      const hot = kind === 'pyreLit';
+      ctx.strokeStyle = hot ? '#7fd0ff' : '#9a8fa8'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.arc(0, 0, s + 1, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = hot ? '#dff6ff' : '#b8aebf'; ctx.lineWidth = 1.2; ctx.strokeStyle = '#15100c';
+      ctx.beginPath(); ctx.moveTo(0, -s + 1); ctx.quadraticCurveTo(s - 1, -1, 0, s - 2); ctx.quadraticCurveTo(-s + 1, -1, 0, -s + 1); ctx.closePath(); ctx.fill(); ctx.stroke();
+      break;
+    }
     case 'dungeon':
       ctx.fillStyle = '#d99a5e'; ctx.beginPath(); ctx.moveTo(-s - 1, s); ctx.lineTo(-s - 1, -2); ctx.arc(0, -2, s + 1, Math.PI, 0); ctx.lineTo(s + 1, s); ctx.closePath(); ctx.fill(); ctx.stroke();
       break;

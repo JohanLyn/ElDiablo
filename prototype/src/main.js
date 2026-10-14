@@ -8,7 +8,7 @@ import { Fx } from './core/fx.js';
 import { CameraRig } from './core/camera.js';
 import { buildWorld } from './world/world.js';
 import { INSTANCES, instanceAt } from './world/instances.js';
-import { TOWN, AQRABU, WAYPOINTS } from './world/layout.js';
+import { TOWN, AQRABU, WAYPOINTS, PYRES } from './world/layout.js';
 import { Player } from './entities/player.js';
 import { Tether } from './entities/tether.js';
 import { Abilities } from './entities/abilities.js';
@@ -247,6 +247,12 @@ function boot() {
       if (m === 'ev-ritual') return { x: world.ritual.x, z: world.ritual.z };
       if (m.startsWith('wp-')) { const w = WAYPOINTS.find((x) => x.id === m); return { x: w.x, z: w.z }; }
       if (m === 'named-aqrabu') return { x: AQRABU.x, z: AQRABU.z };
+      if (m === 'ev-pyres') return { x: PYRES.x, z: PYRES.z };
+      if (m === 'dungeon-entrance' && !g.inDungeon) {
+        // After Aqrabu the Ashen Approach waypoint is the natural next stop; the road beyond it passes the Wailing Pyres.
+        const w = world.waypoints.find((x) => x.id === 'wp-ashen');
+        if (w && !w.discovered) return { x: w.x, z: w.z };
+      }
       if (m === 'boss-neti' && g.instance?.id === 'ganzir') return INSTANCES.ganzir.spots.boss;
       if (m === 'cistern-entrance') return g.instance?.id === 'cistern' ? INSTANCES.cistern.spots.boss : INSTANCES.cistern.entrance;
       return INSTANCES.ganzir.entrance;

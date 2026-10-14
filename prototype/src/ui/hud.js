@@ -122,7 +122,12 @@ export class Hud {
     const el = $('event');
     if (!ev) { el.hidden = true; return; }
     el.hidden = false;
-    el.innerHTML = `<b>${escapeHtml(ev.name)}</b><span>${escapeHtml(ev.text)} · ${Math.max(0, Math.ceil(ev.time))}s</span><div class="ev-bar"><i style="width:${Math.max(0, ev.time / 50) * 100}%"></i></div>`;
+    if (ev.hint) { // untimed pointer line
+      const html = `<b>${escapeHtml(ev.name)}</b><span>${escapeHtml(ev.text)}</span>`;
+      if (el.innerHTML !== html) el.innerHTML = html;
+      return;
+    }
+    el.innerHTML = `<b>${escapeHtml(ev.name)}</b><span>${escapeHtml(ev.text)} · ${Math.max(0, Math.ceil(ev.time))}s</span><div class="ev-bar"><i style="width:${Math.min(1, Math.max(0, ev.time / (ev.total ?? 50))) * 100}%"></i></div>`;
   }
 
   update(dt, g) {

@@ -808,6 +808,14 @@ export class Vfx {
       this.motes(x, gy + 0.4, z, 18, r * 0.6, 3, 8, 0xffd070, 0xff3a00, 0.34, 1.1, 12);
       this.flash(x, gy + 0.8, z, r * 2.2, 0xffd090, 0.22, 2);
       this.flashLight(x, gy + 2, z, 0xff6a1a, 26, 0.35);
+    } else if (style === 'poison') {
+      this.ringFlat(x, 0.1, z, r * 0.5, r * 2.5, 0.45, 0x9aff3a, 1, 1.6, F.WAVE, 1, 0x2a7a10);
+      this.decal(x, z, r * 2.2, F.SCORCH, 0x0a1a04, 0.7, 6, false);
+      this.decal(x, z, r * 2.0, F.SCORCH, 0x7aff2a, 0.6, 1.2, true, 1.4);
+      this.puffs(x, gy + 0.4, z, 10, r * 0.5, 2.4, 1.2, 0x7fa83a, 0.9, 2.6, 1.0, 0.45);
+      this.motes(x, gy + 0.4, z, 18, r * 0.6, 3, 7, 0xeaffb0, 0x58a020, 0.28, 0.9, 6);
+      this.flash(x, gy + 0.8, z, r * 2.0, 0xd8ff90, 0.2, 2);
+      this.flashLight(x, gy + 2, z, 0x9aff3a, 22, 0.3);
     } else {
       this.ringFlat(x, 0.1, z, r * 0.5, r * 2.5, 0.4, 0xff6a3a, 1, 1.6);
       this.flash(x, gy + 0.6, z, r * 2.0, 0xffb090, 0.2, 2);

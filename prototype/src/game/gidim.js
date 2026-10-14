@@ -42,6 +42,8 @@ export class Gidim {
     g.events.on('kill', (p) => this.onKill(p));
     g.events.on('nightfall', () => this.onNightfall());
     g.events.on('daybreak', () => this.onDaybreak());
+    // Lighting the Wailing Pyres lays the Ashen dead to rest: their ash is yours.
+    g.events.on('pyresComplete', ({ pos }) => { if (this.enabled) this.giveAsh(8, pos); });
     g.settings.onChange((k, v) => { if (k === 'gidim' && !v) this.disable(); });
   }
 

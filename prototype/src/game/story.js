@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Enemy } from '../entities/enemies.js';
 import { generateItem } from './items.js';
 import { part, merge } from '../world/models.js';
+import { buildAqrabuArena } from '../world/arena.js';
 
 // Scripted beats of the opening: the burning caravan on the south road, plus
 // "first time" loot guarantees that make the first minutes rewarding.
@@ -22,9 +23,20 @@ export class Story {
     this.waveEnemies = [];
     this.nextWaveIn = 0;
     this.caravan = buildCaravan(g);
+    this.arena = buildAqrabuArena(g); // Aqrabu's pillar ring, banners and braziers
     g.questMarkers = { ambush: { x: CARAVAN.x, z: CARAVAN.z } };
 
     g.events.on('kill', ({ enemy }) => this.onKill(enemy));
+    // The Drowned Voice falls: a scout's tablet names the next champion once the banners settle.
+    g.events.on('questUpdate', ({ kind, quest }) => {
+      if (kind === 'completed' && quest.id === 'q2b' && !g.flags.scoutTablet) {
+        g.timers.push({ t: 5.5, fn: () => {
+          g.flags.scoutTablet = true;
+          g.hud.banner('Sting of the Desert', 'quest', 'A scout\'s tablet: Aqrabu\'s sting has poisoned the eastern wells');
+          g.save();
+        } });
+      }
+    });
   }
 
   // New hero: start on the south road with the caravan under attack.
@@ -115,6 +127,7 @@ export class Story {
   onKill(e) {
     const g = this.g;
     const f = g.flags;
+    if (e.named?.id === 'aqrabu') this.aqrabuSlain();
     // The very first kill drops a real weapon upgrade, to teach looting and equipping.
     if (!f.firstDrop && e.storyMob) {
       f.firstDrop = true;
@@ -131,6 +144,17 @@ export class Story {
     }
   }
 }
+
+// Aqrabu falls: a banner once the quest banners settle, then a nudge to the Ashen Approach waypoint.
+Story.prototype.aqrabuSlain = function aqrabuSlain() {
+  const g = this.g;
+  g.timers.push({ t: 0.7, fn: () => g.hud.banner('Aqrabu is slain', 'boss', 'The desert\'s sting is broken') });
+  g.timers.push({ t: 3.2, fn: () => {
+    g.hud.notify('Next: the Ashen Approach waypoint, north along the road to the gate', 'quest');
+    const w = g.world.waypoints.find((x) => x.id === 'wp-ashen');
+    if (w) g.fog.reveal(w.x, w.z, 16); // so it shows on the map before you get there
+  } });
+};
 
 function buildCaravan(g) {
   const group = new THREE.Group();

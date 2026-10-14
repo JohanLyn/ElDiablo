@@ -23,6 +23,7 @@ export function styleForColor(color) {
     case 0xd6a740: return 'seal';
     case 0x8fd3ff: return 'storm';
     case 0xff6a1a: return 'molten';
+    case 0x9aff3a: return 'poison'; // Aqrabu's venom ring
     default: return 'fire';
   }
 }
