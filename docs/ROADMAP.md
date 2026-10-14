@@ -104,5 +104,6 @@ Status (0.3.0-alpha): 29 unit tests pass; the e2e sim exercises the ambush, ques
 - [ ] Map coverage for dungeon interiors
 - [ ] Twist 2: Deedforged items (Unwritten affixes and the deed event bus)
 - [ ] Twist 3: Slay / Bind / Spare on Neti and Aqrabu
+- [ ] Abubu, the Deluge: a recurring flood world event (saved for later; see GAME_DESIGN.md §4)
 - [ ] Strongholds, side quests, stash, loot filter
 - [ ] Decide the production engine

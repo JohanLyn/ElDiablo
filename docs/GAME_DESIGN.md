@@ -51,6 +51,14 @@ When a major boss is defeated, it kneels and you choose:
 
 Choices are stored per character, and the endgame reads them. For example, spared bosses can unite against the final threat, or betray you. **Why it works:** it adds narrative agency and **replay value across alts**, which the genre usually lacks, and it ties story directly to builds.
 
+### Saved for later — Abubu, the Deluge (world event)
+A recurring world event based on the Mesopotamian flood myth (Atrahasis, Gilgamesh). Roughly every 15 minutes a storm rolls in and water rises over low ground in the Sunfields and the Reed Marsh.
+- Roads become rivers, loot floats downstream, and river demons swim in.
+- You fight on rooftops, ridges and the ziggurat steps.
+- When the flood recedes it leaves silt with buried treasure.
+
+The user liked it and asked to keep it for a later version. It is the riskiest of the ideas because it changes navigation, so it should follow the second gate. It would reuse the height-based terrain, the water shader, the day cycle and the event-bus world events.
+
 ## 5. Themes (B chosen)
 
 ### Theme A — *Mosegrav* (Nordic Iron-Age bog folk horror)
