@@ -16,7 +16,8 @@ The e2e scripts need Playwright, which is not a dependency of the project: `npm 
 
 ```bash
 npm run e2e                           # e2e/sim.mjs: plays the whole quest chain, both dungeons included
-node e2e/firstfifteen.mjs [url] [minutes] [seed]   # balance bot: plays the first 15 minutes and checks the pacing targets
+node e2e/firstfifteen.mjs [url] [minutes] [seed]   # balance bot: plays the first 20 minutes (default) and checks the pacing targets
+node e2e/neti.mjs [url] [heroLevel] [tries]       # Neti fight check
 ```
 
 ## URL flags
