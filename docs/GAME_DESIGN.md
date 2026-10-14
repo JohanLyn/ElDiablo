@@ -51,6 +51,21 @@ When a major boss is defeated, it kneels and you choose:
 
 Choices are stored per character, and the endgame reads them. For example, spared bosses can unite against the final threat, or betray you. **Why it works:** it adds narrative agency and **replay value across alts**, which the genre usually lacks, and it ties story directly to builds.
 
+### Twist 4 — Night of the Gidim (built in 0.5)
+The day cycle becomes gameplay. Every monster you kill outdoors by day leaves a mark. At night those marks rise as **gidim**, ghosts shaped by how they died:
+- **Burning**: leaves ghost-fire.
+- **Chained**: bound to its mark, and lunges.
+- **Shattered**: splits in two.
+- **Gidim Lord**: what elites and named monsters become.
+
+Lanterns, shrines, waypoints and town are sanctuaries. At night the sedu spirit becomes a lantern and the **Tether line wards**: double damage and knockback against gidim. Gidim drop **Ghost-ash**, which Ninsun trades for a night blessing.
+
+**Why it works:**
+- It's self-balancing: the more you kill by day, the bigger your night.
+- It reuses the core mechanic: the Tether is the anti-ghost tool.
+- It gives the world's day cycle a reason to exist.
+- It is rooted in Mesopotamian belief about restless spirits of the dead.
+
 ### Saved for later — Abubu, the Deluge (world event)
 A recurring world event based on the Mesopotamian flood myth (Atrahasis, Gilgamesh). Roughly every 15 minutes a storm rolls in and water rises over low ground in the Sunfields and the Reed Marsh.
 - Roads become rivers, loot floats downstream, and river demons swim in.

@@ -2,7 +2,9 @@
 
 All notable changes to the Gates of Kur prototype. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.5.0-alpha]
+
+A new original feature, and a polished stretch from minute 12 to minute 20: the road to Aqrabu, a new event in the Ashen Approach, and a fair first gate.
 
 ### Added
 - **Night of the Gidim**: the dead of the day rise at night.
@@ -12,6 +14,19 @@ All notable changes to the Gates of Kur prototype. The format follows [Keep a Ch
   - At night your sedu spirit becomes a lantern and its Tether a ward: gidim crossing the line take double damage and are pushed back.
   - Ghost-ash ◈ drops from gidim. Ninsun trades it for a Night Blessing: Lamp of Nanna, Ash-skin or Grave-reader.
   - New **Night of the Gidim** toggle under Settings > Gameplay (on by default), a first-night introduction and tutorial hints.
+- **Aqrabu the Venomed is now a set-piece fight.**
+  - The arena is a ring of broken pillars, opened by an intro with the title card "AQRABU · the Venomed".
+  - At half life he burrows; a tremor trail hunts you, and he erupts in a venom ring and calls two scorpions.
+  - His first kill drops a guaranteed Rare spear, the *Sting of Aqrabu*.
+  - A scout's message introduces the hunt, and his death points you to the Ashen Approach waypoint.
+- **The Wailing Pyres**: a world event beside the road to the First Gate. Kindle three cold pyres while ash-wraiths rise from the cinders. It rewards a Rare, gold and Ghost-ash, and the pyres stay lit as landmarks. It is marked on the map and announced when you are near.
+
+### Changed
+- **Route fixes:** the routes from the Cistern to Aqrabu and from Aqrabu to the First Gate are clear. Ruined walls and rocks no longer form pockets that trap you (or the balance bot).
+- **The First Gate is a test, not a wall.** The Ganzir Stair is level 7 (was 9), and Neti is one level above you (was two above level 9) with more life. A level-6 hero in typical gear beats him in about a minute.
+- **Guardian loot:** boss loot never lands inside a wall, and the exit portal opens once the loot fountain has landed.
+- **Balance bot:** it now plays the first 20 minutes, with new targets for Aqrabu, the first night, Ghost-ash and the Ganzir Stair. `e2e/neti.mjs` checks the Neti fight for a given hero level.
+- Every hit now records what caused it, so death effects and the gidim know how a monster died. The day clock runs in game time.
 
 ## [0.4.0-alpha]
 
