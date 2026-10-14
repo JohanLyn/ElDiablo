@@ -63,19 +63,30 @@ export class Settings {
       this.timeOverride = p.get('time');
       if (p.has('fps')) this.fpsFlag = p.get('fps') !== '0';
       this.dynResOff = p.get('dynres') === '0'; // ?dynres=0 pins the pixel ratio (measuring)
+      this.msaaOff = p.get('msaa') === '0'; // ?msaa=0: no hardware MSAA on the Mobile canvas (A/B on a device)
     } catch { /* no location (tests) */ }
     if (!QUALITY[this.values.quality]) this.values.quality = DEFAULTS.quality;
     // Preset fields that are baked into the world when it is built (light pool size,
     // shader variants): changing the preset later needs a reload to take full effect.
-    this.built = { lights: this.quality.lights, cheapShaders: this.quality.cheapShaders };
+    this.built = { lights: this.quality.lights, cheapShaders: this.quality.cheapShaders, post: this.quality.post };
   }
 
   get showFps() { return this.fpsFlag ?? !!this.values.showFps; }
 
-  // True when the current preset wants a different light pool / shader set than the world was built with.
+  // True when the current preset wants a different light pool / shader set / output path than the world was built with.
   get needsReload() {
     const q = this.quality;
-    return q.lights !== this.built.lights || q.cheapShaders !== this.built.cheapShaders;
+    return q.lights !== this.built.lights || q.cheapShaders !== this.built.cheapShaders || q.post !== this.built.post;
+  }
+
+  // The preset as the renderer can honour it right now: the parts baked in at build time
+  // (post chain vs direct output, shader set, light pool) stay as built until a reload.
+  get effective() {
+    const q = this.quality, b = this.built;
+    if (q.post === b.post && q.cheapShaders === b.cheapShaders && q.lights === b.lights) return q;
+    const out = { ...q, post: b.post, cheapShaders: b.cheapShaders, lights: b.lights };
+    if (out.post && out.aa === 'msaa') out.aa = 'fxaa';
+    return out;
   }
 
   get(key) { return this.values[key]; }

@@ -164,7 +164,7 @@ export class Renderer {
   constructor(canvas, settings) {
     this.canvas = canvas;
     this.settings = settings;
-    this.webgl = new THREE.WebGLRenderer({ canvas, antialias: settings.quality.aa === 'msaa', powerPreference: 'high-performance' });
+    this.webgl = new THREE.WebGLRenderer({ canvas, antialias: settings.quality.aa === 'msaa' && !settings.msaaOff, powerPreference: 'high-performance' });
     this.webgl.info.autoReset = false; // one reset per frame (render()), so info covers every pass
     this.dyn = new DynRes();
     this.meter = new PerfMeter(settings, this);
@@ -190,7 +190,7 @@ export class Renderer {
   }
 
   applyQuality() {
-    const q = this.settings.quality;
+    const q = this.settings.effective;
     this.ratioCap = Math.min(window.devicePixelRatio || 1, q.pixelRatio);
     this.dyn.configure(this.ratioCap, !!q.dynRes && !this.settings.dynResOff);
     this.webgl.setPixelRatio(this.dyn.ratio);
@@ -236,8 +236,6 @@ export class Renderer {
         o.shadow.map = null;
       }
     });
-    this.lightCount = 0;
-    this.scene?.traverse((o) => { if (o.isPointLight) this.lightCount++; });
   }
 
   get usesComposer() { return !!this.composer; }

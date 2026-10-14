@@ -35,7 +35,7 @@ export class PerfMeter {
     this.renderer = renderer;
     this.el = null;
     this.t = 0; this.n = 0; this.sum = 0; this.worst = 0;
-    this.fps = 0; this.ms = 0;
+    this.fps = 0; this.ms = 0; this.lights = 0; this.lightAge = 99;
     settings.onChange((k) => { if (k === 'showFps') this._sync(); });
     this._sync();
   }
@@ -84,11 +84,12 @@ export class PerfMeter {
     const worst = this.worst;
     this.t = 0; this.n = 0; this.sum = 0; this.worst = 0;
     if (!this.el) return;
+    if (++this.lightAge > 6) { this.lightAge = 0; this.lights = 0; this.renderer.scene?.traverse((o) => { if (o.isPointLight) this.lights++; }); }
     const r = this.renderer, info = r.webgl.info.render, q = this.settings.quality;
     this.fpsEl.textContent = this.fps >= 100 ? this.fps.toFixed(0) : this.fps.toFixed(1);
     this.msEl.textContent = `${this.ms.toFixed(1)}`;
     this.resEl.textContent = `\u00d7${r.dyn.ratio.toFixed(2)}`;
     this.el.dataset.level = this.fps < 24 ? 'bad' : this.fps < 45 ? 'warn' : 'ok';
-    this.subEl.textContent = `${q.label}${r.settings.needsReload ? '*' : ''} · ${info.calls} calls · ${info.triangles >= 1e5 ? `${Math.round(info.triangles / 1000)}k` : info.triangles} tris · ${r.lightCount} lights · worst ${worst.toFixed(0)} ms`;
+    this.subEl.textContent = `${q.label}${r.settings.needsReload ? '*' : ''} · ${info.calls} calls · ${info.triangles >= 1e5 ? `${Math.round(info.triangles / 1000)}k` : info.triangles} tris · ${this.lights} lights · worst ${worst.toFixed(0)} ms`;
   }
 }

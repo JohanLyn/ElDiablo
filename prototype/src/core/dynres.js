@@ -41,7 +41,7 @@ export class DynRes {
   // Feed one frame interval (ms). Returns a new pixel ratio when it should change, else 0.
   frame(ms, nowMs = performance.now()) {
     if (!this.enabled) return 0;
-    if (ms > 250 || (typeof document !== 'undefined' && document.hidden)) return 0; // hitches, hidden tab: ignore
+    if (ms > 1000 || (typeof document !== 'undefined' && document.hidden)) return 0; // hitches, hidden tab: ignore
     this.t += ms / 1000; this.n++; this.sum += ms;
     if (this.t < WINDOW) return 0;
     const avg = this.sum / this.n;
