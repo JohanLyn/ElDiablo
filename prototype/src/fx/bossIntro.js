@@ -67,6 +67,7 @@ export class BossIntro {
     const g = this.g, v = this.v;
     this.active = true; this.e = e; this.cfg = cfg; this.t = 0; this.stage = 0; this.roar = 0; this.skipped = false;
     e.introDone = true;
+    g.interactTarget = null; // no "Climb back" prompt over the cinematic
     e.group.visible = true; // far-away monsters are hidden until the simulation ticks them
     const bx = e.pos.x, bz = e.pos.z, by = v.ground(bx, bz);
     e.introGround = by;
