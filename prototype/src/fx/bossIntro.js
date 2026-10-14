@@ -19,7 +19,7 @@ const NETI = { kind: 'neti', name: 'NETI', sub: 'Keeper of the First Gate', dur:
 const VOICE = { kind: 'voice', name: 'The Drowned Voice', sub: 'Singer of the Cistern of Enki', dur: 3.8, trigger: 18, dist: 12, height: 3.4, look: 2.0, dist2: 9, height2: 2.6, look2: 2.4 };
 
 // Aqrabu the Venomed rears up in the middle of his pillar ring (overworld: no dungeon, no instance).
-const AQRABU = { kind: 'aqrabu', name: 'AQRABU', sub: 'the Venomed', dur: 3.7, trigger: 16, dist: 12.5, height: 4.8, look: 2.0, dist2: 9.5, height2: 4.1, look2: 2.5 };
+const AQRABU = { kind: 'aqrabu', name: 'AQRABU', sub: 'the Venomed', dur: 3.7, trigger: 16, dist: 11.5, height: 4.2, look: 2.1, dist2: 9, height2: 3.5, look2: 2.5 };
 
 const _v = new THREE.Vector3();
 const ease = (t) => { t = clamp01(t); return t * t * (3 - 2 * t); };
