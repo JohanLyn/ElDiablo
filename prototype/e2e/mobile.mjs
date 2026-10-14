@@ -23,7 +23,7 @@ const summary = {};
 const failed = [];
 const check = (name, cond, detail) => { summary[name] = detail === undefined ? !!cond : { ok: !!cond, ...detail }; if (!cond) failed.push(name); };
 const wait = (ms) => page.waitForTimeout(ms);
-const shot = (name) => page.screenshot({ path: `${OUT}/${name}.png` });
+const shot = (name) => page.screenshot({ path: `${OUT}/${name}.png`, timeout: 120000 });
 const G = (fn, arg) => page.evaluate(fn, arg);
 
 // ---- real touch input: every call sends the full list of active fingers, like a touch screen would ----
@@ -83,7 +83,7 @@ await move(1, 175, 300); await wait(60); await move(1, 190, 300);
 await wait(2500);
 const mv = await G(() => ({ move: window.__game.input.move, device: window.__game.input.device }));
 await up(1);
-await wait(300);
+await wait(1200); // a few frames at software-GL speed
 const p1 = await G(() => { const p = window.__game.player.pos; return { x: p.x, z: p.z }; });
 const moved = Math.hypot(p1.x - p0.x, p1.z - p0.z);
 check('floating stick appears under the thumb', stickBase);
@@ -128,7 +128,7 @@ await move(4, 420, 140); await wait(60); await move(4, 400, 140); // swing the o
 await wait(1800);
 const aimB = await G(() => { const g = window.__game; return { aim: { ...g.input.aim }, rel: { x: g.tether.B.x - g.player.pos.x, z: g.tether.B.z - g.player.pos.z } }; });
 await up(4); await up(3);
-await wait(600);
+await until(() => !window.__game.input.aim.active, null, 20000).catch(() => {}); // frames are slow in software GL
 const aimC = await G(() => { const g = window.__game; return { active: g.input.aim.active, kept: { ...g.input.touchAim }, mode: g.tether.mode }; });
 check('multi-touch: move + aim at once', aimA.move > 0.3 && aimA.aim.active, { move: aimA.move, aim: aimA.aim });
 check('right drag steers the tether (right)', aimA.mode === 'manual' && aimA.aim.x > 0.5 && aimA.rel.x > 1, { mode: aimA.mode, rel: aimA.rel });
@@ -144,10 +144,14 @@ await wait(1500);
 const pots1 = await G(() => ({ potions: window.__game.player.potions, life: window.__game.player.life, badge: document.querySelector('.t-potion .badge').textContent }));
 check('potion tap drinks a potion and the count updates', pots1.potions === pots0 - 1 && String(pots1.potions) === pots1.badge, { before: pots0, after: pots1 });
 const ev0 = await G(() => window.__evades);
-await tapEl('.t-evade');
-await wait(1500);
-const ev1 = await G(() => ({ evades: window.__evades, charges: window.__game.player.evadeCharges }));
-check('evade tap dashes', ev1.evades === ev0 + 1, ev1);
+let ev1 = null, evTaps = 0;
+while (evTaps++ < 4) { // at ~3 fps a hit-stop frame can swallow a tap, so allow a retry
+  await tapEl('.t-evade');
+  await wait(1500);
+  ev1 = await G(() => ({ evades: window.__evades, charges: window.__game.player.evadeCharges }));
+  if (ev1.evades > ev0) break;
+}
+check('evade tap dashes', ev1.evades === ev0 + 1, { ...ev1, taps: evTaps });
 await G(() => { const g = window.__game; g.player.life = g.player.stats.maxLife; window.__god = setInterval(() => { if (!g.player.dead) { g.player.life = Math.max(g.player.life, g.player.stats.maxLife * 0.6); g.player.anima = 100; } }, 200); });
 
 // ------------------------------------------------------------------------------------------ menu → inventory → equip
@@ -208,12 +212,13 @@ await tapEl('#pause-options .plaque:has-text("Settings")');
 await until(() => window.__game.ui.mode === 'menu');
 await wait(700);
 await shot('6-settings');
-const attackX0 = (await centre('.t-attack')).x;
+const side = () => G(() => { const e = document.querySelector('.t-attack'); return e.style.left === 'auto' ? 'right' : 'left'; }); // the overlay is hidden while a menu is open, so read its layout
+const side0 = await side();
 await tapEl('[data-nav="set:touchLefty"]');
 await wait(600);
 const lefty = await G(() => ({ on: window.__game.settings.get('touchLefty'), cls: document.body.classList.contains('t-lefty') }));
-const attackX1 = await G(() => document.querySelector('.t-attack').getBoundingClientRect().left + document.querySelector('.t-attack').getBoundingClientRect().width / 2);
-check('settings: left-handed mirrors the layout', lefty.on && lefty.cls && attackX0 > 600 && attackX1 < 250, { attackX0, attackX1 });
+const side1 = await side();
+check('settings: left-handed mirrors the layout', lefty.on && lefty.cls && side0 === 'right' && side1 === 'left', { side0, side1 });
 await tapEl('[data-nav="set:touchLefty"]');
 await wait(500);
 const sl = await centre('[data-slider="touchScale"]');
@@ -243,6 +248,7 @@ check('map: tapping a waypoint fast-travels', trav.mode === null && trav.d < 6, 
 // ------------------------------------------------------------------------------------------ dialogue: walk up to Ninsun, tap ⚔ to talk
 await G(() => { const g = window.__game, n = g.world.npcs[0]; g.teleport(n.x + 1.4, n.z + 0.4); });
 await wait(1800);
+await until(() => !!window.__game.interactTarget && document.querySelector('.t-attack').classList.contains('interact'), null, 20000).catch(() => {});
 const canTalk = await G(() => ({ target: window.__game.interactTarget?.label, prompt: !document.getElementById('prompt').hidden, handShown: document.querySelector('.t-attack').classList.contains('interact') }));
 await shot('8a-interact-prompt');
 await tapEl('.t-attack', 120);

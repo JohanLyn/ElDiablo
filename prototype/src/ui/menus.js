@@ -26,6 +26,11 @@ const SETTINGS = [
     ]],
   ],
   [
+    ['Touch controls', [
+      { key: 'touchScale', label: 'Touch layout size', type: 'slider', min: 0.8, max: 1.3, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%`, desc: 'Size of the on-screen sticks and buttons.' },
+      { key: 'touchOpacity', label: 'Stick and button opacity', type: 'slider', min: 0.3, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
+      { key: 'touchLefty', label: 'Left-handed layout', type: 'toggle', desc: 'Swap the sides: move with the right thumb, attack and skills on the left.' },
+    ], 'only-touch'],
     ['Gameplay', [
       { key: 'screenShake', label: 'Screen shake', type: 'toggle' },
       { key: 'damageNumbers', label: 'Damage numbers', type: 'toggle' },
@@ -33,11 +38,6 @@ const SETTINGS = [
       { key: 'tutorials', label: 'Tutorial hints', type: 'toggle' },
       { key: 'gidim', label: 'Night of the Gidim', type: 'toggle', desc: 'The monsters you slay by day rise as ghosts at night. Off: no marks, no risings.' },
     ]],
-    ['Touch controls', [
-      { key: 'touchScale', label: 'Touch layout size', type: 'slider', min: 0.8, max: 1.3, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%`, desc: 'Size of the on-screen sticks and buttons.' },
-      { key: 'touchOpacity', label: 'Stick and button opacity', type: 'slider', min: 0.3, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
-      { key: 'touchLefty', label: 'Left-handed layout', type: 'toggle', desc: 'Swap the sides: move with the right thumb, attack and skills on the left.' },
-    ], 'only-touch'],
     ['Interface', [
       { key: 'uiScale', label: 'UI scale', type: 'slider', min: 0.9, max: 1.3, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
       { key: 'colorblind', label: 'Colour-blind rarity markers', type: 'toggle', desc: 'Adds ◆ ★ ✦ symbols and a clearer palette to item rarities.' },
@@ -521,7 +521,7 @@ export class Menus {
       }
       return `<div class="set-row focusable t-${def.type}" data-nav="set:${def.key}"><div class="sr-l"><b>${def.label}</b></div><div class="sr-c">${ctl}</div></div>`;
     };
-    const col = (groups) => `<div class="set-col">${groups.map(([name, rows, cls = '']) => `<h3 class="sec ${cls}">${name}</h3>${rows.map((r) => row(r).replace('class="set-row', `class="${cls} set-row`)).join('')}`).join('')}</div>`;
+    const col = (groups) => `<div class="set-col">${groups.filter((gr) => !gr[2] || this.touch).map(([name, rows, cls = '']) => `<h3 class="sec ${cls}">${name}</h3>${rows.map((r) => row(r).replace('class="set-row', `class="${cls} set-row`)).join('')}`).join('')}</div>`;
     const actions = this.only ? '' : `<div class="sys-actions">
       <div class="btn plaque focusable" data-nav="act:resetTut"><span>Reset tutorials</span></div>
       <div class="btn plaque focusable ${this.confirmNew ? 'danger' : ''}" data-nav="act:new"><span>${this.confirmNew ? 'Confirm: erase this hero and start over' : 'Start a new game'}</span></div>

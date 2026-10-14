@@ -2,6 +2,14 @@
 
 All notable changes to the Gates of Kur prototype. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- **Phones and tablets (touch controls, landscape).** A floating move stick on the left, a Tether stick on any empty space on the right (drag to steer your sedu), a big strike / interact button, an arc of skill buttons with cooldown sweeps, evade, potion (with count) and aspect swap, and menu, map, town portal and zoom buttons top-left. Settings has touch layout size, opacity and a left-handed layout.
+- Phone layout: compact HUD with the orbs above the sticks and a slim XP strand; tap-first inventory (select, then Equip or Salvage), skills (Learn / Rank up, then assign to a button) and map; two-column pause menu; close buttons on every menu; dialogue options are tappable.
+- Portrait shows a "Rotate your phone to landscape" screen and pauses the game. Fullscreen button on the title screen where the browser supports it (iPhone Safari does not: use Share, then Add to Home Screen). No page scroll, pinch zoom or double-tap zoom; audio unlocks on the first touch.
+- `e2e/mobile.mjs`: real multi-touch end-to-end test (see the README).
+
 ## [0.5.0-alpha]
 
 A new original feature, and a polished stretch from minute 12 to minute 20: the road to Aqrabu, a new event in the Ashen Approach, and a fair first gate.
