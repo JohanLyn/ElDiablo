@@ -5,7 +5,7 @@ import { QUESTS } from '../game/quests.js';
 import { QUALITY } from '../core/settings.js';
 import { itemIcon, skillIcon } from './icons.js';
 import { escapeHtml } from './hud.js';
-import { padGlyph, keyGlyph } from './glyphs.js';
+import { padGlyph, keyGlyph, touchGlyph } from './glyphs.js';
 
 const $ = (id) => document.getElementById(id);
 const TABS = [['inventory', 'Inventory'], ['skills', 'Skills'], ['quests', 'Quests'], ['settings', 'Settings'], ['system', 'Controls']];
@@ -33,6 +33,11 @@ const SETTINGS = [
       { key: 'tutorials', label: 'Tutorial hints', type: 'toggle' },
       { key: 'gidim', label: 'Night of the Gidim', type: 'toggle', desc: 'The monsters you slay by day rise as ghosts at night. Off: no marks, no risings.' },
     ]],
+    ['Touch controls', [
+      { key: 'touchScale', label: 'Touch layout size', type: 'slider', min: 0.8, max: 1.3, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%`, desc: 'Size of the on-screen sticks and buttons.' },
+      { key: 'touchOpacity', label: 'Stick and button opacity', type: 'slider', min: 0.3, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
+      { key: 'touchLefty', label: 'Left-handed layout', type: 'toggle', desc: 'Swap the sides: move with the right thumb, attack and skills on the left.' },
+    ], 'only-touch'],
     ['Interface', [
       { key: 'uiScale', label: 'UI scale', type: 'slider', min: 0.9, max: 1.3, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
       { key: 'colorblind', label: 'Colour-blind rarity markers', type: 'toggle', desc: 'Adds ◆ ★ ✦ symbols and a clearer palette to item rarities.' },
@@ -57,7 +62,7 @@ export class Menus {
     this.animate = false;
     this.root.addEventListener('mousemove', (e) => {
       const el = e.target.closest('[data-nav]');
-      if (this.drag) return;
+      if (this.drag || this.g.input.emulatedMouse()) return; // taps replay as mouse moves: ignore those
       if (el && el.dataset.nav !== this.focusKey) { this.focusKey = el.dataset.nav; this.render(); }
     });
     this.root.addEventListener('mousedown', (e) => {
@@ -72,7 +77,25 @@ export class Menus {
       window.addEventListener('mouseup', up);
       e.preventDefault();
     });
+    // Touch sliders: pointer events, since a finger drag does not produce mouse events.
+    this.root.addEventListener('pointerdown', (e) => {
+      const sl = e.pointerType === 'mouse' ? null : e.target.closest('[data-slider]');
+      if (!sl) return;
+      this.drag = sl.dataset.slider;
+      this.focusKey = `set:${this.drag}`;
+      this.dragTo(e.clientX);
+      try { sl.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+      const move = (ev) => this.dragTo(ev.clientX);
+      const up = () => { sl.removeEventListener('pointermove', move); sl.removeEventListener('pointerup', up); sl.removeEventListener('pointercancel', up); this.drag = null; this.render(); };
+      sl.addEventListener('pointermove', move);
+      sl.addEventListener('pointerup', up);
+      sl.addEventListener('pointercancel', up);
+      e.preventDefault();
+    });
     this.root.addEventListener('click', (e) => {
+      if (e.target.closest('[data-close]')) { this.g.ui.closeMenu(); return; }
+      const act = e.target.closest('[data-do]');
+      if (act) { this.doAction(act.dataset.do); return; }
       const tab = e.target.closest('[data-tab]');
       if (tab) { this.switchTab(tab.dataset.tab); return; }
       if (e.target.closest('[data-slider]')) return;
@@ -81,16 +104,24 @@ export class Menus {
       const step = e.target.closest('[data-step]');
       if (step) { const [k, d] = step.dataset.step.split(':'); this.focusKey = `set:${k}`; this.adjustSetting(k, +d); return; }
       const el = e.target.closest('[data-nav]');
-      if (el) { this.focusKey = el.dataset.nav; this.activate('confirm'); }
+      if (el) {
+        this.focusKey = el.dataset.nav;
+        // Touch: a tap selects (details and an explicit button appear); it never equips or salvages by itself.
+        if (this.touch && /^(inv|eq|skill|gamble):/.test(this.focusKey)) { this.picked = true; this.render(); return; }
+        this.activate('confirm');
+      }
     });
     this.root.addEventListener('contextmenu', (e) => {
       e.preventDefault();
+      if (this.touch) return; // a long press must not salvage anything
       const el = e.target.closest('[data-nav]');
       if (el) { this.focusKey = el.dataset.nav; this.activate('alt'); }
     });
   }
 
   get open() { return !this.root.hidden; }
+
+  get touch() { return this.g.input.device === 'touch'; }
 
   get tabs() { return this.only ? TABS.filter(([id]) => this.only.includes(id)) : TABS; }
 
@@ -101,6 +132,7 @@ export class Menus {
     this.focusKey = null;
     this.binding = null;
     this.confirmNew = false;
+    this.picked = false;
     this.animate = true;
     this.root.hidden = false;
     this.render();
@@ -114,6 +146,7 @@ export class Menus {
     this.focusKey = null;
     this.binding = null;
     this.confirmNew = false;
+    this.picked = false;
     this.animate = true;
     this.body.scrollTop = 0;
     this.render();
@@ -216,6 +249,24 @@ export class Menus {
     g.hud.notify('Tutorial hints will appear again', 'good');
   }
 
+  // ---- touch actions: explicit buttons next to a selection ----------------------------------------
+  doAction(what) {
+    const g = this.g, p = g.player;
+    const [verb, arg] = what.split(':');
+    const [type, id] = (this.focusKey ?? '').split(':');
+    if (verb === 'equip' && type === 'inv') this.activate('confirm');
+    else if (verb === 'salvage' && type === 'inv') this.activate('alt');
+    else if (verb === 'unequip' && type === 'eq') this.activate('confirm');
+    else if (verb === 'buy' && type === 'gamble') this.activate('confirm');
+    else if (verb === 'rank' && type === 'skill') {
+      if (canRankUp(id, p.level, p.skillRanks, p.skillPoints)) this.activate('confirm');
+      else g.hud.notify((p.skillRanks[id] ?? 0) >= MAX_RANK ? 'Already at the highest rank' : p.skillPoints ? `Unlocks at level ${SKILLS[id].unlock}` : 'No skill points to spend', 'warn');
+    } else if (verb === 'assign' && type === 'skill') {
+      if (p.skillRanks[id]) { this.binding = id; this.render(); } else g.hud.notify('Learn this skill first', 'warn');
+    } else if (verb === 'bind' && this.binding && this.touch) this.bindSkill(this.binding, +arg);
+    else if (verb === 'cancel') { this.binding = null; this.render(); }
+  }
+
   // ---- actions --------------------------------------------------------------------
   activate(kind) {
     const g = this.g, p = g.player, key = this.focusKey;
@@ -277,7 +328,7 @@ export class Menus {
     // The basic skill must stay somewhere so you always have an attack.
     if (!p.slots.includes('strike')) p.slots[p.slots.indexOf(null) >= 0 ? p.slots.indexOf(null) : 0] = 'strike';
     this.binding = null;
-    this.g.hud.notify(`${SKILLS[id].name} → ${SLOT_BUTTONS[slot][this.g.input.device === 'pad' ? 'pad' : 'kbm']}`, 'good');
+    this.g.hud.notify(`${SKILLS[id].name} → ${this.touch ? `button ${slot + 1}` : SLOT_BUTTONS[slot][this.g.input.device === 'pad' ? 'pad' : 'kbm']}`, 'good');
     this.g.save();
     this.render();
   }
@@ -314,9 +365,14 @@ export class Menus {
       this.body.classList.remove('tab-in'); void this.body.offsetWidth; this.body.classList.add('tab-in');
     }
     const els = [...this.body.querySelectorAll('[data-nav]')];
-    if (!els.find((e) => e.dataset.nav === this.focusKey) && els.length) this.focusKey = els[0].dataset.nav;
+    if (this.touch && !this.picked) this.focusKey = null; // nothing is selected until the first tap
+    else if (!els.find((e) => e.dataset.nav === this.focusKey) && els.length) this.focusKey = els[0].dataset.nav;
     for (const e of els) e.classList.toggle('focus', e.dataset.nav === this.focusKey);
-    if (this.tab === 'inventory' && els.length) this.body.querySelector('#tt').innerHTML = this.tooltipFor(this.focusKey);
+    if (this.tab === 'inventory' && els.length) {
+      this.body.querySelector('#tt').innerHTML = this.tooltipFor(this.focusKey) || '<div class="tt-hint">Tap an item to inspect it.</div>';
+      this.body.querySelector('#tt-act').innerHTML = this.inventoryActions(this.focusKey);
+    }
+    if (this.tab === 'skills') this.body.querySelector('#skill-act').innerHTML = this.skillActions(this.focusKey);
     if (this.tab === 'settings') {
       const def = SETTING_BY_KEY[(this.focusKey ?? '').split(':')[1]];
       const d = this.body.querySelector('#set-desc');
@@ -339,6 +395,26 @@ export class Menus {
     if (this.tab === 'skills') return `${k('A', 'Click')} Learn / rank up (or rebind if you have no points) · ${k('X', 'Right-click')} Assign to a button · ${close}`;
     if (this.tab === 'settings') return `<span class="pad">D-pad ◀ ▶ change value · ${padGlyph('A')} toggle</span><span class="kbm">Click or drag to change · arrow keys ◀ ▶</span> · ${close}`;
     return `${this.tabs.length > 1 ? `${k('LB', 'Q')} ${k('RB', 'E')} Switch tab · ` : ''}${close}`;
+  }
+
+  // Touch: what the selected item can do. Tap = select, these buttons = act.
+  inventoryActions(key) {
+    const [type] = (key ?? '').split(':');
+    const b = (what, label, cls = '') => `<div class="btn plaque t-do ${cls}" data-do="${what}"><span>${label}</span></div>`;
+    if (type === 'inv') return b('equip', 'Equip') + b('salvage', this.merchant ? 'Sell' : 'Salvage', 'danger');
+    if (type === 'eq' && this.g.player.equipment[key.split(':')[1]]) return b('unequip', 'Unequip');
+    if (type === 'gamble') return b('buy', 'Buy');
+    return '';
+  }
+
+  skillActions(key) {
+    const [type, id] = (key ?? '').split(':');
+    if (this.binding) return `<div class="sa-name">Assigning ${SKILLS[this.binding].name}</div><div class="t-actions"><div class="btn plaque t-do" data-do="cancel"><span>Cancel</span></div></div>`;
+    if (type !== 'skill') return '<div class="sa-hint">Tap a skill to learn it, rank it up or put it on a button.</div>';
+    const p = this.g.player, rank = p.skillRanks[id] ?? 0;
+    const can = canRankUp(id, p.level, p.skillRanks, p.skillPoints);
+    const b = (what, label, cls = '') => `<div class="btn plaque t-do ${cls}" data-do="${what}"><span>${label}</span></div>`;
+    return `<div class="sa-name">${SKILLS[id].name}${rank ? ` · rank ${rank}` : ''}</div><div class="t-actions">${b(`rank:${id}`, rank ? 'Rank up' : 'Learn', can ? 'go' : 'dim')}${rank ? b(`assign:${id}`, 'Assign to button') : ''}</div>`;
   }
 
   render_inventory() {
@@ -370,7 +446,7 @@ export class Menus {
         <div class="stats">${statRows.map(([a, b]) => `<span>${a}</span><b>${b}</b>`).join('')}</div>
         <div class="gold-line"><i class="coin"></i>${p.gold} gold <span class="sep">·</span> ${p.potions}/${p.maxPotions} potions${p.ghostAsh > 0 || this.g.flags.gidimSeen ? ` <span class="sep">·</span> <span class="ash-line"><i class="ash-gem">◈</i>${p.ghostAsh ?? 0} Ghost-ash</span>` : ''}</div></div>
       <div class="inv-col"><h3 class="sec">Inventory <small>${p.inventory.length}/30</small></h3><div class="grid">${grid}</div>${gambleHtml}</div>
-      <div class="inv-col"><h3 class="sec">Details</h3><div id="tt"></div></div>
+      <div class="inv-col inv-detail"><h3 class="sec">Details</h3><div id="tt"></div><div id="tt-act" class="t-actions only-touch"></div></div>
     </div>`;
   }
 
@@ -408,13 +484,13 @@ export class Menus {
     }).join('');
     const binds = SLOT_BUTTONS.map((b, i) => {
       const id = p.slots[i];
-      return `<div class="bind">${padGlyph(b.pad)}${keyGlyph(b.kbm)}<div class="bind-ic">${id ? skillIcon(id, SKILLS[id].color) : ''}</div><span>${id ? SKILLS[id].name : 'Empty'}</span></div>`;
+      return `<div class="bind ${this.binding ? 'pick' : ''}" data-do="bind:${i}">${padGlyph(b.pad)}${keyGlyph(b.kbm)}${touchGlyph(i === 0 ? '⚔' : String(i + 1))}<div class="bind-ic">${id ? skillIcon(id, SKILLS[id].color) : ''}</div><span>${id ? SKILLS[id].name : 'Empty'}</span></div>`;
     }).join('');
     const aspects = ASPECTS.map((a) => `<div style="${p.level < a.unlock ? 'opacity:.45' : ''}"><i style="background:${a.css};box-shadow:0 0 8px ${a.css}"></i><span><b>${a.name}</b>${p.level < a.unlock ? ` (level ${a.unlock})` : ''}: ${a.desc}</span></div>`).join('');
     return `<div class="skills">
       <div><h3 class="sec">${p.skillPoints} skill point${p.skillPoints === 1 ? '' : 's'} to spend</h3>${rows}</div>
-      <div><h3 class="sec">Action bar</h3><div class="bindings">${binds}</div>
-        ${this.binding ? `<div class="bind-wait">Press a skill button for ${SKILLS[this.binding].name}</div>` : ''}
+      <div><div id="skill-act" class="only-touch"></div><h3 class="sec">Action bar</h3><div class="bindings">${binds}</div>
+        ${this.binding ? `<div class="bind-wait"><span class="not-touch">Press a skill button for ${SKILLS[this.binding].name}</span><span class="only-touch">Tap a slot above for ${SKILLS[this.binding].name}</span></div>` : ''}
         <h3 class="sec" style="margin-top:16px">Tether Aspects <small><span class="pad">D-pad ◀ ▶</span><span class="kbm">R / F</span></small></h3><div class="aspects">${aspects}</div></div>
     </div>`;
   }
@@ -445,7 +521,7 @@ export class Menus {
       }
       return `<div class="set-row focusable t-${def.type}" data-nav="set:${def.key}"><div class="sr-l"><b>${def.label}</b></div><div class="sr-c">${ctl}</div></div>`;
     };
-    const col = (groups) => `<div class="set-col">${groups.map(([name, rows]) => `<h3 class="sec">${name}</h3>${rows.map(row).join('')}`).join('')}</div>`;
+    const col = (groups) => `<div class="set-col">${groups.map(([name, rows, cls = '']) => `<h3 class="sec ${cls}">${name}</h3>${rows.map((r) => row(r).replace('class="set-row', `class="${cls} set-row`)).join('')}`).join('')}</div>`;
     const actions = this.only ? '' : `<div class="sys-actions">
       <div class="btn plaque focusable" data-nav="act:resetTut"><span>Reset tutorials</span></div>
       <div class="btn plaque focusable ${this.confirmNew ? 'danger' : ''}" data-nav="act:new"><span>${this.confirmNew ? 'Confirm: erase this hero and start over' : 'Start a new game'}</span></div>
@@ -459,13 +535,23 @@ export class Menus {
     const T = (s) => `<kbd class="pad gp gp-text">${s}</kbd>`;
     const KT = (s) => `<kbd class="kbm key key-wide">${s}</kbd>`;
     return `<div class="controls">
-      <div><h3 class="sec">Controller</h3><table>
+      <div class="only-touch"><h3 class="sec">Touch</h3><table>
+        <tr><td>${touchGlyph('Left side')}</td><td>Drag anywhere on the left half to move (the stick appears under your thumb)</td></tr>
+        <tr><td>${touchGlyph('Right side')}</td><td>Drag on empty space on the right to steer your sedu spirit's Tether (it sweeps on its own if you don't)</td></tr>
+        <tr><td>${touchGlyph('⚔')}</td><td>Strike (hold to keep swinging). It also talks, loots and opens things when no enemies are near</td></tr>
+        <tr><td>${touchGlyph('Skills')}</td><td>The arc of buttons above it casts your other skills</td></tr>
+        <tr><td>${touchGlyph('Evade')} ${touchGlyph('Potion')}</td><td>Dash out of danger, drink a healing potion</td></tr>
+        <tr><td>${touchGlyph('Aspect')}</td><td>Change Tether Aspect</td></tr>
+        <tr><td>${touchGlyph('Menu')} ${touchGlyph('Map')}</td><td>Pause menu (inventory, skills, quests, settings) and the map with fast travel</td></tr>
+        <tr><td>${touchGlyph('Portal')} ${touchGlyph('Zoom')}</td><td>Town Portal, camera zoom</td></tr>
+      </table><p class="tt-type fine">Settings has touch layout size, opacity and a left-handed layout. On iPhone and iPad, Share → Add to Home Screen plays full-screen.</p></div>
+      <div class="not-touch"><h3 class="sec">Controller</h3><table>
         <tr><td>${T('Left stick')}</td><td>Move</td></tr><tr><td>${T('Right stick')}</td><td>Steer the Tether (your spirit sweeps on its own if you don't)</td></tr>
         <tr><td>${P('A', 'X', 'Y', 'RB', 'RT', 'LT')}</td><td>Skills (A also talks, loots and opens when no enemies are near)</td></tr>
         <tr><td>${P('B')}</td><td>Evade</td></tr><tr><td>${P('LB')}</td><td>Healing potion</td></tr><tr><td>${T('D-pad ◀ ▶')}</td><td>Change Tether Aspect</td></tr>
         <tr><td>${T('D-pad ▲')}</td><td>Town Portal</td></tr><tr><td>${T('D-pad ▼')}</td><td>Zoom</td></tr><tr><td>${P('Back')}</td><td>Map and fast travel</td></tr><tr><td>${P('Start')}</td><td>Pause menu</td></tr>
       </table></div>
-      <div><h3 class="sec">Keyboard &amp; mouse</h3><table>
+      <div class="not-touch"><h3 class="sec">Keyboard &amp; mouse</h3><table>
         <tr><td>${K('W', 'A', 'S', 'D')}</td><td>Move</td></tr><tr><td>${KT('Mouse')}</td><td>Aim skills and steer the Tether</td></tr>
         <tr><td>${KT('Left')} ${KT('Right')}</td><td>Skill slots 1 and 2 (left / right click)</td></tr><tr><td>${K('1', '2', '3', '4')}</td><td>Skill slots 3 to 6</td></tr>
         <tr><td>${KT('Space')}</td><td>Evade</td></tr><tr><td>${K('Q')}</td><td>Healing potion</td></tr><tr><td>${K('E')}</td><td>Interact / pick up</td></tr>

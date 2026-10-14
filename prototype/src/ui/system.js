@@ -125,7 +125,8 @@ function desktopNotice() {
   try { dismissed = sessionStorage.getItem('kur-desktop-notice') === '1'; } catch { /* ignore */ }
   if (dismissed) return;
   const touchOnly = matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches;
-  if (!(innerWidth < 700 || touchOnly)) return;
+  if (touchOnly) return; // phones and tablets are supported: the touch controls and the rotate overlay take over
+  if (innerWidth >= 700) return;
   const el = document.createElement('div');
   el.id = 'desktop-notice';
   el.innerHTML = '<span>Best played on desktop with a controller, or keyboard &amp; mouse.</span><button type="button" aria-label="Dismiss">Got it</button>';
@@ -137,8 +138,62 @@ function desktopNotice() {
 }
 desktopNotice();
 
+// ---------------------------------------------------------------- phones: orientation, zoom, scrolling
+let gameRef = null;
+let pausedByRotate = false;
+const isTouchish = () => matchMedia('(pointer: coarse)').matches || document.body.dataset.device === 'touch';
+const portraitPhone = () => isTouchish() && innerHeight > innerWidth && innerWidth < 700;
+
+const rotateEl = document.createElement('div');
+rotateEl.id = 'rotate';
+rotateEl.hidden = true;
+rotateEl.setAttribute('role', 'alert');
+rotateEl.innerHTML = `<div class="ro-card">
+  <svg class="ro-phone" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="20" y="6" width="24" height="42" rx="4"/><path d="M29 42 H35"/><path d="M12 44 Q12 58 30 58 M24 62 L30 58 L25 53" /><path d="M52 20 Q52 6 34 6" opacity="0"/></svg>
+  <h2>Rotate your phone to landscape</h2>
+  <p>The Seven Gates of Kur is played sideways, with a thumb on each side of the screen. The game is paused until you turn your phone.</p>
+</div>`;
+document.body.appendChild(rotateEl);
+
+function checkRotate() {
+  const on = portraitPhone();
+  if (on === !rotateEl.hidden) return;
+  rotateEl.hidden = !on;
+  document.body.classList.toggle('rotate-lock', on);
+  const g = gameRef;
+  if (!g) return;
+  const ui = g.ui;
+  if (on) {
+    if (g.started && ui.mode === null && !g.player.dead) { ui.openPause({ reason: 'rotate' }); pausedByRotate = true; }
+  } else if (pausedByRotate) {
+    pausedByRotate = false;
+    if (ui.mode === 'pause' && ui.pauseView === 'main') ui.closePause(); // back in landscape: carry on where you were
+  }
+}
+addEventListener('resize', checkRotate);
+addEventListener('orientationchange', checkRotate);
+setTimeout(checkRotate, 0);
+setInterval(checkRotate, 1000); // cheap safety net: some browsers skip resize events when the address bar moves
+
+// No pinch zoom, double-tap zoom or page scroll while playing: only elements that really scroll (menu lists) may pan.
+function canScroll(el) {
+  for (; el && el !== document.body; el = el.parentElement) {
+    const o = getComputedStyle(el).overflowY;
+    if ((o === 'auto' || o === 'scroll') && el.scrollHeight > el.clientHeight + 1) return true;
+  }
+  return false;
+}
+for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) {
+  document.addEventListener(ev, (e) => { if (isTouchish()) e.preventDefault(); }, { passive: false });
+}
+document.addEventListener('touchmove', (e) => {
+  if (!isTouchish()) return;
+  if (e.touches.length > 1 || !canScroll(e.target)) e.preventDefault();
+}, { passive: false });
+
 // ---------------------------------------------------------------- in-game hooks
 export function installSystem(g) {
+  gameRef = g;
   const s = g.settings;
   const applySettings = () => {
     document.documentElement.style.setProperty('--ui-scale', String(s.get('uiScale') ?? 1));

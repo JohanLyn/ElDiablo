@@ -4,6 +4,7 @@ import { escapeHtml } from './hud.js';
 import { HALF } from '../world/layout.js';
 import { portrait } from './portraits.js';
 import { btn, padGlyph, keyGlyph } from './glyphs.js';
+import { Touch } from './touch.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -13,6 +14,7 @@ export class UI {
   constructor(g) {
     this.g = g;
     this.menus = new Menus(g);
+    this.touch = new Touch(g, this); // on-screen sticks and buttons (shown only for body[data-device="touch"])
     this.mode = null; // 'menu' | 'map' | 'dialog' | 'title' | 'intro' | 'death' | 'pause' | 'credits'
     this.mapCtx = $('map-canvas').getContext('2d');
     this.mapSel = null;
@@ -34,7 +36,7 @@ export class UI {
       const scale = e.target.width / (HALF * 2);
       const x = ((e.clientX - r.left) / r.width) * e.target.width / scale - HALF;
       const z = ((e.clientY - r.top) / r.height) * e.target.height / scale - HALF;
-      let best = null, bd = 10;
+      let best = null, bd = this.g.input.device === 'touch' ? 18 : 10; // fingers are fatter than cursors
       for (const w of this.g.world.waypoints) {
         const d = Math.hypot(w.x - x, w.z - z);
         if (w.discovered && d < bd) { bd = d; best = w; }
@@ -53,6 +55,10 @@ export class UI {
     });
     this._wireList('title-options', () => this.titleOptions, (i) => { this.titleFocus = i; this.renderTitle(); }, (i) => this.titleOptions[i].run());
     this._wireList('pause-options', () => this.pauseOptions, (i) => { this.pauseFocus = i; this.renderPause(); }, (i) => this.pauseOptions[i].run());
+    $('map-close').addEventListener('click', () => { if (this.mode === 'map') this.closeMap(); });
+    $('pause-close').addEventListener('click', () => { if (this.mode === 'pause') (this.pauseView === 'confirm' ? this.pauseOptions[1].run() : this.closePause()); });
+    $('dialog-close').addEventListener('click', () => { if (this.mode === 'dialog') this.closeDialog(); });
+    $('intro').addEventListener('click', () => this.finishIntro());
     $('death').addEventListener('click', () => { if (this.mode === 'death') this.respawn(); });
     $('credits-close').addEventListener('click', () => this.closeCredits());
     $('t-version').textContent = `v${g.version ?? ''}`;
@@ -77,6 +83,7 @@ export class UI {
 
   update(dt) {
     const g = this.g, input = g.input;
+    this.touch.update();
     const keys = this._frameKeys;
     this._frameKeys = new Set();
     this._keysThisFrame = keys;
@@ -89,8 +96,8 @@ export class UI {
     if (this.mode === null) {
       if (g.player.dead) return;
       if (input.pressed.menu) {
-        // Esc and Start pause; I opens the inventory directly.
-        if (input.device === 'pad' || keys.has('Escape')) this.openPause();
+        // Esc and Start pause; I opens the inventory directly. The touch Menu button opens the pause menu.
+        if (input.device === 'pad' || input.device === 'touch' || keys.has('Escape')) this.openPause();
         else this.openMenu('inventory');
       } else if (input.pressed.skillsMenu) this.openMenu('skills');
       else if (input.pressed.questsMenu) this.openMenu('quests');
@@ -134,7 +141,7 @@ export class UI {
     this.pauseView = 'main';
     this.pauseFocus = 0;
     $('pause').hidden = false;
-    const msg = { blur: 'The game paused because the window lost focus.', pad: 'Controller disconnected. Reconnect it, or press any key to carry on with keyboard and mouse.' }[reason];
+    const msg = { blur: 'The game paused because the window lost focus.', rotate: 'The game paused: turn your phone sideways to play.', pad: 'Controller disconnected. Reconnect it, or press any key to carry on with keyboard and mouse.' }[reason];
     const r = $('pause-reason');
     r.hidden = !msg;
     r.textContent = msg ?? '';
@@ -240,7 +247,7 @@ export class UI {
   drawMap() {
     const c = $('map-canvas');
     drawMap(this.mapCtx, this.g, { cx: 0, cz: 0, scale: c.width / (HALF * 2), width: c.width, height: c.height, full: true, selected: this.mapSel });
-    $('map-help').innerHTML = `<span class="pad">${padGlyph('A')} travel · D-pad choose waypoint · ${padGlyph('B')} close</span><span class="kbm">Click a waypoint to travel · ${keyGlyph('M')} ${keyGlyph('Esc')} close</span>`;
+    $('map-help').innerHTML = `<span class="pad">${padGlyph('A')} travel · D-pad choose waypoint · ${padGlyph('B')} close</span><span class="kbm">Click a waypoint to travel · ${keyGlyph('M')} ${keyGlyph('Esc')} close</span><span class="tch">Tap a waypoint to travel</span>`;
     $('map-info').textContent = this.mapSel ? `Travel to ${this.mapSel.name}` : 'Discover waypoints by walking near them.';
   }
 
@@ -304,7 +311,7 @@ export class UI {
     const pf = el.querySelector('.d-portrait');
     pf.replaceChildren(portrait(npc.id));
     this.paintDialogText(0);
-    el.querySelector('.d-more').innerHTML = `${btn('A', 'Enter')} <span>skip</span>`;
+    el.querySelector('.d-more').innerHTML = `${btn('A', 'Enter', 'Tap')} <span>skip</span>`;
     this.renderDialog();
   }
 
@@ -374,9 +381,27 @@ export class UI {
     this.titleOptions.push({ label: 'Settings', run: () => this.openMenu('settings', { from: 'title', only: ['settings'] }) });
     this.titleOptions.push({ label: 'Controls', run: () => this.openMenu('system', { from: 'title', only: ['system'] }) });
     this.titleOptions.push({ label: 'Credits', run: () => this.openCredits() });
+    // Phones and tablets with the Fullscreen API (not iPhone Safari, which has none for pages).
+    if (fullscreenSupported() && matchMedia('(pointer: coarse)').matches) {
+      const fs = { label: 'Fullscreen', run: () => this.toggleFullscreen() };
+      this.titleOptions.splice(this.titleOptions.length - 1, 0, fs);
+      document.addEventListener('fullscreenchange', () => { fs.label = document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen'; if (this.mode === 'title') this.renderTitle(); });
+    }
     this.titleFocus = 0;
     this.renderTitle();
     this.spawnEmbers();
+  }
+
+  // Fullscreen on touch devices, then ask for landscape where the browser lets us; failures are ignored.
+  async toggleFullscreen() {
+    const d = document, el = d.documentElement;
+    try {
+      if (d.fullscreenElement) await d.exitFullscreen();
+      else {
+        await (el.requestFullscreen?.({ navigationUI: 'hide' }) ?? el.webkitRequestFullscreen?.());
+        try { await screen.orientation?.lock?.('landscape'); } catch { /* not supported: the rotate overlay covers portrait */ }
+      }
+    } catch { /* denied or unsupported */ }
   }
 
   spawnEmbers() {
@@ -470,4 +495,5 @@ export class UI {
   }
 }
 
+const fullscreenSupported = () => document.fullscreenEnabled !== false && (typeof document.documentElement.requestFullscreen === 'function' || typeof document.documentElement.webkitRequestFullscreen === 'function');
 const dist = (w, p) => Math.hypot(w.x - p.x, w.z - p.z);

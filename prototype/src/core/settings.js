@@ -21,6 +21,9 @@ export const DEFAULTS = {
   uiScale: 1,
   tutorials: true,
   gidim: true, // Night of the Gidim: the day's dead rise at night
+  touchScale: 1, // touch layout size, 0.8 to 1.3 (src/ui/touch.js)
+  touchLefty: false, // mirror the touch layout for left-handed play
+  touchOpacity: 0.8, // stick and button opacity
   timeOfDay: 'cycle', // or a world/timeofday.js preset: dawn, noon, golden, dusk, night
 };
 

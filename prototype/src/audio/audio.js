@@ -44,7 +44,8 @@ export class Audio {
     this.errors = 0;
     this.bind();
     const unlock = () => this.unlock();
-    for (const ev of ['keydown', 'mousedown', 'pointerdown', 'touchstart']) window.addEventListener(ev, unlock, { passive: true });
+    // iOS only unlocks audio from inside touchend / click, so listen for those too
+    for (const ev of ['keydown', 'mousedown', 'pointerdown', 'touchstart', 'touchend', 'click']) window.addEventListener(ev, unlock, { passive: true });
     g.settings.onChange(() => this.applyVolumes());
     document.addEventListener('visibilitychange', () => this.onVisibility());
   }

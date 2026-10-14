@@ -4,9 +4,11 @@
    grain, bead rings and frieze are procedural SVGs published as CSS variables by
    ornaments.js (--mosaic*, --stone, --tri-band*, --frieze, --bead-*, --beads-*).
    style.css = tokens, glyphs, overlays, title, pause, dialogue, system panels.
-   hud.css = in-game HUD.  menus.css = inventory / skills / quests / settings. */
+   hud.css = in-game HUD.  menus.css = inventory / skills / quests / settings.
+   touch.css = on-screen touch controls and the phone layout. */
 @import './hud.css';
 @import './menus.css';
+@import './touch.css';
 
 :root {
   color-scheme: dark;
