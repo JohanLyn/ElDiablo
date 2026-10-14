@@ -1,4 +1,5 @@
 import { getEnv, NOISE_GLSL } from './common.js';
+import { GFX, noiseUniform, NOISE_TEX_GLSL } from '../../core/gfx.js';
 
 // Adds world-space wind sway and drifting cloud shadows to any
 // MeshStandardMaterial (works for plain meshes and InstancedMesh).
@@ -7,7 +8,9 @@ import { getEnv, NOISE_GLSL } from './common.js';
 export function patchLit(material, { sway = 0, cloth = 0, cloud = true } = {}) {
   const env = getEnv();
   material.onBeforeCompile = (shader) => {
+    const cheap = GFX.cheap; // Mobile: cloud shadows from the baked noise texture
     shader.uniforms.uTime = env.uTime;
+    if (cheap && cloud) shader.uniforms.uNoiseTex = noiseUniform;
     shader.uniforms.uWind = env.uWind;
     shader.uniforms.uCloud = env.uCloud;
     shader.uniforms.uSway = { value: sway };
@@ -34,13 +37,13 @@ export function patchLit(material, { sway = 0, cloth = 0, cloud = true } = {}) {
       shader.fragmentShader = shader.fragmentShader
         .replace('#include <common>', `#include <common>
           varying vec3 vWP; uniform float uTime, uCloud; uniform vec2 uWind;
-          ${NOISE_GLSL}`)
+          ${cheap ? NOISE_TEX_GLSL : NOISE_GLSL}`)
         .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
-          float cloudSh = 1.0 - uCloud * smoothstep(0.46, 0.72, fbm3(vWP.xz * 0.011 + uWind * uTime * 0.012));
+          float cloudSh = 1.0 - uCloud * smoothstep(0.46, 0.72, ${cheap ? 'cloudN' : 'fbm3'}(vWP.xz * 0.011 + uWind * uTime * 0.012));
           reflectedLight.directDiffuse *= cloudSh;
           reflectedLight.directSpecular *= cloudSh;`);
     }
   };
-  material.customProgramCacheKey = () => `lit-${sway}-${cloth}-${cloud}`;
+  material.customProgramCacheKey = () => `lit-${sway}-${cloth}-${cloud}${GFX.cheap ? '-c' : ''}`;
   return material;
 }

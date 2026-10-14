@@ -17,6 +17,7 @@ import { createParticles, PARTICLE_MIX } from './shaders/particles.js';
 import { LightManager } from './lights.js';
 import { TimeOfDay } from './timeofday.js';
 import { FOG, installFog } from './shaders/fog.js';
+import { GFX, configureGfx } from '../core/gfx.js';
 import { createLook, copyLook, blendLook, keyElevation, EnvBaker, LOOK_COLORS, LOOK_NUMS } from './env.js';
 import { createShafts } from './shafts.js';
 import { createLiving } from './life.js'; // living-world hook (1/3): set pieces + critters
@@ -144,15 +145,17 @@ function applyMod(F, L, M, tmp) {
 }
 
 export function buildWorld(scene, settings = null) {
+  // Build-time graphics facts (cheap shader variants, light pool size) before any material exists.
+  configureGfx(settings?.quality);
   const colliders = new Colliders();
   const env = createEnv();
-  installFog();
+  installFog(GFX.cheap, GFX.direct);
   scene.background = new THREE.Color(0xc4d6e8);
   scene.fog = new THREE.FogExp2(0xc4d6e8, 0.0105);
 
   // Day cycle and pooled point lights, shared with gameplay (world.tod, world.lights).
   const tod = new TimeOfDay();
-  const lights = new LightManager(scene);
+  const lights = new LightManager(scene, GFX.lights);
 
   const sky = createSky(env);
   scene.add(sky.mesh);
@@ -380,10 +383,18 @@ export function buildWorld(scene, settings = null) {
         mood.vign = look.vign; mood.grain = look.grain; mood.ca = look.ca;
         renderer.setMood(mood);
         if (settings?.quality?.envBake !== false) {
-          if (!baker.b) baker.b = new EnvBaker(renderer.webgl, scene, env);
+          if (!baker.b || baker.fixed) { baker.b = new EnvBaker(renderer.webgl, scene, env); baker.fixed = false; baker.force = true; }
           baker.b.update(env, dt, tod.t, baker.force || swapped);
           baker.force = false;
+        } else if (!baker.b) {
+          // Mobile: one fixed bake on the first frame, never again (no re-bake hitches).
+          baker.b = new EnvBaker(renderer.webgl, scene, env);
+          baker.b.bakeFixed(env);
+          baker.fixed = true;
+          baker.force = false;
         }
+        // Fixed map: dim it with the dark so night and the dungeon don't reflect a noon sky.
+        if (settings?.quality?.envBake === false) scene.environmentIntensity = look.envI * (nowDungeon ? 1 : 1 - 0.4 * Math.min(1, tod.night + tod.dusk * 0.5));
         if (renderer.camera) {
           sky.mesh.position.copy(renderer.camera.position);
           const sz = renderer.webgl.getDrawingBufferSize(tmpDir2);

@@ -1,12 +1,16 @@
 import * as THREE from 'three';
 import { heightAt, isWater, WATER_LEVEL } from '../terrain.js';
 import { SKY_GLSL, skyUniforms } from './sky.js';
+import { GFX, noiseUniform, NOISE_TEX_GLSL } from '../../core/gfx.js';
 
 const CX = -125, CZ = 0, W = 200, D = 260;
 
 // Marsh water: depth-aware colour from a baked height texture, fresnel sky
 // tint, animated ripple normals, soft shore foam and a sun glint.
 export function createWater(env) {
+  // Mobile: ripples, foam and the sky reflection come from baked-noise fetches and a
+  // short gradient instead of nine hash-noise evaluations and the full sky shader.
+  const cheap = GFX.cheap;
   const TW = 160, TH = 208;
   const data = new Uint16Array(TW * TH);
   for (let j = 0; j < TH; j++) {
@@ -36,6 +40,7 @@ export function createWater(env) {
       uLP: { value: Array.from({ length: 4 }, () => new THREE.Vector4()) }, // nearby emitters: xyz, range
       uLC: { value: Array.from({ length: 4 }, () => new THREE.Vector3()) }, // colour * intensity
       uRect: { value: new THREE.Vector4(CX - W / 2, CZ - D / 2, W, D) },
+      ...(cheap ? { uNoiseTex: noiseUniform } : {}),
     },
     vertexShader: /* glsl */`
       #include <fog_pars_vertex>
@@ -57,13 +62,28 @@ export function createWater(env) {
       uniform vec4 uLP[4];
       uniform vec3 uLC[4];
       varying vec3 vWPos;
-      ${SKY_GLSL}
+      ${cheap ? `${NOISE_TEX_GLSL}
+      uniform vec3 uZenith, uHorizon, uGlowColor, uSunColor;
+      uniform vec4 uDisc;
+      uniform float uGlow, uTime;
+      float rippleH(vec2 p, float t) {
+        float a = tnz(p * 0.9 + vec2(t * 0.22, t * 0.13)).r;
+        float b = tnz(p * 2.1 - vec2(t * 0.31, -t * 0.2) + 5.0).g;
+        float c = tnz(p * 4.6 + vec2(-t * 0.4, t * 0.35) + 11.0).b;
+        return a * 0.55 + b * 0.3 + c * 0.15;
+      }
+      vec3 skyGradient(vec3 d, float bake) {
+        float sd = max(dot(d, uDisc.xyz), 0.0);
+        float s3 = sd * sd * sd;
+        vec3 col = mix(uHorizon, uZenith, smoothstep(0.0, 0.85, d.y));
+        return col + uGlowColor * (s3 * 0.38 + s3 * s3 * s3 * 0.35) * uGlow * uDisc.w * 0.7;
+      }` : `${SKY_GLSL}
       float rippleH(vec2 p, float t) {
         float a = vnoise(p * 0.9 + vec2(t * 0.22, t * 0.13));
         float b = vnoise(p * 2.1 - vec2(t * 0.31, -t * 0.2) + 5.0);
         float c = vnoise(p * 4.6 + vec2(-t * 0.4, t * 0.35) + 11.0);
         return a * 0.55 + b * 0.3 + c * 0.15;
-      }
+      }`}
       void main() {
         vec2 uv = (vWPos.xz - uRect.xy) / uRect.zw;
         float depth = texture2D(uDepth, uv).r;
@@ -119,7 +139,7 @@ export function createWater(env) {
         // Shore foam: soft, slowly breathing lines hugging the bank.
         float foamZone = 1.0 - smoothstep(0.02, 0.16, depth);
         float lines = sin((depth * 22.0) - t * 1.3 + h0 * 6.0) * 0.5 + 0.5;
-        float foamN = vnoise(p * 1.7 + t * 0.15);
+        float foamN = ${cheap ? 'tnz(p * 1.7 + t * 0.15).a' : 'vnoise(p * 1.7 + t * 0.15)'};
         float foam = foamZone * (smoothstep(0.6, 0.95, lines) * 0.4 + smoothstep(0.07, 0.0, depth) * 0.45) * smoothstep(0.35, 0.75, foamN + 0.2);
         col = mix(col, vec3(0.86, 0.9, 0.76) * uAmbient, clamp(foam, 0.0, 0.6));
 

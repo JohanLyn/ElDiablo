@@ -34,7 +34,7 @@ const EXTRA_UNIFORMS = {
 
 // Shared GLSL: fog factor and colour for a world-space position. Used by the
 // replaced chunk below and by custom (additive / premultiplied) shaders.
-const FOG_FN = /* glsl */`
+const FOG_FULL = /* glsl */`
 vec4 kurFog(vec3 wpos, vec3 camPos, float density, vec3 baseColor, vec4 H, vec4 S, vec3 G) {
   vec3 ray = wpos - camPos;
   float dist = length(ray);
@@ -55,6 +55,29 @@ vec4 kurFog(vec3 wpos, vec3 camPos, float density, vec3 baseColor, vec4 H, vec4 
   return vec4(baseColor + G * lobe * H.w, amt);
 }
 `;
+
+// Mobile: the same look for a fraction of the ALU. One exp for the height term (the camera end
+// of the integral is dropped), a polynomial sun lobe instead of two pow()s, no extra
+// direction normalise. Distance falloff, the 30 m clear zone and the near-opacity cap
+// match the full version, so regions keep their depth and warmth.
+const FOG_CHEAP = /* glsl */`
+vec4 kurFog(vec3 wpos, vec3 camPos, float density, vec3 baseColor, vec4 H, vec4 S, vec3 G) {
+  vec3 ray = wpos - camPos;
+  float dist = length(ray);
+  // Height fog integrated along the ray, for a camera far above the fog layer (always true
+  // here): the full version's (exp(-b*camY) - exp(-b*y)) / (b*dy) with the camera term dropped.
+  float tauH = H.x * exp(clamp(-H.y * (wpos.y - H.z), -20.0, 20.0)) * dist / (H.y * max(abs(ray.y), 0.08 * dist) + 1e-4) * smoothstep(25.0, 55.0, dist);
+  float tauB = density * 1.3 * max(dist - 30.0, 0.0);
+  float amt = 1.0 - exp(-(tauB * tauB + tauH));
+  amt = min(amt, mix(0.35, 1.0, smoothstep(50.0, 115.0, dist)));
+  float sd = max(dot(ray, S.xyz) / max(dist, 1e-3), 0.0);
+  float lobe = sd * sd * mix(sd, 1.0, 0.25); // ~ the full version's pow(sd, 2.5) lobe
+  return vec4(baseColor + G * lobe * H.w, amt);
+}
+`;
+// The shared function lives in a chunk so the variant is picked when the first program
+// compiles (installFog), and custom shaders that embed FOG_GLSL get the same one.
+const FOG_FN = '#include <kur_fog_fn>\n';
 
 const FRAG_PARS = /* glsl */`
 #ifdef USE_FOG
@@ -90,12 +113,22 @@ const VERT = /* glsl */`
 #endif
 `;
 
+// Direct rendering (no post-processing chain): three applies tone mapping and the sRGB
+// encode inside each material, and its fog_fragment runs *after* them, which would blend
+// the linear fog colour into display-space pixels. So here the fog moves into the
+// tone-mapping chunk (blend first, in linear HDR like the composer path, then tone map),
+// and the fog chunk itself becomes empty.
+const TONEMAP_ORIG = THREE.ShaderChunk.tonemapping_fragment;
+const TONEMAP_DIRECT = FRAG + TONEMAP_ORIG;
+
 let installed = false;
-export function installFog() {
+export function installFog(cheap = false, direct = false) {
+  THREE.ShaderChunk.kur_fog_fn = cheap ? FOG_CHEAP : FOG_FULL;
+  THREE.ShaderChunk.tonemapping_fragment = direct ? TONEMAP_DIRECT : TONEMAP_ORIG;
+  THREE.ShaderChunk.fog_fragment = direct ? '' : FRAG;
   if (installed) return;
   installed = true;
   THREE.ShaderChunk.fog_pars_fragment = FRAG_PARS;
-  THREE.ShaderChunk.fog_fragment = FRAG;
   THREE.ShaderChunk.fog_pars_vertex = VERT_PARS;
   THREE.ShaderChunk.fog_vertex = VERT;
   // Built-in materials clone their uniform block from ShaderLib, so the extra

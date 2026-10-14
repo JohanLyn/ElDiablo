@@ -12,6 +12,8 @@ import { ASPECTS } from '../game/skills.js';
 import { RARITY_FX } from './rarity.js';
 import { CombatFx } from './combat.js';
 import { BossIntro } from './bossIntro.js';
+import { GFX } from '../core/gfx.js';
+import { BlobShadows } from './blobShadows.js';
 
 const _col = new THREE.Color();
 const _v = new THREE.Vector3();
@@ -55,14 +57,15 @@ export class Vfx {
     this.ribbons = new RibbonBatch(this.scene);
     this.slashes = new SlashPool(this.scene, 7);
 
-    // Pooled flash lights (never added/removed: avoids shader recompiles).
-    this.lights = [0, 1].map(() => {
+    // Pooled flash lights (never added/removed: avoids shader recompiles). One on Mobile.
+    this.lights = Array.from({ length: GFX.flashLights }, () => {
       const l = new THREE.PointLight(0xffffff, 0, 22, 1.7);
       l.userData = { t: 1, dur: 0.2, i0: 0 };
       this.scene.add(l);
       return l;
     });
     this.lightCursor = 0;
+    this.blobs = GFX.cheap ? new BlobShadows(this.scene) : null; // Mobile: contact shadows instead of shadow maps
 
     // Light pillars.
     this.pillars = [0, 1, 2].map(() => {
@@ -1019,6 +1022,7 @@ export class Vfx {
     this.hitBudget = MAX_HIT_FX;
     this.combat.frame();
     this.ps.q = g.settings.quality.particles;
+    this.blobs?.update(g);
 
     for (let i = this.later.length - 1; i >= 0; i--) {
       const l = this.later[i];

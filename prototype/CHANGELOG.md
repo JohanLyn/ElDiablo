@@ -2,6 +2,16 @@
 
 All notable changes to the Gates of Kur prototype. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- **Mobile graphics preset** for phones, chosen automatically on a first visit from a touch device with a small screen (`?quality=mobile` forces it; Settings can change it).
+  - No post-processing chain: the scene renders straight to the canvas (hardware MSAA), with a CSS vignette, hurt edge and flash on top.
+  - Four pooled point lights instead of twelve, one VFX flash light, no real torch (a pooled emitter lights the hero in the dark), so the scene carries six point lights at most. Light pool size and shader set apply after a reload (Settings says so and offers a reload button).
+  - Cheaper shaders: distance and height fog without the extra in-scatter work, terrain, water, sky and prop cloud shadows read a baked noise texture, no procedural bump, no Voronoi cracks. One fixed environment map, never re-baked. No grass or light shafts, thinner particles and wildlife, soft contact shadows under the hero and monsters.
+  - Dynamic resolution (pixel ratio 0.6 to 1) with hysteresis: lowered after about 2 s of slow frames, raised after about 8 s of healthy ones, and a ratio that just failed is not retried for 40 s.
+- **Show FPS** (Settings > Graphics, or `?fps`): corner readout of fps, frame time, render scale, draw calls, triangles and lights.
+
 ## [0.5.0-alpha]
 
 A new original feature, and a polished stretch from minute 12 to minute 20: the road to Aqrabu, a new event in the Ashen Approach, and a fair first gate.

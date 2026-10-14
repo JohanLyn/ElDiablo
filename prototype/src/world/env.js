@@ -258,6 +258,37 @@ export class EnvBaker {
     this.ms = performance.now() - t0;
   }
 
+  // Mobile (envBake: false): bake the environment once, from a fixed bright-morning sky, then free
+  // everything the baker held. The map is never rebuilt, so there is no per-frame or periodic cost.
+  // The caller scales scene.environmentIntensity with the day so night doesn't reflect noon.
+  bakeFixed(env) {
+    const look = blendLook(0.2, createLook());
+    const saved = {
+      z: env.uSkyZenith.value.clone(), h: env.uSkyHorizon.value.clone(), g: env.uSkyGround.value.clone(),
+      gc: env.uGlowColor.value.clone(), d: env.uDisc.value.clone(), m: env.uMoon.value.clone(),
+      cc: env.uCloudCover.value, cl: env.uCloudLit.value.clone(), cd: env.uCloudDark.value.clone(), gl: env.uGlow.value,
+    };
+    env.uSkyZenith.value.copy(look.zenith);
+    env.uSkyHorizon.value.copy(look.horizon);
+    env.uSkyGround.value.copy(look.hemiGround).multiplyScalar(0.9);
+    env.uGlowColor.value.copy(look.glow);
+    env.uDisc.value.set(-0.45, 0.6, 0.65, 1);
+    env.uMoon.value.w = 0;
+    env.uCloudCover.value = look.cloudCover;
+    env.uCloudLit.value.copy(look.cloudLit);
+    env.uCloudDark.value.copy(look.cloudDark);
+    env.uGlow.value = 0.6;
+    this.update(env, 0, 0.2, true);
+    env.uSkyZenith.value.copy(saved.z); env.uSkyHorizon.value.copy(saved.h); env.uSkyGround.value.copy(saved.g);
+    env.uGlowColor.value.copy(saved.gc); env.uDisc.value.copy(saved.d); env.uMoon.value.copy(saved.m);
+    env.uCloudCover.value = saved.cc; env.uCloudLit.value.copy(saved.cl); env.uCloudDark.value.copy(saved.cd); env.uGlow.value = saved.gl;
+    // Keep only the finished PMREM texture.
+    this.cubeRT.dispose();
+    this.pmrem.dispose();
+    this.skyScene.children[0].geometry.dispose();
+    this.skyScene.children[0].material.dispose();
+  }
+
   _renderFaces(first, n) {
     const r = this.webgl, cam = this.cam;
     if (cam.coordinateSystem !== r.coordinateSystem) { cam.update(r, this.skyScene); return; }

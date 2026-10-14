@@ -3,6 +3,7 @@ import { computeStats, xpToNext, MAX_LEVEL, armorReduction } from '../game/stats
 import { startingWeapon, KIND_SLOTS } from '../game/items.js';
 import { angleDelta, damp } from '../core/util.js';
 import { HeroModel } from './anim/hero.js';
+import { GFX } from '../core/gfx.js';
 
 const RADIUS = 0.5;
 const EVADE_SPEED = 20;
@@ -27,9 +28,12 @@ export class Player {
     this.barrierMesh = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 12), this.barrierMat);
     this.barrierMesh.position.y = 1.0;
     // Warm carried light, only lit in dark places (dungeon, Ashen Approach).
+    // On Mobile (GFX.torch false) this stays out of the scene (a real light costs every fragment)
+    // and a pooled emitter carries the glow instead (see update).
     this.torch = new THREE.PointLight(0xffb070, 0, 14, 1.4);
     this.torch.position.set(0, 3, 0.5);
-    this.group.add(this.model.root, this.weaponPivot, this.trail, this.barrierMesh, this.torch);
+    this.group.add(this.model.root, this.weaponPivot, this.trail, this.barrierMesh);
+    if (GFX.torch) this.group.add(this.torch);
     scene.add(this.group);
     this.pos = this.group.position;
     this.vel = new THREE.Vector3();
@@ -202,6 +206,11 @@ export class Player {
     this.trailMat.opacity = Math.max(0, this.trailMat.opacity - dt * 5);
     const wantTorch = g.inDungeon ? 22 : g.world.regionAt(this.pos.x, this.pos.z) === 'ashen' ? 8 : 0;
     this.torch.intensity += (wantTorch - this.torch.intensity) * damp(4, dt);
+    if (!GFX.torch && g.world?.lights) {
+      const te = this.torchEmitter ??= g.world.lights.add({ x: 0, y: 3, z: 0, color: 0xffb070, intensity: 0, range: 14, decay: 1.4, priority: 60 });
+      te.x = this.pos.x; te.y = this.pos.y + 3; te.z = this.pos.z + 0.5;
+      te.intensity = this.torch.intensity < 0.05 ? 0 : this.torch.intensity;
+    }
     this.barrierMat.opacity = this.barrier > 0 ? 0.18 + Math.sin(g.time * 6) * 0.05 : Math.max(0, this.barrierMat.opacity - dt * 2);
     this.model.update(this, dt, g);
   }
