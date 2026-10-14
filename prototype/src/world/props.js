@@ -4,7 +4,8 @@ import { PROP_GEOMETRY } from './models.js';
 import { HALF, PLAY_LIMIT, flatSpots } from './layout.js';
 import { regionAt, heightAt, roadDistance, isWater, WATER_LEVEL } from './terrain.js';
 import { canalDistance } from './canals.js';
-import { nearBlocked } from './spots.js';
+import { nearBlocked, nearCorridor } from './spots.js';
+import { distPointSegment } from '../core/util.js';
 import { patchLit } from './shaders/lit.js';
 
 // What grows where: [prop, count, collider radius per unit scale, scale range, regions, options]
@@ -30,6 +31,26 @@ const SCATTER = [
   ['sandDrift', 90, 0, [1.5, 3.4], ['ruins'], { drift: true, tint: 0.06 }],
 ];
 
+// Solid props are capsules (a segment with a radius; a rock is a zero-length segment) so that
+// walls, fallen columns and boulders can be kept apart exactly: no two blockers closer than
+// GAP metres edge to edge, which stops wall ruins and rocks forming pockets players get stuck in.
+const GAP = 3;
+const segGap = (a, b) => {
+  // Distance between two segments (touching or crossing counts as 0).
+  const cross = (ux, uz, vx, vz) => ux * vz - uz * vx;
+  const rx = a[2] - a[0], rz = a[3] - a[1], sx = b[2] - b[0], sz = b[3] - b[1];
+  const den = cross(rx, rz, sx, sz);
+  if (Math.abs(den) > 1e-9) {
+    const qx = b[0] - a[0], qz = b[1] - a[1];
+    const t = cross(qx, qz, sx, sz) / den, u = cross(qx, qz, rx, rz) / den;
+    if (t >= 0 && t <= 1 && u >= 0 && u <= 1) return 0;
+  }
+  return Math.min(
+    distPointSegment(a[0], a[1], b[0], b[1], b[2], b[3]).dist, distPointSegment(a[2], a[3], b[0], b[1], b[2], b[3]).dist,
+    distPointSegment(b[0], b[1], a[0], a[1], a[2], a[3]).dist, distPointSegment(b[2], b[3], a[0], a[1], a[2], a[3]).dist,
+  );
+};
+
 export function scatterProps(scene, colliders) {
   const rng = new Rng(4242);
   const flats = flatSpots();
@@ -39,6 +60,35 @@ export function scatterProps(scene, colliders) {
     if (nearBlocked(x, z, pad)) return true;
     for (const f of flats) if (Math.hypot(x - f.x, z - f.z) < f.r + 3 + pad) return true;
     return false;
+  };
+  // Spatial hash of placed solid props.
+  const solids = new Map();
+  const SC = 16;
+  const solidKey = (cx, cz) => cx * 73856093 ^ cz * 19349663;
+  const crowded = (seg, r, big) => {
+    const x0 = Math.min(seg[0], seg[2]) - r - GAP - 4, x1 = Math.max(seg[0], seg[2]) + r + GAP + 4;
+    const z0 = Math.min(seg[1], seg[3]) - r - GAP - 4, z1 = Math.max(seg[1], seg[3]) + r + GAP + 4;
+    for (let cx = Math.floor(x0 / SC); cx <= Math.floor(x1 / SC); cx++) {
+      for (let cz = Math.floor(z0 / SC); cz <= Math.floor(z1 / SC); cz++) {
+        for (const o of solids.get(solidKey(cx, cz)) ?? []) {
+          if (!big && !o.big) continue;
+          if (segGap(seg, o.seg) - r - o.r < GAP) return true;
+        }
+      }
+    }
+    return false;
+  };
+  const addSolid = (seg, r, big) => {
+    const o = { seg, r, big };
+    const x0 = Math.min(seg[0], seg[2]) - r, x1 = Math.max(seg[0], seg[2]) + r, z0 = Math.min(seg[1], seg[3]) - r, z1 = Math.max(seg[1], seg[3]) + r;
+    for (let cx = Math.floor(x0 / SC); cx <= Math.floor(x1 / SC); cx++) {
+      for (let cz = Math.floor(z0 / SC); cz <= Math.floor(z1 / SC); cz++) {
+        const k = solidKey(cx, cz);
+        let l = solids.get(k);
+        if (!l) solids.set(k, (l = []));
+        l.push(o);
+      }
+    }
   };
   const dummy = new THREE.Object3D();
   const tmpCol = new THREE.Color();
@@ -87,6 +137,17 @@ export function scatterProps(scene, colliders) {
       if (opts.shore && !(wet || shoreBand(x, z) || heightAt(x, z) < WATER_LEVEL + 1.2)) continue;
       const s = rng.float(smin, smax);
       const rot = name === 'wallRuin' ? rng.int(0, 1) * Math.PI / 2 : rng.float(0, Math.PI * 2);
+      // Solid props: footprint capsule (segment + radius) for the corridor and spacing rules.
+      let seg = null, solidR = 0;
+      if (opts.fallen) {
+        const ax = Math.cos(rot), az = -Math.sin(rot);
+        seg = [x + ax * -3.6 * s, z + az * -3.6 * s, x + ax * 3.2 * s, z + az * 3.2 * s]; solidR = 0.85 * s;
+      } else if (name === 'wallRuin') {
+        const hw = (rot === 0 ? 3 : 0.55) * s, hd = (rot === 0 ? 0.55 : 3) * s;
+        seg = rot === 0 ? [x - hw + hd, z, x + hw - hd, z] : [x, z - hd + hw, x, z + hd - hw]; solidR = Math.min(hw, hd);
+      } else if (colR > 0) { seg = [x, z, x, z]; solidR = colR * s; }
+      const big = colR < 0 || colR >= 0.7 || name === 'rock';
+      if (seg && (nearCorridor(x, z, Math.hypot(seg[2] - seg[0], seg[3] - seg[1]) / 2 + solidR) || crowded(seg, solidR, big))) continue;
       dummy.position.set(x, heightAt(x, z) - (opts.drift ? 0.12 : 0.05), z);
       dummy.rotation.set(0, rot, 0);
       if (opts.drift) dummy.scale.set(s * rng.float(1.2, 1.9), s * rng.float(0.45, 0.8), s * rng.float(0.7, 1.2));
@@ -99,6 +160,7 @@ export function scatterProps(scene, colliders) {
       if (!ch) chunks.set(key, (ch = []));
       ch.push({ m: dummy.matrix.clone(), c: [b * (1 + h), b, b * (1 - h)] });
       placed++;
+      if (seg) addSolid(seg, solidR, big);
       if (opts.fallen) {
         const ax = Math.cos(rot), az = -Math.sin(rot);
         for (const o of [-3.6, -1.4, 1.0, 3.2]) colliders.addCircle(x + ax * o * s, z + az * o * s, 0.85 * s);

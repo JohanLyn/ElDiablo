@@ -153,6 +153,7 @@ export class EnemyManager {
         if (flats.some((f) => Math.hypot(x - f.x, z - f.z) < f.r + 4)) continue;
         if (this.camps.some((c) => Math.hypot(x - c.x, z - c.z) < 17)) continue;
         if (roadDistance(x, z) < 2) continue;
+        if (Math.hypot(x - AQRABU.x, z - AQRABU.z) < 30) continue; // Aqrabu's arena stays his alone
         const eliteChance = region === 'ashen' ? 0.3 : region === 'sunfields' ? 0.1 : 0.2;
         const elite = rng.chance(eliteChance);
         const size = elite ? rng.int(3, 5) : rng.int(3, 6);
