@@ -3,6 +3,7 @@ import { HALF, REGIONS, TOWN } from './layout.js';
 import { heightAt, groundColor, WATER_LEVEL, isWater, regionAt, marshWetness, roadLateral } from './terrain.js';
 import { NOISE_GLSL } from './shaders/common.js';
 import { createWater } from './shaders/water.js';
+import { GFX, noiseUniform, NOISE_TEX_GLSL } from '../core/gfx.js';
 
 const REGION_COLORS = Object.fromEntries(Object.entries(REGIONS).map(([k, v]) => [k, v.ground]));
 
@@ -10,9 +11,15 @@ const REGION_COLORS = Object.fromEntries(Object.entries(REGIONS).map(([k, v]) =>
 // matches); the fragment shader splats grass / mud / sand / ash by region
 // weights, rock by slope, adds wet shores, road ruts, cloud shadows and
 // fine relief normals.
+//
+// GFX.cheap (Mobile): the hash-noise octaves become fetches from a baked noise
+// texture, the procedural bump and the Voronoi cracks go (cracks become a noise
+// ridge, only evaluated where ash is), and cloud shadows take two fetches.
 function patchTerrainMaterial(material, env) {
   material.onBeforeCompile = (shader) => {
+    const cheap = GFX.cheap;
     shader.uniforms.uTime = env.uTime;
+    if (cheap) shader.uniforms.uNoiseTex = noiseUniform;
     shader.uniforms.uWind = env.uWind;
     shader.uniforms.uCloud = env.uCloud;
     shader.vertexShader = shader.vertexShader
@@ -26,6 +33,7 @@ function patchTerrainMaterial(material, env) {
         varying vec3 vWPos; varying vec3 vWNrm; varying vec4 vReg; varying vec4 vMisc;
         uniform float uTime; uniform vec2 uWind; uniform float uCloud;
         ${NOISE_GLSL}
+        ${cheap ? NOISE_TEX_GLSL : ''}
         vec2 hash22(vec2 p) { return vec2(hash21(p), hash21(p + 19.19)); }
         float crackEdge(vec2 p) {
           vec2 i = floor(p), f = fract(p);
@@ -44,10 +52,14 @@ function patchTerrainMaterial(material, env) {
         }`)
       .replace('#include <color_fragment>', `
         vec2 gp = vWPos.xz;
-        float n1 = vnoise(gp * 1.3);
+        ${cheap ? `vec4 tn = tnz(gp * 1.3);
+        float n1 = tn.r;
+        float n2 = tnz(gp * 0.16 + 7.0).g;
+        float n3 = tnz(gp * 0.045 + 3.0).b;
+        float nf = tnz(gp * 3.7).a;` : `float n1 = vnoise(gp * 1.3);
         float n2 = vnoise(gp * 0.16 + 7.0);
         float n3 = vnoise(gp * 0.045 + 3.0);
-        float nf = vnoise(gp * 3.7);
+        float nf = vnoise(gp * 3.7);`}
         vec3 gN = normalize(vWNrm);
         float slope = 1.0 - gN.y;
         float wS = vReg.x, wM = vReg.y, wR = vReg.z, wA = vReg.w;
@@ -63,7 +75,7 @@ function patchTerrainMaterial(material, env) {
         vec3 cM = mix(vec3(0.075, 0.2, 0.085), vec3(0.11, 0.085, 0.05), mudK) * (0.8 + 0.45 * n1);
         cM = mix(cM, vbase * 0.55, 0.22);
         // Ruins: sun-bleached sand with soft ripple bands.
-        float rip = sin(dot(gp, vec2(0.86, 0.5)) * 2.1 + vnoise(gp * 0.12) * 9.0) * 0.5 + 0.5;
+        float rip = sin(dot(gp, vec2(0.86, 0.5)) * 2.1 + ${cheap ? 'tnz(gp * 0.12).a' : 'vnoise(gp * 0.12)'} * 9.0) * 0.5 + 0.5;
         vec3 cR = mix(vec3(0.5, 0.34, 0.17), vec3(0.78, 0.6, 0.34), rip * 0.75 + n2 * 0.5) * (0.9 + 0.2 * n1);
         cR = mix(cR, vbase, 0.18);
         cR *= 0.94 + 0.12 * nf;
@@ -107,19 +119,28 @@ function patchTerrainMaterial(material, env) {
         col *= 0.9 + 0.2 * n2;
 
         diffuseColor.rgb = col;
-        float cloudSh = 1.0 - uCloud * smoothstep(0.46, 0.72, fbm3(gp * 0.011 + uWind * uTime * 0.012));
+        float cloudSh = 1.0 - uCloud * smoothstep(0.46, 0.72, ${cheap ? 'cloudN(gp * 0.011 + uWind * uTime * 0.012)' : 'fbm3(gp * 0.011 + uWind * uTime * 0.012)'});
 
         // Ashen cracks that glow violet.
-        vec2 cq = gp * 0.075 + vec2(vnoise(gp * 0.09), vnoise(gp * 0.09 + 9.0)) * 1.1;
-        float crackV = crackEdge(cq);
-        float crackMask = smoothstep(0.42, 0.66, vnoise(gp * 0.03 + 21.0) + n2 * 0.25);
-        float crack = (1.0 - smoothstep(0.0, 0.011, crackV)) * crackMask * wA * (1.0 - roadK);
+        float crackV = 1.0, crackMask = 0.0, crack = 0.0, crackPulse = 1.0;
+        ${cheap ? `if (wA > 0.02) {
+          // a noise ridge stands in for the Voronoi edge distance
+          vec2 cq = gp * 0.075;
+          crackV = abs(tnz(cq * 2.4 + tnz(cq * 0.7).rg * 1.6).b - 0.5) * 1.35;
+          crackMask = smoothstep(0.42, 0.66, tnz(gp * 0.03 + 21.0).g + n2 * 0.25);
+          crack = (1.0 - smoothstep(0.0, 0.011, crackV)) * crackMask * wA * (1.0 - roadK);
+          diffuseColor.rgb *= 1.0 - 0.55 * (1.0 - smoothstep(0.0, 0.14, crackV)) * crackMask * wA;
+          crackPulse = 0.95 + 0.4 * sin(uTime * 1.3 + n2 * 12.0);
+        }` : `vec2 cq = gp * 0.075 + vec2(vnoise(gp * 0.09), vnoise(gp * 0.09 + 9.0)) * 1.1;
+        crackV = crackEdge(cq);
+        crackMask = smoothstep(0.42, 0.66, vnoise(gp * 0.03 + 21.0) + n2 * 0.25);
+        crack = (1.0 - smoothstep(0.0, 0.011, crackV)) * crackMask * wA * (1.0 - roadK);
         diffuseColor.rgb *= 1.0 - 0.55 * (1.0 - smoothstep(0.0, 0.14, crackV)) * crackMask * wA;
-        float crackPulse = 0.95 + 0.4 * sin(uTime * 1.3 + n2 * 12.0);
+        crackPulse = 0.95 + 0.4 * sin(uTime * 1.3 + n2 * 12.0);`}
       `)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
         roughnessFactor = mix(roughnessFactor, 0.38, wetK);`)
-      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+      .replace('#include <normal_fragment_maps>', cheap ? '#include <normal_fragment_maps>' : `#include <normal_fragment_maps>
         {
           float bE = 0.25;
           float b0 = bumpH(gp, wR);
@@ -134,7 +155,7 @@ function patchTerrainMaterial(material, env) {
         reflectedLight.directDiffuse *= cloudSh;
         reflectedLight.directSpecular *= cloudSh;`);
   };
-  material.customProgramCacheKey = () => 'terrain-v2';
+  material.customProgramCacheKey = () => (GFX.cheap ? 'terrain-v2c' : 'terrain-v2');
 }
 
 export function buildTerrain(scene, env) {

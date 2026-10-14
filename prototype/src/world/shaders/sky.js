@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { NOISE_GLSL } from './common.js';
+import { GFX, noiseUniform, NOISE_TEX_GLSL } from '../../core/gfx.js';
 
 // Sky dome driven by the day cycle: zenith/horizon gradient, sun glow + disc,
 // moon with phase, stars, and two cloud layers drifting at different speeds
@@ -15,6 +16,11 @@ uniform vec4 uDisc, uMoon;
 uniform float uStars, uGlow, uCloudCover, uTime;
 uniform vec2 uWind;
 ${NOISE_GLSL}
+#ifdef SKY_CHEAP
+// Mobile: clouds read a baked noise texture (two octaves instead of three hash-noise octaves).
+${NOISE_TEX_GLSL}
+#define fbm3 cloudN
+#endif
 
 vec3 skyGradient(vec3 d, float bake) {
   float h = d.y;
@@ -123,12 +129,14 @@ export function skyUniforms(env) {
 }
 
 export function createSkyMaterial(env, bake = false) {
+  const cheap = GFX.cheap && !bake;
   return new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
     depthTest: !bake, // runtime: only shade pixels no geometry covered (sky draws last)
     fog: false,
-    uniforms: skyUniforms(env),
+    uniforms: cheap ? { ...skyUniforms(env), uNoiseTex: noiseUniform } : skyUniforms(env),
+    defines: cheap ? { SKY_CHEAP: 1 } : {},
     vertexShader: /* glsl */`
       varying vec3 vDir;
       void main() {

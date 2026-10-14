@@ -93,7 +93,10 @@ function pickSpots(rng, region, n, near, minSep, tries = 400) {
   return out;
 }
 
-function createFlocks({ scene, env, tod, q, rng }) {
+// Population scale: `life` < 1 (Mobile) thins every creature count; otherwise the particle quality sets a floor of half.
+const popScale = (q, life) => (life < 1 ? life : Math.max(0.5, q));
+
+function createFlocks({ scene, env, tod, q, life = 1, rng }) {
   // [kind, count, spot, radius, altitude lo, hi, perch]
   const defs = [];
   // Doves feed on the ground in the Sunfields, bursting up when the hero comes near.
@@ -109,7 +112,7 @@ function createFlocks({ scene, env, tod, q, rng }) {
   let total = 0;
   const flocks = defs.map((d, fi) => {
     const k = KINDS[d.kind];
-    const n = Math.max(4, Math.round(d.n * Math.max(0.5, q)));
+    const n = Math.max(life < 1 ? 3 : 4, Math.round(d.n * popScale(q, life)));
     const f = { ...d, k, n, base: total, theta: rng.float(0, TAU), dir: rng.chance(0.5) ? 1 : -1, state: d.perch ? 'perch' : 'fly', timer: 0, cool: 0, gy: 0, gyT: 0 };
     total += n;
     f.pos = new Float32Array(n * 3); f.vel = new Float32Array(n * 3); f.rest = new Float32Array(n * 3);
@@ -308,9 +311,9 @@ function createFlocks({ scene, env, tod, q, rng }) {
 }
 
 // ------------------------------------------------------------ marsh life
-function createMarsh({ scene, env, q, rng }) {
+function createMarsh({ scene, env, q, life = 1, rng }) {
   // Dragonflies: GPU points tiled around the hero, hovering and darting.
-  const nd = Math.round(46 * Math.max(0.5, q));
+  const nd = Math.round(46 * popScale(q, life));
   const pos = new Float32Array(nd * 3), seed = new Float32Array(nd * 4);
   for (let i = 0; i < nd; i++) seed.set([rng.next(), rng.next(), rng.next(), rng.next()], i * 4);
   const gd = new THREE.BufferGeometry();
@@ -517,8 +520,8 @@ function mergeSimple(geos) {
 }
 
 // ------------------------------------------------------------ dust devils
-function createDevils({ scene, env, q, rng }) {
-  const ND = 3, PER = Math.round(64 * Math.max(0.5, q));
+function createDevils({ scene, env, q, life = 1, rng }) {
+  const ND = 3, PER = Math.round(64 * popScale(q, life));
   const n = ND * PER;
   const pos = new Float32Array(n * 3), rnd = new Float32Array(n * 4);
   for (let i = 0; i < n; i++) rnd.set([Math.floor(i / PER), rng.next(), rng.next(), rng.next()], i * 4);
@@ -602,8 +605,8 @@ function createDevils({ scene, env, q, rng }) {
 // ------------------------------------------------------------ wind gusts
 // A gust is a surge of env.uWind (the grass and reeds bend harder) with a visible front of
 // streaks racing across the field in the wind direction.
-function createGusts({ scene, env, q, rng }) {
-  const n = Math.round(120 * Math.max(0.5, q));
+function createGusts({ scene, env, q, life = 1, rng }) {
+  const n = Math.round(120 * popScale(q, life));
   const pos = new Float32Array(n * 3), a = new Float32Array(n * 4);
   for (let i = 0; i < n; i++) a.set([rng.float(-46, 46), rng.float(-16, 16), rng.float(0.5, 2.6), rng.float(2.5, 6.5)], i * 4);
   const geo = new THREE.BufferGeometry();
@@ -690,12 +693,13 @@ function createGusts({ scene, env, q, rng }) {
 export function createLiving(ctx) {
   const { scene, tod, env, settings } = ctx;
   const q = settings?.quality?.particles ?? 1;
+  const life = settings?.quality?.life ?? 1;
   const rng = new Rng(31337);
   const setpieces = createSetpieces(ctx);
-  const flocks = createFlocks({ scene, env, tod, q, rng });
-  const marsh = createMarsh({ scene, env, q, rng });
-  const devils = createDevils({ scene, env, q, rng });
-  const gusts = settings?.quality?.grass > 0 ? createGusts({ scene, env, q, rng }) : null;
+  const flocks = createFlocks({ scene, env, tod, q, life, rng });
+  const marsh = createMarsh({ scene, env, q, life, rng });
+  const devils = createDevils({ scene, env, q, life, rng });
+  const gusts = settings?.quality?.grass > 0 ? createGusts({ scene, env, q, life, rng }) : null;
   const shared = { fogNear: 40, fogFar: 130, fx: null, onBurst: null };
   let game = null;
   const living = {

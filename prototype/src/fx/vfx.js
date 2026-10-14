@@ -12,6 +12,7 @@ import { ASPECTS } from '../game/skills.js';
 import { RARITY_FX } from './rarity.js';
 import { CombatFx } from './combat.js';
 import { BossIntro } from './bossIntro.js';
+import { GFX } from '../core/gfx.js';
 
 const _col = new THREE.Color();
 const _v = new THREE.Vector3();
@@ -55,8 +56,8 @@ export class Vfx {
     this.ribbons = new RibbonBatch(this.scene);
     this.slashes = new SlashPool(this.scene, 7);
 
-    // Pooled flash lights (never added/removed: avoids shader recompiles).
-    this.lights = [0, 1].map(() => {
+    // Pooled flash lights (never added/removed: avoids shader recompiles). One on Mobile.
+    this.lights = Array.from({ length: GFX.flashLights }, () => {
       const l = new THREE.PointLight(0xffffff, 0, 22, 1.7);
       l.userData = { t: 1, dur: 0.2, i0: 0 };
       this.scene.add(l);

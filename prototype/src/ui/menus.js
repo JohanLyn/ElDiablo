@@ -16,7 +16,8 @@ const SLOT_KIND = { ring1: 'ring', ring2: 'ring' };
 const SETTINGS = [
   [
     ['Graphics', [
-      { key: 'quality', label: 'Graphics quality', type: 'choice', options: Object.entries(QUALITY).map(([id, q]) => [id, q.label]), desc: 'Shadows, bloom, resolution and particle density. Applies immediately.' },
+      { key: 'quality', label: 'Graphics quality', type: 'choice', options: Object.entries(QUALITY).map(([id, q]) => [id, q.label]), desc: 'Shadows, bloom, resolution and particle density. Mobile is for phones; the light and shader set of a new preset applies after a reload.' },
+      { key: 'showFps', label: 'Show FPS', type: 'toggle', desc: 'A small corner readout: frames per second, frame time, render scale and scene load. Also: add ?fps to the address.' },
       { key: 'timeOfDay', label: 'Time of day', type: 'choice', options: [['cycle', 'Cycle'], ['dawn', 'Dawn'], ['noon', 'Noon'], ['golden', 'Golden hour'], ['dusk', 'Dusk'], ['night', 'Night']], desc: 'Let the day pass (a full day takes 14 minutes) or hold one time.' },
     ]],
     ['Audio', [
@@ -233,6 +234,7 @@ export class Menus {
       return;
     }
     if (type === 'act') {
+      if (id === 'reload') { g.save(); location.reload(); return; }
       if (id === 'resetTut') this.resetTutorials();
       else if (id === 'new') {
         if (!this.confirmNew) this.confirmNew = true;
@@ -443,14 +445,16 @@ export class Menus {
       } else {
         ctl = `<div class="seg">${def.options.map(([id, label]) => `<span data-seg="${def.key}:${id}" class="${v === id ? 'on' : ''}">${label}</span>`).join('')}</div>`;
       }
-      return `<div class="set-row focusable t-${def.type}" data-nav="set:${def.key}"><div class="sr-l"><b>${def.label}</b></div><div class="sr-c">${ctl}</div></div>`;
+      const note = def.key === 'quality' && g.settings.needsReload ? ' <em class="sr-note" style="color:var(--gold-hi);font-size:12px;margin-left:6px">applies after reload</em>' : '';
+      return `<div class="set-row focusable t-${def.type}" data-nav="set:${def.key}"><div class="sr-l"><b>${def.label}</b>${note}</div><div class="sr-c">${ctl}</div></div>`;
     };
     const col = (groups) => `<div class="set-col">${groups.map(([name, rows]) => `<h3 class="sec">${name}</h3>${rows.map(row).join('')}`).join('')}</div>`;
     const actions = this.only ? '' : `<div class="sys-actions">
       <div class="btn plaque focusable" data-nav="act:resetTut"><span>Reset tutorials</span></div>
       <div class="btn plaque focusable ${this.confirmNew ? 'danger' : ''}" data-nav="act:new"><span>${this.confirmNew ? 'Confirm: erase this hero and start over' : 'Start a new game'}</span></div>
     </div>`;
-    return `<div class="settings">${SETTINGS.map(col).join('')}</div><div id="set-desc"></div>${actions}<p class="tt-type fine">Settings and progress save automatically in this browser.</p>`;
+    const reload = g.settings.needsReload ? `<div class="sys-actions"><div class="btn plaque focusable" data-nav="act:reload"><span>Reload to apply ${g.settings.quality.label} graphics</span></div></div>` : '';
+    return `<div class="settings">${SETTINGS.map(col).join('')}</div><div id="set-desc"></div>${reload}${actions}<p class="tt-type fine">Settings and progress save automatically in this browser.</p>`;
   }
 
   render_system() {

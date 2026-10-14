@@ -7,6 +7,8 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { FXAAPass } from 'three/addons/postprocessing/FXAAPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
+import { PerfMeter } from './perfmeter.js';
+import { DynRes } from './dynres.js';
 
 // Final colour grade in display space: split toning, contrast/saturation,
 // vignette, film grain, plus gameplay overlays (hurt edge, screen flash).
@@ -113,13 +115,59 @@ const ShockShader = {
     }`,
 };
 
+// CSS stand-in for the grade pass on presets without post-processing: a static
+// radial vignette, a red hurt edge and a flash layer. Only opacity changes per
+// frame (compositor-friendly), and only when the value moved.
+class ScreenOverlay {
+  constructor(canvas) {
+    const root = document.createElement('div');
+    root.id = 'fx-overlay';
+    root.setAttribute('aria-hidden', 'true');
+    root.style.cssText = 'position:fixed;inset:0;pointer-events:none;overflow:hidden;';
+    const layer = (bg) => {
+      const d = document.createElement('div');
+      d.style.cssText = `position:absolute;inset:0;opacity:0;will-change:opacity;background:${bg};`;
+      root.appendChild(d);
+      return d;
+    };
+    // Same falloff as the grade shader: clear inside ~40-50% of the way to the corner.
+    this.vig = layer('radial-gradient(ellipse farthest-corner at 50% 50%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.33) 72%, rgba(0,0,0,0.78) 90%, #000 100%)');
+    this.hurtEl = layer('radial-gradient(ellipse farthest-corner at 50% 50%, rgba(140,5,10,0) 49%, rgba(140,5,10,0.39) 75%, rgba(140,5,10,0.84) 90%, rgba(140,5,10,1) 100%)');
+    this.flashEl = layer('#fff');
+    this.root = root;
+    this.last = { v: -1, h: -1, f: -1 };
+    canvas.after(root);
+  }
+
+  setActive(on) { this.root.style.display = on ? '' : 'none'; }
+
+  setFlashColor(c) { this.flashEl.style.background = `#${c.getHexString()}`; }
+
+  update(vig, hurt, flash) {
+    const l = this.last;
+    if (Math.abs(vig - l.v) > 0.01) { l.v = vig; this.vig.style.opacity = Math.min(1, vig).toFixed(3); }
+    if (Math.abs(hurt - l.h) > 0.01 || (hurt < 0.01) !== (l.h < 0.01)) { l.h = hurt; this.hurtEl.style.opacity = Math.min(0.95, hurt).toFixed(3); }
+    if (Math.abs(flash - l.f) > 0.01 || (flash < 0.01) !== (l.f < 0.01)) { l.f = flash; this.flashEl.style.opacity = Math.min(1, flash).toFixed(3); }
+  }
+}
+
 // Owns the WebGL renderer and the post-processing chain; rebuilds it when
 // the quality preset changes.
+//
+// Presets with `post: false` (Mobile) skip the EffectComposer: the scene renders
+// straight to the canvas (tone mapped by the renderer) and the screen effects that
+// still matter for feel (vignette, hurt edge, flashes) are CSS overlays above it.
+// Their canvas gets hardware MSAA when the preset asks for `aa: 'msaa'` (cheap on
+// tiled mobile GPUs, and it can only be chosen when the context is created).
 export class Renderer {
   constructor(canvas, settings) {
     this.canvas = canvas;
     this.settings = settings;
-    this.webgl = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+    this.webgl = new THREE.WebGLRenderer({ canvas, antialias: settings.quality.aa === 'msaa', powerPreference: 'high-performance' });
+    this.webgl.info.autoReset = false; // one reset per frame (render()), so info covers every pass
+    this.dyn = new DynRes();
+    this.meter = new PerfMeter(settings, this);
+    this.lastMs = 0;
     this.webgl.toneMapping = THREE.ACESFilmicToneMapping;
     this.webgl.toneMappingExposure = 1.0;
     this.lens = false;
@@ -142,28 +190,41 @@ export class Renderer {
 
   applyQuality() {
     const q = this.settings.quality;
-    this.webgl.setPixelRatio(Math.min(window.devicePixelRatio || 1, q.pixelRatio));
+    this.ratioCap = Math.min(window.devicePixelRatio || 1, q.pixelRatio);
+    this.dyn.configure(this.ratioCap, !!q.dynRes && !this.settings.dynResOff);
+    this.webgl.setPixelRatio(this.dyn.ratio);
     this.webgl.shadowMap.enabled = q.shadows;
     this.webgl.shadowMap.needsUpdate = true;
     if (this.composer) {
       for (const p of this.composer.passes) if (p !== this.grade) p.dispose?.();
       this.composer.dispose();
+      this.composer = null;
     }
-    const c = new EffectComposer(this.webgl);
-    c.addPass(new RenderPass(this.scene, this.camera));
-    if (q.ao) {
-      const ao = new GTAOPass(this.scene, this.camera, 512, 512);
-      ao.blendIntensity = 0.75;
-      c.addPass(ao);
+    this.bloom = null;
+    this.shock = null;
+    this.waves.length = 0;
+    if (q.post === false) {
+      // Direct render: no composer. The overlay carries vignette / hurt / flash.
+      this.overlay ??= new ScreenOverlay(this.canvas);
+      this.overlay.setActive(true);
+    } else {
+      this.overlay?.setActive(false);
+      const c = new EffectComposer(this.webgl);
+      c.addPass(new RenderPass(this.scene, this.camera));
+      if (q.ao) {
+        const ao = new GTAOPass(this.scene, this.camera, 512, 512);
+        ao.blendIntensity = 0.75;
+        c.addPass(ao);
+      }
+      if (q.bloom) c.addPass(this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.42, 0.45, 0.86));
+      // Shockwaves only where post-processing budget exists (not on Low).
+      this.shock = q.bloom ? new ShaderPass(ShockShader) : null;
+      if (this.shock) { this.shock.enabled = false; c.addPass(this.shock); }
+      c.addPass(new OutputPass());
+      c.addPass(this.grade);
+      c.addPass(q.aa === 'smaa' ? new SMAAPass() : new FXAAPass());
+      this.composer = c;
     }
-    if (q.bloom) c.addPass(this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.42, 0.45, 0.86));
-    // Shockwaves only where post-processing budget exists (not on Low).
-    this.shock = q.bloom ? new ShaderPass(ShockShader) : null;
-    if (this.shock) { this.shock.enabled = false; c.addPass(this.shock); }
-    c.addPass(new OutputPass());
-    c.addPass(this.grade);
-    c.addPass(q.aa === 'smaa' ? new SMAAPass() : new FXAAPass());
-    this.composer = c;
     this.lens = !!q.lens;
     this.resize();
     // Shadow-casting lights must rebuild their maps at the new size.
@@ -174,6 +235,16 @@ export class Renderer {
         o.shadow.map = null;
       }
     });
+    this.lightCount = 0;
+    this.scene?.traverse((o) => { if (o.isPointLight) this.lightCount++; });
+  }
+
+  get usesComposer() { return !!this.composer; }
+
+  // Dynamic resolution moved the pixel ratio: resize the drawing buffer.
+  setRatio(r) {
+    this.webgl.setPixelRatio(r);
+    this.resize();
   }
 
   resize() {
@@ -188,6 +259,7 @@ export class Renderer {
   pulse(color = 0xffffff, amount = 0.35) {
     this.flashColor.set(color);
     this.flash = Math.max(this.flash, amount);
+    this.overlay?.setFlashColor(this.flashColor);
   }
 
   // Expanding refraction ring at a world position (crits, slams, boss deaths).
@@ -219,13 +291,27 @@ export class Renderer {
   }
 
   render(dt, { hurt = 0 } = {}) {
+    const now = performance.now();
+    if (this.lastMs) {
+      const ms = now - this.lastMs;
+      this.meter.frame(ms);
+      const r = this.dyn.frame(ms, now);
+      if (r) this.setRatio(r);
+    }
+    this.lastMs = now;
+    this.webgl.info.reset();
     this.updateWaves(dt);
     const u = this.grade.uniforms;
     u.uTime.value = (u.uTime.value + dt) % 1000;
     this.flash = Math.max(0, this.flash - dt * 1.8);
     u.uFlash.value.set(this.flashColor.r, this.flashColor.g, this.flashColor.b, this.flash);
     u.uHurt.value += (hurt - u.uHurt.value) * Math.min(1, dt * 4);
-    this.composer.render(dt);
+    if (this.composer) this.composer.render(dt);
+    else {
+      this.overlay?.update(u.uVignette.value, u.uHurt.value, this.flash);
+      this.webgl.setRenderTarget(null);
+      this.webgl.render(this.scene, this.camera);
+    }
   }
 
   // Per-region grade (e.g. greener marsh, bruised ashen tones).
