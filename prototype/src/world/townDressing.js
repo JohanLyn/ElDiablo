@@ -396,7 +396,7 @@ export function dressTown(scene, colliders, { cx, cz, r }, lights = null) {
   GLOW.halos = createGlow(nightHalos, { opacity: 0.5 });
   scene.add(GLOW.halos);
   // Most lanterns are lit by the pooled lights only at dusk and night (night: 1).
-  if (lights) for (const [x, y, z] of lamps) lights.add({ x, y, z, color: 0xffa050, intensity: 7, range: 11, decay: 1.6, flicker: 0.2, night: 1 });
+  if (lights) for (const [x, y, z] of lamps) lights.add({ x, y, z, color: 0xffa050, intensity: 3.6, range: 9, decay: 1.8, flicker: 0.2, night: 1 });
 
   // ---- finish merged meshes
   const fin = (geos, mat, cast = true) => {

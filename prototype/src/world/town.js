@@ -116,7 +116,7 @@ export function buildTown(scene, colliders, lights) {
 
   // Warm lights.
   for (const [lx, lz] of [[-6, -2], [8, 6], [0, -18]]) {
-    lights.add({ x: cx + lx, y: 3, z: cz + lz, color: 0xffa860, intensity: 10, range: 16, decay: 1.6, flicker: 0.5 });
+    lights.add({ x: cx + lx, y: 3, z: cz + lz, color: 0xffa860, intensity: 6, range: 14, decay: 1.7, flicker: 0.5 });
   }
 
   return { occluders, npcs };
