@@ -100,6 +100,8 @@ Status (0.3.0-alpha): 29 unit tests pass; the e2e sim exercises the ambush, ques
 - [ ] More skills and Tether Aspects
 - [ ] Test on real controllers (the alpha only used a simulated gamepad); tune damage, XP curve and monster density from real playtests
 - [ ] Performance on low-end GPUs and software GL; enforce the draw-call and triangle budgets in a script
+- [x] Playable on phones (0.6.0-alpha): touch controls, phone layout, Mobile preset with dynamic resolution
+- [ ] Tune touch controls and the Mobile preset from real-phone tests (iPhone Safari, Android Chrome)
 - [ ] Code-split the bundle (the main JS chunk is about 1 MB minified)
 - [ ] Map coverage for dungeon interiors
 - [ ] Twist 2: Deedforged items (Unwritten affixes and the deed event bus)

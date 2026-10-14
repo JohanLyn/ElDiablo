@@ -47,7 +47,8 @@ export class PerfMeter {
       const c = new URLSearchParams(location.search).get('fps');
       if (c === 'tr' || c === 'bl' || c === 'br' || c === 'tl') return c;
     } catch { /* no location */ }
-    return 'tl';
+    // Phones: the top-left corner holds the touch menu buttons and the kill feed.
+    return document.body?.dataset.device === 'touch' ? 'bl' : 'tl';
   }
 
   _sync() {
@@ -84,6 +85,7 @@ export class PerfMeter {
     const worst = this.worst;
     this.t = 0; this.n = 0; this.sum = 0; this.worst = 0;
     if (!this.el) return;
+    this.el.dataset.corner = this._corner(); // follows the device (touch is detected after boot)
     if (++this.lightAge > 6) { this.lightAge = 0; this.lights = 0; this.renderer.scene?.traverse((o) => { if (o.isPointLight) this.lights++; }); }
     const r = this.renderer, info = r.webgl.info.render, q = this.settings.quality;
     this.fpsEl.textContent = this.fps >= 100 ? this.fps.toFixed(0) : this.fps.toFixed(1);

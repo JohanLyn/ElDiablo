@@ -7,7 +7,7 @@
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
-const URL = process.argv[2] || 'http://localhost:4180/?low';
+const URL = process.argv[2] || 'http://localhost:4173/';
 const OUT = process.argv[3] || '.';
 mkdirSync(OUT, { recursive: true });
 
@@ -108,9 +108,14 @@ const foe = await G(async () => {
 await wait(2500);
 const before = await G(() => { const g = window.__game; return { hits: window.__hits, hp: g.enemies.list.filter((e) => e.alive && e.pos.distanceTo(g.player.pos) < 10).reduce((s, e) => s + e.hp, 0), combat: g.combatNearby, interact: !!g.interactTarget }; });
 await down(2, 760, 330); // the big attack button
-await wait(300);
-const attackDown = await G(() => ({ down: window.__game.input.down.skill1, cls: document.querySelector('.t-attack').classList.contains('down') }));
-await wait(5500);
+// Poll: in software GL a frame can take longer than half a second.
+let attackDown;
+for (let i = 0; i < 10; i++) {
+  await wait(250);
+  attackDown = await G(() => ({ down: window.__game.input.down.skill1, cls: document.querySelector('.t-attack').classList.contains('down') }));
+  if (attackDown.down) break;
+}
+await wait(5000);
 const after = await G(() => { const g = window.__game; return { hits: window.__hits, hp: g.enemies.list.filter((e) => e.alive && e.pos.distanceTo(g.player.pos) < 10).reduce((s, e) => s + e.hp, 0), dead: g.enemies.list.filter((e) => !e.alive).length }; });
 await up(2);
 check('attack button is held while the finger is down', attackDown.down === true && attackDown.cls, attackDown);

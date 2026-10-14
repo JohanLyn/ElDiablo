@@ -1,6 +1,6 @@
-# The Seven Gates of Kur: prototype 0.3.0-alpha
+# The Seven Gates of Kur: prototype 0.6.0-alpha
 
-An open-world action RPG slice in three.js that plays like Diablo 3/4. It's controller-first, and keyboard and mouse work too. See [CHANGELOG.md](CHANGELOG.md) for what changed and the known issues, and [../docs/ROADMAP.md](../docs/ROADMAP.md) for the alpha checklist.
+An open-world action RPG slice in three.js that plays like Diablo 3/4. It's controller-first; keyboard and mouse work too, and since 0.6 it plays on phones. See [CHANGELOG.md](CHANGELOG.md) for what changed and the known issues, and [../docs/ROADMAP.md](../docs/ROADMAP.md) for the alpha checklist.
 
 ## Run it
 ```bash
@@ -19,6 +19,15 @@ npm run e2e                           # e2e/sim.mjs: plays the whole quest chain
 node e2e/firstfifteen.mjs [url] [minutes] [seed]   # balance bot: plays the first 20 minutes (default) and checks the pacing targets
 node e2e/neti.mjs [url] [heroLevel] [tries]       # Neti fight check
 ```
+
+## Playing on a phone
+
+Open the same link on the phone and hold it in landscape (portrait shows a rotate prompt and pauses). The Mobile graphics preset is picked automatically. For the best experience:
+
+- **Android Chrome:** tap **Fullscreen** on the title screen; it also locks landscape.
+- **iPhone Safari:** Share, then **Add to Home Screen**, and start the game from the new icon to play full-screen.
+- Left thumb moves, right thumb on empty space steers the Tether, and the big button strikes and talks. See [Controls](#controls) for the rest.
+- Settings > Controls has touch size, opacity and a left-handed layout. Settings > Graphics > **Show FPS** puts a frame-rate readout in the bottom-left corner.
 
 ## URL flags
 | Flag | Effect |

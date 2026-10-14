@@ -28,7 +28,7 @@ import { Vfx } from './fx/vfx.js';
 import { Gidim } from './game/gidim.js'; // Night of the Gidim (1/4)
 import { Reveal } from './game/reveal.js'; // region reveal hook (1/4)
 
-export const VERSION = '0.5.0-alpha';
+export const VERSION = '0.6.0-alpha';
 
 // ?low or ?quality=medium override the saved graphics preset (slow machines, automated tests).
 const settings = new Settings();
