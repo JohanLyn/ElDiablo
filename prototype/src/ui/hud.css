@@ -242,3 +242,15 @@ body.ui-open #hud { opacity: 0.07; }
 #hud > *, #topright, #topcenter > *:not(#banner), #bottom { transition: opacity 0.35s ease; }
 body.cinematic #topright, body.cinematic #bottom, body.cinematic #topcenter > *:not(#banner),
 body.cinematic #prompt, body.cinematic #tutorial, body.cinematic #feed, body.cinematic #notify { opacity: 0; pointer-events: none; }
+
+/* ----- Ghost-ash ◈ (Night of the Gidim): a small lapis plaque under the region plate ----- */
+#ash { position: relative; align-self: flex-end; display: flex; align-items: center; gap: 8px; padding: 3px 14px 3px 10px; margin-top: -2px; text-shadow: 0 1px 3px #000;
+  background: linear-gradient(180deg, #17377a, #0b1a3e); border: 2px solid var(--gold-lo); border-radius: 12px; box-shadow: 0 0 0 1px var(--bitumen), 0 2px 6px rgba(0, 0, 0, 0.6), inset 0 0 8px rgba(0, 0, 0, 0.5); }
+#ash .ash-gem { font-style: normal; font-size: 16px; line-height: 1; color: #c9fbff; filter: drop-shadow(0 0 5px rgba(120, 235, 245, 0.85)); }
+#ash b { font: 800 15px var(--font-display); color: #c9fbff; min-width: 1ch; }
+#ash span { font: 600 10.5px var(--font-display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--shell-dim); }
+#ash.gain { animation: ashGain 0.9s ease-out; }
+@keyframes ashGain { 0% { transform: scale(1.18); box-shadow: 0 0 0 1px var(--bitumen), 0 0 22px rgba(120, 235, 245, 0.95); } 100% { transform: scale(1); } }
+#feed .ash { color: #9fe8ee; }
+#feed .ash-fi { font-size: 17px; font-style: normal; text-shadow: 0 0 6px rgba(120, 235, 245, 0.8); }
+#buffs .bless { color: #c9fbff; background: linear-gradient(180deg, #17508a, #0b2a4e); text-shadow: 0 0 8px rgba(120, 235, 245, 0.6); }

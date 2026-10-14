@@ -150,7 +150,7 @@ export class Tether {
       g.fx.burst(this._tmp.set(r.cx, this.A.y, r.cz), this.aspect(g).color, 3, 3, { life: 0.3 });
       g.events.emit('tetherHit', { pos: this._tmp.clone(), aspect: this.aspect(g).id, enemy: e });
       const coef = TICK_COEF * (id === 'lapis' ? 1.3 : id === 'bulwark' ? 0.6 : 1);
-      const { amount, crit } = rollDamage(stats, coef, Math.random, mult);
+      let { amount, crit } = rollDamage(stats, coef, Math.random, mult);
       let knockX = 0, knockZ = 0;
       if (id === 'chain') {
         const dx = this.A.x - e.pos.x, dz = this.A.z - e.pos.z, d = Math.hypot(dx, dz) || 1;
@@ -160,12 +160,24 @@ export class Tether {
         const [nx, nz] = this.lineNormalToward(e.pos.x, e.pos.z, r);
         knockX = nx * 7; knockZ = nz * 7;
       }
+      const ward = e.gidim ? g.gidim?.ward() : null; // Night of the Gidim: the line wards the risen dead
+      if (ward) { [amount, knockX, knockZ] = this.wardHit(e, amount, ward, g); }
       if (burning) { e.burn = 3; e.burnDps = Math.max(e.burnDps, amount * 0.8); }
       if (stats.powers.has('ereshkigal')) e.vulnerable = 3;
       g.enemies.damage(e, amount, g, { crit, knockX, knockZ, color: this.aspect(g).css, silent: !crit, source: 'tether' });
       g.player.heal(stats.lifeOnHit * 0.3);
       g.player.anima = Math.min(g.player.stats.maxAnima, g.player.anima + 2);
     }
+  }
+
+  // The Tether ward: a gidim on the line takes extra damage and is shoved away from the hero.
+  wardHit(e, amount, ward, g) {
+    const dx = e.pos.x - this.A.x, dz = e.pos.z - this.A.z, d = Math.hypot(dx, dz) || 1;
+    e.slow = 0;
+    this.flare = Math.max(this.flare, 0.35);
+    g.gidim.fx.ward(e.pos);
+    g.events.emit('gidimWard', { pos: e.pos });
+    return [amount * ward.dmg, (dx / d) * ward.push, (dz / d) * ward.push];
   }
 
   lineNormalToward(x, z, r) {
@@ -191,7 +203,7 @@ export class Tether {
       const r = distPointSegment(e.pos.x, e.pos.z, this.A.x, this.A.z, this.B.x, this.B.z);
       if (r.dist > e.radius + 1.3) continue;
       hits++;
-      const { amount, crit } = rollDamage(stats, coef * (a.id === 'lapis' ? 1.3 : 1), Math.random, stats.tetherMult);
+      let { amount, crit } = rollDamage(stats, coef * (a.id === 'lapis' ? 1.3 : 1), Math.random, stats.tetherMult);
       let knockX = 0, knockZ = 0;
       if (a.id === 'chain') {
         const dx = this.A.x - e.pos.x, dz = this.A.z - e.pos.z, d = Math.hypot(dx, dz) || 1;
@@ -200,6 +212,8 @@ export class Tether {
         const [nx, nz] = this.lineNormalToward(e.pos.x, e.pos.z, r);
         knockX = nx * 18; knockZ = nz * 18;
       } else if (a.id === 'fire') { e.burn = 5; e.burnDps = Math.max(e.burnDps, amount * 0.4); }
+      const ward = e.gidim ? g.gidim?.ward() : null;
+      if (ward) { [amount, knockX, knockZ] = this.wardHit(e, amount, ward, g); }
       g.enemies.damage(e, amount, g, { crit, knockX, knockZ, color: a.css, source: 'snap' });
     }
     if (a.id === 'bulwark') for (const b of g.enemies.projectiles) if (Math.hypot(b.pos.x - this.A.x, b.pos.z - this.A.z) < 7) b.life = 0;

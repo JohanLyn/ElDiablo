@@ -25,6 +25,7 @@ import { Story, START } from './game/story.js';
 import { Tutorial } from './game/tutorial.js';
 import { Audio as GameAudio } from './audio/audio.js';
 import { Vfx } from './fx/vfx.js';
+import { Gidim } from './game/gidim.js'; // Night of the Gidim (1/4)
 import { Reveal } from './game/reveal.js'; // region reveal hook (1/4)
 
 export const VERSION = '0.4.0-alpha';
@@ -86,6 +87,7 @@ function boot() {
       for (const c of enemies.camps) if (c.state !== 'dormant') enemies.despawnCamp(c);
       enemies.clearDungeon();
       enemies.clearStray();
+      g.gidim.reset(save?.gidim); // Night of the Gidim (2/4): marks are per session, the blessing and counts persist
       loot.clearAll();
       abilities.reset();
       g.started = true;
@@ -122,6 +124,7 @@ function boot() {
         player: player.serialize(), quests: g.quests.toJSON(), flags: g.flags,
         waypoints: world.waypoints.filter((w) => w.discovered).map((w) => w.id),
         chests: world.chests.filter((c) => c.opened).map((c) => c.id),
+        gidim: g.gidim?.serialize(),
         fog: encodeBytes(g.fog.cells),
       });
     },
@@ -185,6 +188,7 @@ function boot() {
     },
 
     onEnemyKilled(e) {
+      if (e.gidim) { g.gidim.onGidimKilled(e); return; } // the risen dead drop Ghost-ash, not loot or quest credit
       player.gainXp(e.xp, g);
       loot.dropFor(e, g);
       const region = e.camp?.region ?? world.regionAt(e.pos.x, e.pos.z);
@@ -250,6 +254,7 @@ function boot() {
   };
   g.interactions = new Interactions(g);
   g.vfx = new Vfx(g);
+  g.gidim = new Gidim(g); // Night of the Gidim (3/4): needs g.vfx (ground surface) and the world lights
   const ui = new UI(g);
   g.ui = ui;
   // Time of day: ?time= wins for this visit, else the saved setting.
@@ -320,6 +325,7 @@ function boot() {
       abilities.update(dt, g);
       tether.update(dt, g);
       enemies.update(dt, g);
+      g.gidim.update(dt); // Night of the Gidim (4/4)
       loot.update(dt, g);
       g.interactions.update(dt);
       for (let i = g.timers.length - 1; i >= 0; i--) {

@@ -105,12 +105,16 @@ export class Hud {
     let icon = '';
     if (cls.startsWith('r-') && this._lastItem?.name === text) icon = `<span class="fi r-${this._lastItem.rarity}">${itemIcon(this._lastItem.kind, 'currentColor')}</span>`;
     else if (cls === 'gold') icon = `<span class="fi">${COIN}</span>`;
+    else if (cls === 'ash') icon = '<span class="fi ash-fi">\u25C8</span>';
     else if (cls === 'potion') icon = `<span class="fi">${skillIcon('potion', 'currentColor')}</span>`;
     el.innerHTML = `${icon}<span class="ft${cls.startsWith('r-') ? ' rmark ' + cls : ''}">${escapeHtml(text)}</span>`;
     box.appendChild(el);
     while (box.children.length > 6) box.firstChild.remove();
     setTimeout(() => el.remove(), 3200);
   }
+
+  // Ghost-ash counter flashes when ash is gained (Night of the Gidim).
+  pulseAsh() { const el = $('ash'); el.classList.remove('gain'); void el.offsetWidth; el.classList.add('gain'); }
 
   setTarget(e) { this.target = e; this.targetTime = 4; }
 
@@ -187,8 +191,16 @@ export class Hud {
     // Buffs
     const buffs = p.buffs.map((b) => `<div>${escapeHtml(b.label.split(':')[0])} · ${Math.ceil(b.time)}s</div>`);
     if (g.abilities.pyreActive) buffs.push(`<div>Gibil's Pyre · ${Math.ceil(g.abilities.pyre)}s</div>`);
+    const blessing = g.gidim?.blessingLabel();
+    if (blessing) buffs.push(`<div class="bless">${escapeHtml(blessing)}</div>`);
     const buffHtml = buffs.join('');
     this._set($('buffs'), 'h', buffHtml, (v) => { $('buffs').innerHTML = v; });
+
+    // Ghost-ash ◈ (Night of the Gidim): shown once the first night has fallen or any ash is held
+    const ash = p.ghostAsh ?? 0;
+    const ashEl = $('ash');
+    ashEl.hidden = !(g.settings.get('gidim') !== false && (ash > 0 || g.flags.gidimSeen));
+    this._set(ashEl, 'n', ash, (v) => { ashEl.querySelector('b').textContent = v; });
 
     // Region
     const info = g.world.regionInfo(p.pos.x, p.pos.z);

@@ -68,6 +68,20 @@ export const STEPS = [
     text: { pad: ['D-pad ▲', 'Town Portal: return to Eridu to sell loot to Ubar'], kbm: ['T', 'Town Portal: return to Eridu to sell loot to Ubar'] },
     done: (g, s) => s.portals >= 1, timeout: 30,
   },
+  // Night of the Gidim (src/game/gidim.js): the first night, and the first Ghost-ash.
+  {
+    id: 'lanterns', when: (g) => g.isNight && !!g.flags.gidimSeen && g.settings.get('gidim') !== false,
+    text: {
+      pad: ['\u263E', 'The gidim cannot enter shrines, waypoints or lantern light. Your sedu spirit is a lantern now: sweep its tether across them to ward them back'],
+      kbm: ['\u263E', 'The gidim cannot enter shrines, waypoints or lantern light. Your sedu spirit is a lantern now: sweep its tether across them to ward them back'],
+    },
+    done: (g, s) => s.wards >= 3, timeout: 26,
+  },
+  {
+    id: 'ash', when: (g) => (g.player.ghostAsh ?? 0) > 0 && !g.combatNearby,
+    text: { pad: ['\u25C8', 'Bring Ghost-ash to Ninsun in Eridu for a Night Blessing'], kbm: ['\u25C8', 'Bring Ghost-ash to Ninsun in Eridu for a Night Blessing'] },
+    done: (g) => !!g.gidim?.blessing, timeout: 20,
+  },
 ];
 
 function nearEnemy(g, r) {
@@ -91,11 +105,12 @@ export class Tutorial {
     ev.on('uiOpen', (e) => { if (e.kind === 'map') this.s.maps++; });
     ev.on('aspectChange', () => this.s.aspects++);
     ev.on('portal', () => this.s.portals++);
+    ev.on('gidimWard', () => this.s.wards++);
     ev.on('enemyWindup', (e) => { if (e.enemy.pos.distanceTo(g.player.pos) < 7) this.s.windupNear = true; });
   }
 
   reset() {
-    this.s = { moved: 0, hits: 0, tetherHits: 0, evades: 0, potions: 0, pickups: 0, equips: 0, casts: {}, maps: 0, aspects: 0, portals: 0, windupNear: false };
+    this.s = { moved: 0, hits: 0, tetherHits: 0, evades: 0, potions: 0, pickups: 0, equips: 0, casts: {}, maps: 0, aspects: 0, portals: 0, wards: 0, windupNear: false };
     this.lastPos = null;
     this.equipKey = null;
     this.hide();

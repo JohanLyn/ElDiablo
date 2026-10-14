@@ -2,6 +2,17 @@
 
 All notable changes to the Gates of Kur prototype. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- **Night of the Gidim**: the dead of the day rise at night.
+  - Every monster you slay outdoors by day leaves a faint cuneiform mark that brightens through dusk. At nightfall the marks near you rise as pale ghosts (gidim) of what died there, up to a cap that grows a little with your level.
+  - How it died decides what it becomes: Burning (leaves ghost-fire), Chained (bound to its mark by a chain, lunges), Shattered (splits into two shards), Plain, and a Gidim Lord for elite and named monsters.
+  - Gidim are a bonus, not a wall: slower, weaker, relentless, and their touch chills you. They cannot enter Eridu, shrines, waypoints or lantern light, and recoil with a hiss at the edge. At daybreak they dissolve.
+  - At night your sedu spirit becomes a lantern and its Tether a ward: gidim crossing the line take double damage and are pushed back.
+  - Ghost-ash ◈ drops from gidim. Ninsun trades it for a Night Blessing: Lamp of Nanna, Ash-skin or Grave-reader.
+  - New **Night of the Gidim** toggle under Settings > Gameplay (on by default), a first-night introduction and tutorial hints.
+
 ## [0.4.0-alpha]
 
 A visual pass: a new interface built from the world's own lapis, shell and carnelian, a full day cycle, and set pieces and combat moments that hit harder.

@@ -578,6 +578,32 @@ export const SFX = {
       S.tone(d, { t: 0.1, f: 98, type: 'square', g: 0.2, a: 0.004, h: 0.07, r: 0.1, filt: [{ type: 'lowpass', f: 450 }] });
     },
   },
+
+  // ---- Night of the Gidim (events gidimRise / gidimDeath / gidimRecoil)
+  gidimRise: { // a breathy whisper that climbs as the ground gives way
+    type: 'gidimRise', max: 2, gap: 0.15, dur: 2.7, send: 0.55, gain: 0.8, vary: 0.1, fn: (S, d) => {
+      S.noise(d, { dur: 1.9, a: 1.1, r: 0.7, g: 0.3, filt: [{ type: 'bandpass', f: 700, f2: 3200, tf: 1.8, q: 2.2 }], am: { rate: 5.5, depth: 0.5 } }); // breath
+      S.noise(d, { t: 0.2, dur: 1.5, a: 0.9, r: 0.5, g: 0.1, color: 'pink', filt: [{ type: 'highpass', f: 3500 }] }); // air
+      for (const [f, f2, g] of [[420, 640, 0.07], [630, 1000, 0.05]]) S.tone(d, { f, f2, tf: 1.6, type: 'sine', g, a: 0.9, r: 0.7, det: R(-12, 12), vib: { rate: 6, depth: 22, delay: 0.3 } }); // whispered vowels
+      S.tone(d, { f: 52, f2: 74, tf: 1.8, type: 'sine', g: 0.22, a: 1.0, r: 0.7 }); // the ground, giving way
+      sparkle(S, d, { t: 1.4, n: 3, base: 1800, span: 7, g: 0.03, r: 0.5 });
+    },
+  },
+  gidimDeath: { // glass breaking, a wail falling away
+    type: 'gidimDeath', max: 3, gap: 0.05, dur: 1.5, send: 0.4, gain: 0.85, vary: 0.08, fn: (S, d) => {
+      S.noise(d, { dur: 0.09, a: 0.001, g: 0.5, filt: [{ type: 'highpass', f: 3600, q: 0.7 }] }); // crack
+      for (let i = 0; i < 7; i++) S.bell(d, { t: i * 0.028 + Math.random() * 0.02, f: R(1500, 4200), g: 0.07, dur: 0.7, ratios: [1, 2.4, 4.1], amps: [1, 0.5, 0.25], vary: false }); // shards
+      S.tone(d, { f: 660, f2: 180, tf: 0.5, type: 'sine', g: 0.16, a: 0.01, r: 0.55, vib: { rate: 8, depth: 35, delay: 0 } });
+      S.noise(d, { t: 0.04, dur: 0.5, a: 0.01, g: 0.18, filt: [{ type: 'bandpass', f: 5200, f2: 1800, tf: 0.5, q: 1.2 }] });
+    },
+  },
+  gidimRecoil: { // a hiss as the sanctuary pushes it back
+    type: 'gidimRecoil', max: 2, gap: 0.3, dur: 0.95, send: 0.3, gain: 0.7, vary: 0.1, fn: (S, d) => {
+      S.noise(d, { dur: 0.6, a: 0.05, r: 0.5, g: 0.4, filt: [{ type: 'highpass', f: 3200, q: 0.8 }, { type: 'bandpass', f: 6500, f2: 4200, tf: 0.5, q: 0.9 }], am: { rate: 38, depth: 0.35 } });
+      S.tone(d, { f: 900, f2: 420, tf: 0.4, type: 'sawtooth', g: 0.05, a: 0.03, r: 0.35, filt: [{ type: 'bandpass', f: 1500, q: 3 }], vib: { rate: 14, depth: 50, delay: 0 } });
+      S.noise(d, { dur: 0.12, a: 0.003, g: 0.18, color: 'pink', filt: [{ type: 'lowpass', f: 600 }] }); // the snap back
+    },
+  },
 };
 // Enemy death sounds are generated per type and registered as `die_<type>`.
 for (const k of Object.keys(DEATHS)) {
@@ -665,6 +691,9 @@ export const TRIMS = {
   'die_scorpion': 0,
   'die_asag': 3,
   'die_neti': 2,
+  'gidimRise': 0,
+  'gidimDeath': 0,
+  'gidimRecoil': 0,
 };
 export function trimKey(name, o) {
   if (o?.etype) return `${name}:${o.etype}`;

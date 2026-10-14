@@ -50,7 +50,8 @@ await page.evaluate(() => {
     s() { return { lvl: g.player.level, xp: Math.round(g.player.xp), gold: g.player.gold, life: Math.round(g.player.life), inv: g.player.inventory.length, quest: g.quests.active?.id ?? (g.quests.done ? 'done' : 'none'), prog: g.quests.progress, loot: g.loot.items.length, alive: g.enemies.list.filter((e) => e.alive).length, dead: g.player.dead }; },
   };
 });
-const log = async (label, fn) => { const r = await page.evaluate(fn); console.log(label.padEnd(18), JSON.stringify(r)); };
+const failed = [];
+const log = async (label, fn) => { const r = await page.evaluate(fn); console.log(label.padEnd(18), JSON.stringify(r)); if (r && r.ok === false) failed.push(label); };
 
 await log('start', () => { const g = window.__game; g.ui.startGame(true); g.ui.finishIntro(); return sim.s(); });
 await log('caravan ambush', () => {
@@ -162,9 +163,57 @@ await log('death+respawn', () => {
   g.ui.respawn();
   return { died, deathShown, alive: !g.player.dead, life: Math.round(g.player.life), pos: [Math.round(g.player.pos.x), Math.round(g.player.pos.z)] };
 });
+await log('night of the gidim', () => {
+  const g = window.__game, p = g.player;
+  g.settings.set('gidim', true);
+  p.life = p.stats.maxLife; p.invuln = 0;
+  g.world.tod.lock('noon'); sim.step(5);
+  // Day: kill ~6 outdoor monsters with mixed causes of death.
+  const kinds = [{ source: 'strike' }, { source: 'tether' }, { source: 'burn', burning: true }, { source: 'strike', crit: true }, { source: 'snap' }, { source: 'javelin' }];
+  let n = 0;
+  const camps = g.enemies.camps.filter((c) => c.state !== 'cleared' && !c.elite && !c.named && ['sunfields', 'marsh', 'ruins'].includes(c.region)).sort((a, b) => Math.hypot(a.x - p.pos.x, a.z - p.pos.z) - Math.hypot(b.x - p.pos.x, b.z - p.pos.z));
+  for (const c of camps) {
+    if (n >= 6) break;
+    g.teleport(c.x + 6, c.z + 6); sim.step(2);
+    for (const e of g.enemies.list.filter((e) => e.alive && e.camp === c)) { if (n >= 6) break; const k = kinds[n++]; if (k.burning) e.burn = 3; g.enemies.damage(e, 1e9, g, { source: k.source, crit: !!k.crit, silent: true }); }
+  }
+  const marks = g.gidim.marks.length, markVariants = [...new Set(g.gidim.marks.map((m) => m.variant))];
+  // Night: lock it, step until they rise.
+  p.life = p.stats.maxLife;
+  g.world.tod.lock('night');
+  sim.step(220, () => { p.life = p.stats.maxLife; });
+  const active = g.gidim.active.filter((e) => e.alive);
+  const variants = [...new Set(active.map((e) => e.gidim.variant))];
+  const chained = active.find((e) => e.gidim.variant === 'chained');
+  // A gidim must not enter a shrine sanctuary.
+  const sh = g.world.shrines[0], gd = active[0];
+  p.pos.set(sh.x, g.world.heightAt(sh.x, sh.z), sh.z + 1);
+  gd.pos.set(sh.x + 2, 0, sh.z + 1); if (gd.gidim.chain) gd.gidim.chain = null;
+  let recoils = 0; g.events.on('gidimRecoil', () => recoils++);
+  sim.step(90, () => { p.life = p.stats.maxLife; });
+  const shrineDist = Math.hypot(gd.pos.x - sh.x, gd.pos.z - sh.z);
+  // Kill gidim: Ghost-ash, no loot-run XP trouble.
+  p.pos.set(active[1]?.pos.x ?? 0, 0, active[1]?.pos.z ?? 0);
+  const ash0 = p.ghostAsh;
+  for (const e of [...g.gidim.active]) if (e.alive && e.spawning <= 0) g.enemies.damage(e, 1e9, g, { source: 'strike', silent: true });
+  sim.step(30);
+  const ash = p.ghostAsh - ash0;
+  // Daybreak dissolves whatever is left and clears the marks.
+  g.world.tod.lock('noon'); sim.step(60);
+  const left = g.enemies.list.filter((e) => e.gidim).length;
+  // The setting off: no marks.
+  g.settings.set('gidim', false);
+  const c2 = g.enemies.camps.find((c) => c.state !== 'cleared' && !c.elite && !c.named && c.region !== 'ashen');
+  let offMarks = -1;
+  if (c2) { g.teleport(c2.x + 6, c2.z + 6); sim.step(2); const e = g.enemies.list.find((e) => e.alive && e.camp === c2); if (e) g.enemies.damage(e, 1e9, g, { source: 'strike', silent: true }); offMarks = g.gidim.marks.length; }
+  g.settings.set('gidim', true);
+  const ok = marks >= 4 && active.length >= 3 && variants.length >= 3 && !!chained && shrineDist >= 7 && recoils >= 1 && ash > 0 && left === 0 && g.gidim.marks.length === 0 && offMarks <= 0;
+  return { ok, marks, markVariants, active: active.length, variants, shrineDist: +shrineDist.toFixed(1), recoils, ash, left, offMarks, died: p.dead };
+});
 await page.evaluate(() => { const g = window.__game; g.ui.mode = null; g.ui.openMenu('inventory'); });
 await page.waitForTimeout(2500);
 await page.screenshot({ path: `${OUT}/sim-inventory.png` });
 console.log('errors:', errors.length ? errors.slice(0, 10).join('\n') : 'none');
-process.exitCode = errors.length ? 1 : 0;
+if (failed.length) console.log('failed steps:', failed.join(', '));
+process.exitCode = errors.length || failed.length ? 1 : 0;
 await browser.close();

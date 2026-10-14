@@ -18,6 +18,8 @@
 //   regionEnter {id}                           waypoint {id}     shrine {kind}
 //   chestOpen {pos}                            portal {}         uiOpen {kind}
 //   uiMove {}  uiConfirm {}  uiBack {}         denied {reason}
+//   gidimRise {pos, variant, lord}             gidimDeath {pos, variant}   gidimRecoil {pos, kind}   gidimWard {pos}
+//   nightfall {t}  daybreak {t}                kill {enemy, pos, source, crit, burning}
 export class Events {
   constructor() { this.map = new Map(); }
 
