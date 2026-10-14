@@ -5,6 +5,7 @@ import { makePillar, makePillarMaterial } from '../fx/beams.js';
 import { RARITY_FX } from '../fx/rarity.js';
 
 const LABEL_RANGE = 16;
+const _probe = new THREE.Vector3();
 
 // A named champion's guaranteed first drop (Aqrabu's "Sting of Aqrabu"): a rare with a fixed
 // name and a venom-drinking pair of affixes (crit damage, life per hit), claimed on pickup.
@@ -84,7 +85,16 @@ export class Loot {
     const color = new THREE.Color(RARITY[item.rarity].color);
     const mesh = new THREE.Mesh(kindGeo, new THREE.MeshStandardMaterial({ color, emissive: color.clone().multiplyScalar(item.rarity === 'common' ? 0.2 : 0.55), metalness: 0.5, roughness: 0.4 }));
     const a = this.rng.float(0, Math.PI * 2), r = fountain ? this.rng.float(2.2, 4.8) : this.rng.float(0.8, 2.4);
-    const x = pos.x + Math.cos(a) * r, z = pos.z + Math.sin(a) * r;
+    // Walk the throw outward and stop before the first wall or prop, so nothing lands
+    // inside (or behind) a wall where it can't be picked up.
+    let x = pos.x, z = pos.z;
+    for (let s = 1; s <= 8; s++) {
+      const cx = pos.x + Math.cos(a) * r * s / 8, cz = pos.z + Math.sin(a) * r * s / 8;
+      _probe.set(cx, 0, cz);
+      g.world.colliders.resolve(_probe, 0.3, g.inDungeon);
+      if (Math.abs(_probe.x - cx) + Math.abs(_probe.z - cz) > 0.01) break;
+      x = cx; z = cz;
+    }
     const target = new THREE.Vector3(x, g.world.heightAt(x, z), z);
     g.world.colliders.resolve(target, 0.3, g.inDungeon);
     mesh.position.set(pos.x, (pos.y ?? 0) + 1, pos.z);

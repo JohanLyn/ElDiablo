@@ -9,7 +9,7 @@
 import { chromium } from 'playwright';
 
 const URL = process.argv[2] || 'http://localhost:4173/?low';
-const MINUTES = +(process.argv[3] || 15);
+const MINUTES = +(process.argv[3] || 20);
 const SEED = +(process.argv[4] || 1);
 
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
@@ -44,6 +44,8 @@ await page.evaluate((seed) => {
   g.events.on('aqrabuBurrow', () => mark('Aqrabu burrows'));
   g.events.on('aqrabuEmerge', () => mark('Aqrabu erupts'));
   g.events.on('pyresComplete', () => mark('pyres complete'));
+  g.events.on('nightfall', () => mark('nightfall'));
+  g.events.on('daybreak', () => mark(`daybreak (Ghost-ash ${g.player.ghostAsh ?? 0})`));
   g.events.on('hit', (e) => { stats.hits++; if (!stats.firstHit.has(e.enemy)) stats.firstHit.set(e.enemy, t()); });
   g.events.on('kill', (e) => {
     const en = e.enemy;
@@ -249,7 +251,7 @@ const report = await page.evaluate(() => {
   const g = window.__game;
   return {
     timeline: log,
-    final: { level: P.level, gold: P.gold, quest: g.quests.active?.title ?? (g.quests.done ? 'chain complete' : 'not accepted'), equipped: Object.values(P.equipment).map((i) => `${i.rarity}:${i.name}`) },
+    final: { level: P.level, gold: P.gold, ghostAsh: P.ghostAsh ?? 0, quest: g.quests.active?.title ?? (g.quests.done ? 'chain complete' : 'not accepted'), equipped: Object.values(P.equipment).map((i) => `${i.rarity}:${i.name}`) },
     metrics: {
       deaths: stats.deaths, kills: stats.kills, eliteKills: stats.eliteKills, killsPerMin: +(stats.kills / (g.time / 60)).toFixed(1),
       avgTtkNormal: avg(stats.ttk), avgTtkElite: avg(stats.eliteTtk), damageTakenPerMin: Math.round(stats.damageTaken / (g.time / 60)),
@@ -275,6 +277,14 @@ const checks = [
   ['normal TTK 1-5 s', report.metrics.avgTtkNormal !== null && report.metrics.avgTtkNormal >= 1 && report.metrics.avgTtkNormal <= 5],
 ];
 checks.push(['no stuck marks on quest legs', !report.timeline.some((e) => /^stuck at/.test(e.what))]);
+// Minutes 15-20 (0.5): Aqrabu, the first night and the gate. Bot time runs about 2x a person's.
+if (MINUTES >= 20) {
+  checks.push(['Aqrabu slain by 14:00', at(/quest done: Sting of the Desert/) <= 840]);
+  checks.push(['first night reached', at(/^nightfall$/) < Infinity]);
+  checks.push(['Ghost-ash >= 3 by 20:00', report.final.ghostAsh >= 3]);
+  checks.push(['Ganzir Stair entered by 16:00', at(/quest done: The Ganzir Stair/) <= 960]);
+  checks.push(['level 6+ by 20:00', report.final.level >= 6]);
+}
 console.log('--- targets ---');
 for (const [name, ok] of checks) console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}`);
 console.log('errors:', errors.length ? errors.slice(0, 5).join('\n') : 'none');

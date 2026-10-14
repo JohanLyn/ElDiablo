@@ -185,7 +185,7 @@ export class EnemyManager {
     // Aqrabu the Venomed and his guard.
     this.camps.push({
       id: 'camp-aqrabu', x: AQRABU.x, z: AQRABU.z, region: 'ruins', members: ['scorpion', 'scorpion', 'scorpion', 'gallu'],
-      named: { id: AQRABU.id, name: 'Aqrabu the Venomed', type: 'scorpion', affixes: ['fast', 'storm'], hpMult: 30, dmgMult: 0.7, firstDrop: { flag: 'aqrabuSting', rarity: 'rare', kind: 'weapon', name: 'Sting of Aqrabu' } }, state: 'dormant', clearedAt: 0, enemies: [],
+      named: { id: AQRABU.id, name: 'Aqrabu the Venomed', type: 'scorpion', affixes: ['fast', 'storm'], hpMult: 22, dmgMult: 0.6, firstDrop: { flag: 'aqrabuSting', rarity: 'rare', kind: 'weapon', name: 'Sting of Aqrabu' } }, state: 'dormant', clearedAt: 0, enemies: [],
     });
   }
 

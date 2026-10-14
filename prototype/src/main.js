@@ -194,13 +194,16 @@ function boot() {
       const region = e.camp?.region ?? world.regionAt(e.pos.x, e.pos.z);
       g.quests.notify({ type: 'kill', region, enemy: e.type, named: e.named?.id, boss: e.boss ? 'neti' : undefined });
       g.interactions.onKill(e);
+      // The exit portal opens once the guardian's loot fountain has landed, so nobody
+      // (player or bot) steps through it before seeing the drop.
+      const openExit = () => g.timers.push({ t: 2.4, fn: () => { if (g.inDungeon) g.interactions.spawnExitPortal(); } });
       if (e.boss) {
         hud.banner('Neti has fallen', 'boss', 'The First Gate is open');
-        g.interactions.spawnExitPortal();
+        openExit();
         g.save();
       } else if (e.dungeon && e.named && g.instance?.guardian?.id === e.named.id) {
         hud.banner(g.instance.slainBanner[0], 'boss', g.instance.slainBanner[1]);
-        g.interactions.spawnExitPortal();
+        openExit();
         g.save();
       }
     },

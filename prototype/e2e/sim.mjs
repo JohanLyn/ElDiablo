@@ -155,6 +155,7 @@ await log('cistern + guardian', () => {
   const guardian = g.enemies.list.find((e) => e.named?.id === 'cistern-guardian');
   g.teleport(guardian.pos.x, guardian.pos.z + 6); sim.step(30);
   sim.fight(3000, { skills: [2, 3, 4, 5, 6], filter: (e) => guardian.alive && (e === guardian || e.pos.distanceTo(guardian.pos) < 12) }); // stop at the kill: A also picks up / uses portals
+  sim.step(90); // the exit portal opens once the loot fountain has landed
   const legendary = g.loot.items.some((L) => L.item.rarity === 'legendary');
   const exitPortal = !!g.interactions.exitPortal;
   g.leaveDungeon(); sim.step(5);
@@ -167,6 +168,7 @@ await log('dungeon + neti', () => {
   const boss = g.enemies.list.find((e) => e.boss);
   g.teleport(boss.pos.x, boss.pos.z + 8); sim.step(60);
   sim.fight(8000, { skills: [2, 3, 4, 5, 6], filter: (e) => e.boss || e.pos.distanceTo(boss.pos) < 14 });
+  sim.step(90);
   return { bossHp: Math.round(boss.hp), bossAlive: boss.alive, shielded: boss.shielded, exitPortal: !!g.interactions.exitPortal, legendaryDropped: g.loot.items.some((L) => L.item.rarity === 'legendary' && L.pos.distanceTo(boss.pos) < 15), ...sim.s() };
 });
 await log('menus/map/dialog', () => {
