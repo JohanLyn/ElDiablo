@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { heightAt, isWater, WATER_LEVEL } from '../terrain.js';
-import { NOISE_GLSL } from './common.js';
+import { SKY_GLSL, skyUniforms } from './sky.js';
 
 const CX = -125, CZ = 0, W = 200, D = 260;
 
@@ -28,12 +28,13 @@ export function createWater(env) {
     fog: true,
     uniforms: {
       ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog),
+      ...skyUniforms(env),
       uDepth: { value: tex },
-      uTime: env.uTime,
       uSunDir: env.uSunDir,
-      uSunColor: env.uSunColor,
-      uSkyZenith: env.uSkyZenith,
-      uSkyHorizon: env.uSkyHorizon,
+      uSunK: env.uSunK,
+      uAmbient: env.uAmbient,
+      uLP: { value: Array.from({ length: 4 }, () => new THREE.Vector4()) }, // nearby emitters: xyz, range
+      uLC: { value: Array.from({ length: 4 }, () => new THREE.Vector3()) }, // colour * intensity
       uRect: { value: new THREE.Vector4(CX - W / 2, CZ - D / 2, W, D) },
     },
     vertexShader: /* glsl */`
@@ -50,11 +51,13 @@ export function createWater(env) {
       #include <common>
       #include <fog_pars_fragment>
       uniform sampler2D uDepth;
-      uniform float uTime;
-      uniform vec3 uSunDir, uSunColor, uSkyZenith, uSkyHorizon;
+      uniform vec3 uSunDir, uAmbient;
+      uniform float uSunK;
       uniform vec4 uRect;
+      uniform vec4 uLP[4];
+      uniform vec3 uLC[4];
       varying vec3 vWPos;
-      ${NOISE_GLSL}
+      ${SKY_GLSL}
       float rippleH(vec2 p, float t) {
         float a = vnoise(p * 0.9 + vec2(t * 0.22, t * 0.13));
         float b = vnoise(p * 2.1 - vec2(t * 0.31, -t * 0.2) + 5.0);
@@ -77,31 +80,48 @@ export function createWater(env) {
         vec3 V = normalize(cameraPosition - vWPos);
         float ndv = clamp(dot(n, V), 0.0, 1.0);
 
-        // Depth colour: yellow-green shallows to deep teal-lapis.
+        // Depth colour: yellow-green shallows to deep teal-lapis, lit by the scene's ambient light.
         float dk = 1.0 - exp(-depth * 1.7);
         vec3 shallow = vec3(0.16, 0.34, 0.22);
-        vec3 deepC = vec3(0.012, 0.06, 0.085);
+        vec3 deepC = vec3(0.01, 0.05, 0.075);
         vec3 water = mix(shallow, deepC, dk);
         water += vec3(0.02, 0.05, 0.04) * (h0 - 0.4);
+        water *= uAmbient;
 
-        // Fresnel sky reflection (boosted for the high game camera).
-        float fres = 0.1 + 0.9 * pow(1.0 - ndv, 2.6);
-        vec3 sky = mix(uSkyHorizon, uSkyZenith, 0.55);
-        vec3 col = mix(water, sky * 0.9, clamp(fres * 0.9, 0.0, 0.85));
+        // Fresnel reflection of the live sky (boosted for the high game camera).
+        vec3 R = reflect(-V, n);
+        R.y = abs(R.y);
+        vec3 sky = skyGradient(R, 0.0);
+        float fres = 0.12 + 0.88 * pow(1.0 - ndv, 2.2);
+        vec3 col = mix(water, sky * 0.85, clamp(fres * 0.95, 0.0, 0.8));
 
-        // Sun glint.
-        vec3 L = normalize(uSunDir);
+        // Sun / moon glints. The key light sits behind the camera in this view, so
+        // the glint direction is mirrored to the far side (art-directed, always visible).
+        vec3 L = normalize(vec3(uSunDir.x, max(uSunDir.y, 0.32), -abs(uSunDir.z) - 0.4));
         vec3 H = normalize(L + V);
-        float spec = pow(max(dot(n, H), 0.0), 140.0);
-        float spec2 = pow(max(dot(n, H), 0.0), 24.0) * 0.12;
-        col += uSunColor * (spec * 1.6 + spec2);
+        float nh = max(dot(n, H), 0.0);
+        float glint = pow(nh, 150.0) * 1.7 + pow(nh, 22.0) * 0.14;
+        col += uSunColor * glint * (0.35 + 0.9 * uSunK) * (0.5 + 0.5 * uAmbient.b);
+
+        // Lantern / torch reflections on the surface.
+        for (int i = 0; i < 4; i++) {
+          vec4 lp = uLP[i];
+          if (lp.w <= 0.0) continue;
+          vec3 ld = lp.xyz - vWPos;
+          float dist = length(ld);
+          ld /= dist;
+          float att = clamp(1.0 - dist / lp.w, 0.0, 1.0);
+          att *= att;
+          float sp = pow(max(dot(n, normalize(ld + V)), 0.0), 90.0);
+          col += uLC[i] * att * (sp * 0.6 + 0.012);
+        }
 
         // Shore foam: soft, slowly breathing lines hugging the bank.
         float foamZone = 1.0 - smoothstep(0.02, 0.16, depth);
         float lines = sin((depth * 22.0) - t * 1.3 + h0 * 6.0) * 0.5 + 0.5;
         float foamN = vnoise(p * 1.7 + t * 0.15);
         float foam = foamZone * (smoothstep(0.6, 0.95, lines) * 0.4 + smoothstep(0.07, 0.0, depth) * 0.45) * smoothstep(0.35, 0.75, foamN + 0.2);
-        col = mix(col, vec3(0.86, 0.9, 0.76), clamp(foam, 0.0, 0.6));
+        col = mix(col, vec3(0.86, 0.9, 0.76) * uAmbient, clamp(foam, 0.0, 0.6));
 
         float alpha = cover * mix(0.55, 0.93, dk);
         alpha = max(alpha, foam * 0.8 * cover);

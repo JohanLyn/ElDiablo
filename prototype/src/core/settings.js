@@ -3,10 +3,10 @@
 const KEY = 'eldiablo-kur-settings-v1';
 
 export const QUALITY = {
-  low: { label: 'Low', pixelRatio: 1, shadows: false, shadowSize: 1024, bloom: false, ao: false, aa: 'fxaa', grass: 0, particles: 0.5 },
-  medium: { label: 'Medium', pixelRatio: 1.25, shadows: true, shadowSize: 1024, bloom: true, ao: false, aa: 'fxaa', grass: 0.5, particles: 0.75 },
-  high: { label: 'High', pixelRatio: 1.5, shadows: true, shadowSize: 2048, bloom: true, ao: false, aa: 'smaa', grass: 1, particles: 1 },
-  ultra: { label: 'Ultra', pixelRatio: 2, shadows: true, shadowSize: 4096, bloom: true, ao: true, aa: 'smaa', grass: 1.5, particles: 1 },
+  low: { label: 'Low', pixelRatio: 1, shadows: false, shadowSize: 1024, bloom: false, ao: false, aa: 'fxaa', grass: 0, particles: 0.5, shafts: 0.3, lens: false, envBake: true },
+  medium: { label: 'Medium', pixelRatio: 1.25, shadows: true, shadowSize: 1024, bloom: true, ao: false, aa: 'fxaa', grass: 0.5, particles: 0.75, shafts: 0.6, lens: false, envBake: true },
+  high: { label: 'High', pixelRatio: 1.5, shadows: true, shadowSize: 2048, bloom: true, ao: false, aa: 'smaa', grass: 1, particles: 1, shafts: 1, lens: true, envBake: true },
+  ultra: { label: 'Ultra', pixelRatio: 2, shadows: true, shadowSize: 4096, bloom: true, ao: true, aa: 'smaa', grass: 1.5, particles: 1, shafts: 1, lens: true, envBake: true },
 };
 
 export const DEFAULTS = {

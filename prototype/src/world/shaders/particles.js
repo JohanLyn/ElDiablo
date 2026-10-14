@@ -42,6 +42,10 @@ export function createParticles(env, settings) {
     uWA: { value: new THREE.Vector4(1, 0, 0, 0) },
     uWB: { value: new THREE.Vector2(0, 0) },
     uOpacity: { value: 1 },
+    uLantern: env.uLanternK, // 0 day .. 1 night / dungeon
+    uSunColor: env.uSunColor,
+    uAmbient: env.uAmbient,
+    uSunK: env.uSunK,
   };
   const material = new THREE.ShaderMaterial({
     uniforms,
@@ -56,6 +60,7 @@ export function createParticles(env, settings) {
       uniform vec3 uCenter;
       uniform vec2 uWind;
       uniform vec4 uWA; uniform vec2 uWB;
+      uniform float uLantern, uSunK; uniform vec3 uSunColor, uAmbient;
       attribute vec4 aRnd; attribute float aType;
       varying vec4 vColor; varying float vKind;
       const float BOX = ${BOX.toFixed(1)};
@@ -68,24 +73,24 @@ export function createParticles(env, settings) {
         float hgt = 6.0;
         if (ty < 0.5) {            // pollen: golden dust lazily drifting
           p = base + vec3(uWind.x, 0.12, uWind.y) * t * 0.7 + vec3(sin(t * 0.5 + aRnd.w * 20.0), sin(t * 0.7 + aRnd.w * 9.0) * 0.6, cos(t * 0.45 + aRnd.w * 14.0)) * 0.8;
-          hgt = 5.0; col = vec3(1.0, 0.82, 0.38); size = 0.1 + aRnd.w * 0.06; alpha = 0.55;
+          hgt = 5.0; col = mix(vec3(1.0, 0.82, 0.38), uSunColor * 1.1, 0.5); size = 0.1 + aRnd.w * 0.06; alpha = 0.55 * (1.0 - uLantern * 0.9) * (0.6 + 0.8 * uSunK);
         } else if (ty < 1.5) {     // firefly: wandering, blinking
           p = base + vec3(sin(t * 0.3 + aRnd.w * 30.0) * 2.0, sin(t * 0.55 + aRnd.w * 11.0) * 0.5, cos(t * 0.27 + aRnd.w * 17.0) * 2.0);
           hgt = 2.6; float b = pow(sin(t * (0.8 + aRnd.w) + aRnd.x * 40.0) * 0.5 + 0.5, 3.0);
-          col = vec3(0.65, 1.0, 0.3) * 2.6; size = 0.16; alpha = b;
+          col = vec3(0.65, 1.0, 0.3) * 2.6; size = 0.16; alpha = b * (0.12 + 0.88 * uLantern);
         } else if (ty < 2.5) {     // sand wisps: fast, low, streaky
           p = base + vec3(uWind.x * 5.0 + 3.0, 0.0, uWind.y * 5.0) * t * 0.9;
-          hgt = 2.2; col = vec3(0.86, 0.68, 0.42); size = 0.2 + aRnd.w * 0.18; alpha = 0.33 + 0.2 * sin(t * 2.0 + aRnd.x * 30.0);
+          hgt = 2.2; col = vec3(0.86, 0.68, 0.42) * (0.3 + 0.7 * uAmbient); size = 0.2 + aRnd.w * 0.18; alpha = 0.33 + 0.2 * sin(t * 2.0 + aRnd.x * 30.0);
           kind = 1.0;
         } else if (ty < 3.5) {     // embers: rise, sway, die at the top
           p = base + vec3(sin(t * 1.1 + aRnd.w * 20.0) * 0.7 + uWind.x * t * 0.3, t * (0.7 + aRnd.w * 0.8), cos(t * 0.9 + aRnd.w * 13.0) * 0.7);
           hgt = 9.0; col = vec3(1.0, 0.45, 0.12) * 3.2; size = 0.1 + aRnd.w * 0.07; alpha = 0.9;
         } else if (ty < 4.5) {     // ash flakes: tumble down
           p = base + vec3(uWind.x * t * 0.5 + sin(t * 0.7 + aRnd.w * 20.0) * 0.8, -t * (0.35 + aRnd.w * 0.35), uWind.y * t * 0.3 + cos(t * 0.6 + aRnd.w * 10.0) * 0.8);
-          hgt = 9.0; col = vec3(0.2, 0.17, 0.22); size = 0.14 + aRnd.w * 0.1; alpha = 0.6; kind = 1.0;
+          hgt = 9.0; col = vec3(0.2, 0.17, 0.22) * (0.5 + 0.5 * uAmbient); size = 0.14 + aRnd.w * 0.1; alpha = 0.6; kind = 1.0;
         } else {                   // dungeon / town motes
           p = base + vec3(sin(t * 0.2 + aRnd.w * 30.0), sin(t * 0.25 + aRnd.w * 9.0) * 0.6, cos(t * 0.18 + aRnd.w * 15.0)) * 1.2;
-          hgt = 5.0; col = vec3(0.6, 0.5, 0.45); size = 0.07 + aRnd.w * 0.04; alpha = 0.18 + 0.2 * sin(t * 0.8 + aRnd.x * 30.0);
+          hgt = 5.0; col = mix(vec3(0.6, 0.5, 0.45), uSunColor * 0.9, (1.0 - uLantern) * 0.6); size = 0.07 + aRnd.w * 0.04; alpha = 0.18 + 0.2 * sin(t * 0.8 + aRnd.x * 30.0);
         }
         // Wrap into a box centred on the player.
         vec3 rel = p - uCenter;
