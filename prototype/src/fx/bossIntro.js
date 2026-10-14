@@ -177,7 +177,7 @@ export class BossIntro {
     this.roar = ease(clamp01((t - 1.0) / 0.3)) * (1 - ease(clamp01((t - 2.1) / 0.8)));
   }
 
-  roarBurst(bx, gy, bz, hex) {
+  roarBurst(bx, gy, bz, hex, hot = 0xe0d0ff) {
     const g = this.g, v = this.v;
     g.fx.shake(0.75);
     g.fx.fovPunch(30);
@@ -187,8 +187,8 @@ export class BossIntro {
     v.combat.shock(bx, gy + 2.5, bz, 0.05, 24, 1.0, 2);
     v.ringFlat(bx, 0.12, bz, 2, 24, 1.0, hex, 1, 1.7);
     v.ringFlat(bx, 0.14, bz, 1, 16, 0.7, 0xffffff, 0.8, 1.9);
-    v.pillar(bx, gy, bz, 0x9a6bff, 0xe0d0ff, 2.2, 14, 1.3, 0.8);
-    v.wisps(bx, gy, bz, 18, 3.5, 0xd9b0ff, 0x6a2bd8, 1.6, 1.6);
+    v.pillar(bx, gy, bz, hex, hot, 2.0, 14, 1.2, 0.5);
+    v.wisps(bx, gy, bz, 18, 3.5, hot, hex, 1.6, 1.6);
     v.puffs(bx, gy + 0.3, bz, 24, 1.0, 8, 1.2, 0xb0a08a, 1.2, 3.6, 1.3, 0.45);
     v.flashLight(bx, gy + 3, bz, 0xb48aff, 45, 0.6);
   }
@@ -220,7 +220,7 @@ export class BossIntro {
     if (this.stage === 1 && t > 0.7) {
       this.stage = 2;
       v.ringFlat(bx, 0.2, bz, 1, 14, 1.0, 0x5fe0ff, 0.9, 1.6, F.WAVE, 2);
-      v.pillar(bx, gy, bz, 0x4fd8ff, 0xe8ffff, 1.6, 10, 1.4, 0.7);
+      v.pillar(bx, gy, bz, 0x4fd8ff, 0xe8ffff, 1.4, 10, 1.4, 0.45);
       v.wisps(bx, gy, bz, 14, 2.4, 0xc8f8ff, 0x2a90d0, 1.5, 1.6);
     }
     if (this.stage === 2 && t > 1.2) {
@@ -229,7 +229,7 @@ export class BossIntro {
     }
     if (this.stage === 3 && t > 1.75) {
       this.stage = 4;
-      this.roarBurst(bx, gy, bz, 0x5fe0ff);
+      this.roarBurst(bx, gy, bz, 0x4fd8ff, 0xe8ffff);
       g.events.emit('bossIntro', { stage: 'roar', boss: e, kind: 'voice', name: this.cfg.name, pos: e.pos });
     }
     this.roar = ease(clamp01((t - 1.65) / 0.3)) * (1 - ease(clamp01((t - 2.6) / 0.8))) * 0.9;

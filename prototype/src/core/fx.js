@@ -90,7 +90,7 @@ export class Fx {
   update(dt) {
     this.ps.q = this.settings?.quality.particles ?? 1;
 
-    this.timeScale = this.slowState.update(dt);
+    this.timeScale = this.slowState.update(this.hitstop > 0 ? 0 : dt); // the freeze-frame comes first, then the slow-motion plays out
     // Sparks and dust linger a little in slow motion, but never freeze.
     this.ps.update(dt * (0.35 + 0.65 * this.timeScale));
 
