@@ -290,7 +290,9 @@ export function buildWorld(scene, settings = null) {
       for (const key of MOD_BLEND_COLORS) mod[key].lerp(target[key], k);
       clock = (clock + dt) % 3600;
       env.uTime.value = clock;
-      tod.update(dt);
+      // The day clock advances in game time (g.simulate calls tod.update), so pauses,
+      // hit-stop and simulation harnesses all see the same day; here we only read it.
+      tod.update(0);
 
       // ---- the look of the moment: day-cycle keyframes + region modifier, or a fixed dungeon look
       if (nowDungeon) copyLook(look, FIXED[nowDungeon]);

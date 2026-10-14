@@ -162,7 +162,7 @@ export class Tether {
       }
       if (burning) { e.burn = 3; e.burnDps = Math.max(e.burnDps, amount * 0.8); }
       if (stats.powers.has('ereshkigal')) e.vulnerable = 3;
-      g.enemies.damage(e, amount, g, { crit, knockX, knockZ, color: this.aspect(g).css, silent: !crit });
+      g.enemies.damage(e, amount, g, { crit, knockX, knockZ, color: this.aspect(g).css, silent: !crit, source: 'tether' });
       g.player.heal(stats.lifeOnHit * 0.3);
       g.player.anima = Math.min(g.player.stats.maxAnima, g.player.anima + 2);
     }
@@ -200,7 +200,7 @@ export class Tether {
         const [nx, nz] = this.lineNormalToward(e.pos.x, e.pos.z, r);
         knockX = nx * 18; knockZ = nz * 18;
       } else if (a.id === 'fire') { e.burn = 5; e.burnDps = Math.max(e.burnDps, amount * 0.4); }
-      g.enemies.damage(e, amount, g, { crit, knockX, knockZ, color: a.css });
+      g.enemies.damage(e, amount, g, { crit, knockX, knockZ, color: a.css, source: 'snap' });
     }
     if (a.id === 'bulwark') for (const b of g.enemies.projectiles) if (Math.hypot(b.pos.x - this.A.x, b.pos.z - this.A.z) < 7) b.life = 0;
     return hits;

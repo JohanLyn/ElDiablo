@@ -170,7 +170,7 @@ export class Abilities {
   face(g, x, z) { const p = g.player; p.facing = Math.atan2(x - p.pos.x, z - p.pos.z); }
 
   // Shared damage helper: hits every enemy within r of pos.
-  areaDamage(pos, r, coef, g, { knock = 0, color = '#fff', fx = null, onHit = null } = {}) {
+  areaDamage(pos, r, coef, g, { knock = 0, color = '#fff', fx = null, onHit = null, source = 'other' } = {}) {
     const stats = g.player.stats;
     let hits = 0;
     for (const e of g.enemies.list) {
@@ -178,7 +178,7 @@ export class Abilities {
       const dx = e.pos.x - pos.x, dz = e.pos.z - pos.z, d = Math.hypot(dx, dz);
       if (d > r + e.radius) continue;
       const { amount, crit } = rollDamage(stats, coef);
-      g.enemies.damage(e, amount, g, { crit, color, knockX: d > 0 ? (dx / d) * knock : 0, knockZ: d > 0 ? (dz / d) * knock : 0 });
+      g.enemies.damage(e, amount, g, { crit, color, source, knockX: d > 0 ? (dx / d) * knock : 0, knockZ: d > 0 ? (dz / d) * knock : 0 });
       onHit?.(e);
       hits++;
     }
@@ -230,7 +230,7 @@ export class Abilities {
         if (d > 0.8 + e.radius && !inCone(p.pos.x, p.pos.z, p.facing, e.pos.x, e.pos.z, step.arc)) continue;
         const { amount, crit } = rollDamage(p.stats, coef);
         const kx = e.pos.x - p.pos.x, kz = e.pos.z - p.pos.z, kl = Math.hypot(kx, kz) || 1;
-        g.enemies.damage(e, amount, g, { crit, knockX: (kx / kl) * step.knock, knockZ: (kz / kl) * step.knock });
+        g.enemies.damage(e, amount, g, { crit, source: 'strike', knockX: (kx / kl) * step.knock, knockZ: (kz / kl) * step.knock });
         p.heal(p.stats.lifeOnHit);
         hits++;
       }
@@ -283,7 +283,7 @@ export class Abilities {
         if (r.dist > e.radius + 0.35) continue;
         j.hit.add(e);
         const { amount, crit } = rollDamage(g.player.stats, j.coef);
-        g.enemies.damage(e, amount, g, { crit, color: '#9cc0ff', knockX: j.vx * 0.08, knockZ: j.vz * 0.08 });
+        g.enemies.damage(e, amount, g, { crit, source: 'javelin', color: '#9cc0ff', knockX: j.vx * 0.08, knockZ: j.vz * 0.08 });
         g.events.emit('javelinHit', { pos: e.pos.clone().setY(e.pos.y + 1.1) });
         g.player.heal(g.player.stats.lifeOnHit * 0.5);
       }
@@ -303,7 +303,7 @@ export class Abilities {
     g.fx.shake(0.35);
     g.fx.rumble(0.9, 0.7, 160);
     if (p.stats.powers.has('gatekeeper')) {
-      this.areaDamage(p.pos, 5, 1.2, g, { knock: 8, color: '#c8a8ff', fx: 0x9a6bff });
+      this.areaDamage(p.pos, 5, 1.2, g, { knock: 8, color: '#c8a8ff', fx: 0x9a6bff, source: 'snap' });
     }
   }
 
@@ -340,7 +340,7 @@ export class Abilities {
       p.vel.set(0, 0, 0);
       p.setState('move');
       this.leap = null;
-      this.areaDamage(p.pos, 3.4, L.coef, g, { knock: 10, color: '#ffe6a8', fx: 0xffe6a8 });
+      this.areaDamage(p.pos, 3.4, L.coef, g, { knock: 10, color: '#ffe6a8', fx: 0xffe6a8, source: 'wings' });
       g.events.emit('leapLand', { pos: p.pos.clone(), r: 3.4 });
       g.fx.shake(0.5);
       g.fx.stop(0.08);
@@ -367,7 +367,7 @@ export class Abilities {
         const y = g.world.heightAt(x, z);
         this.lightning(x, y, z);
         g.events.emit('lightning', { pos: new THREE.Vector3(x, y, z) });
-        this.areaDamage({ x, y, z }, 1.9, coef, g, { knock: 2, color: '#bfe8ff', fx: 0x8fd3ff, onHit: (en) => { en.slow = Math.max(en.slow, 0.6); } });
+        this.areaDamage({ x, y, z }, 1.9, coef, g, { knock: 2, color: '#bfe8ff', fx: 0x8fd3ff, onHit: (en) => { en.slow = Math.max(en.slow, 0.6); }, source: 'storm' });
         g.fx.shake(0.12);
         g.fx.rumble(0.3, 0.6, 50);
       });
@@ -401,7 +401,7 @@ export class Abilities {
     this.pyreTick -= dt;
     if (this.pyreTick <= 0 && !p.dead) {
       this.pyreTick = 0.5;
-      this.areaDamage(p.pos, 4.2, this.pyreCoef, g, { color: '#ff9a4a', fx: 0xff7a2a, onHit: (e) => { e.burn = 2; } });
+      this.areaDamage(p.pos, 4.2, this.pyreCoef, g, { color: '#ff9a4a', fx: 0xff7a2a, onHit: (e) => { e.burn = 2; }, source: 'pyre' });
       g.events.emit('pyrePulse', { pos: p.pos.clone(), r: 4.2 });
     }
   }

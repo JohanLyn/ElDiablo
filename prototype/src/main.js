@@ -73,6 +73,7 @@ function boot() {
       g.quests = new QuestLog(save?.quests);
       bindQuestEvents();
       g.flags = save?.flags ?? {};
+      g.isNight = world.tod.night > 0.5;
       g.fog = new Fog();
       if (save?.fog) g.fog.load(decodeBytes(save.fog, FOG_RES * FOG_RES));
       const found = new Set(save?.waypoints ?? ['wp-town']);
@@ -303,6 +304,10 @@ function boot() {
     g.bossIntro.tick(realDt); // boss entrances freeze gameplay but advance on this clock (src/fx/bossIntro.js)
     const dt = fx.hitstop > 0 || g.bossIntro.active ? 0 : realDt * fx.timeScale; // timeScale < 1 during kill slow-mo
     g.time += dt;
+    world.tod.update(dt);
+    // Night is a gameplay state (the gidim rise): announce it once per crossing, with hysteresis.
+    if (!g.isNight && world.tod.night > 0.55) { g.isNight = true; g.events.emit('nightfall', { t: world.tod.t }); }
+    else if (g.isNight && world.tod.night < 0.45) { g.isNight = false; g.events.emit('daybreak', { t: world.tod.t }); }
     const region = world.regionAt(player.pos.x, player.pos.z);
     g.inSafeZone = region === 'town';
     g.combatNearby = enemies.list.some((e) => e.alive && e.spawning <= 0 && (e.aggro || e.boss) && e.pos.distanceToSquared(player.pos) < 64);

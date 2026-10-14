@@ -258,8 +258,11 @@ export class EnemyManager {
   add(enemy) { this.list.push(enemy); return enemy; }
 
   // ---- damage --------------------------------------------------------------------
-  damage(e, amount, g, { crit = false, knockX = 0, knockZ = 0, color = '#fff', silent = false } = {}) {
+  // source: what dealt the blow (strike, javelin, tether, snap, storm, wings, pyre, burn, other);
+  // kept on the enemy so death effects and the gidim know how it died.
+  damage(e, amount, g, { crit = false, knockX = 0, knockZ = 0, color = '#fff', silent = false, source = 'other' } = {}) {
     if (!e.alive || e.spawning > 0) return 0;
+    e.lastHit = { source, crit };
     if (e.vulnerable > 0) amount *= 1.2;
     if (e.shielded) amount *= 0.25;
     e.hp -= amount;
@@ -294,10 +297,10 @@ export class EnemyManager {
     g.fx.rumble(0.25, 0.4, 60);
     if (e.elite?.includes('molten')) this.hazard({ x: e.pos.x, z: e.pos.z, r: 3.6, delay: 1.3, dmg: e.dmg * 1.6, color: 0xff6a1a, level: e.level });
     if (e.burn > 0 && g.player.stats.powers.has('gibil')) {
-      g.abilities.areaDamage(e.pos, 3.5, 0.8, g, { color: '#ff9a4a', fx: 0xff7a2a });
+      g.abilities.areaDamage(e.pos, 3.5, 0.8, g, { color: '#ff9a4a', fx: 0xff7a2a, source: 'burn' });
     }
     if (e.camp && e.camp.enemies.every((o) => !o.alive)) { e.camp.state = 'cleared'; e.camp.clearedAt = g.time; }
-    g.events.emit('kill', { enemy: e, pos: e.pos });
+    g.events.emit('kill', { enemy: e, pos: e.pos, source: e.lastHit?.source ?? 'other', crit: !!e.lastHit?.crit, burning: e.burn > 0 });
     g.onEnemyKilled(e);
   }
 
@@ -438,7 +441,7 @@ export class EnemyManager {
       if (Math.random() < 0.35) g.fx.burst(e.pos.clone().setY(e.pos.y + 1), 0xff8a3a, 1, 1, { up: 3, life: 0.4, gravity: -3 });
       if (e.burnTick <= 0) {
         e.burnTick = 0.5;
-        this.damage(e, e.burnDps * 0.5, g, { color: '#ff9a4a', silent: true });
+        this.damage(e, e.burnDps * 0.5, g, { color: '#ff9a4a', silent: true, source: 'burn' });
         if (!e.alive) return;
       }
     }
