@@ -363,7 +363,7 @@ export class Menus {
       ['Cooldown reduction', `${Math.round(s.cdr * 100)}%`],
       ['Tether damage', `+${Math.round((s.tetherMult - 1) * 100)}%`],
     ];
-    const gambleHtml = this.merchant ? `<h3 class="sec" style="margin-top:14px">Ubar's wares · ${gambleCost(p.level)} gold each</h3><div class="gamble">${Object.keys(KIND_SLOTS).map((k) => `<div class="g-btn focusable" data-nav="gamble:${k}">${itemIcon(k, '#d6a740').replace('<svg', '<svg width="18" height="18"')} ${KIND_LABEL[k]}</div>`).join('')}</div>` : '';
+    const gambleHtml = this.merchant ? `<h3 class="sec" style="margin-top:14px">Ubar's wares · ${gambleCost(p.level)} gold each</h3><div class="gamble">${Object.keys(KIND_SLOTS).map((k) => `<div class="g-btn focusable" data-nav="gamble:${k}">${itemIcon(k, '#e8c86a').replace('<svg', '<svg width="18" height="18"')} ${KIND_LABEL[k]}</div>`).join('')}</div>` : '';
     return `<div class="inv">
       <div class="inv-col"><h3 class="sec">${this.merchant ? 'Trading with Ubar' : 'Equipped'}</h3><div class="paperdoll">${dollHtml}</div>
         <div class="stats">${statRows.map(([a, b]) => `<span>${a}</span><b>${b}</b>`).join('')}</div>
@@ -400,7 +400,7 @@ export class Menus {
       const can = canRankUp(id, p.level, p.skillRanks, p.skillPoints);
       const meta = [d.category, d.cost ? `${d.cost} Anima` : d.gain ? `+${d.gain} Anima` : null, d.cooldown ? `${d.cooldown}s cooldown` : null, d.coef ? `${Math.round(skillCoef(id, Math.max(1, rank)) * 100)}% weapon damage` : null].filter(Boolean).join(' · ');
       return `<div class="skill-row focusable ${locked ? 'locked' : ''} ${can ? 'can' : ''}" data-nav="skill:${id}">
-        <div class="ic">${skillIcon(id, locked ? '#5a4a3a' : d.color)}</div>
+        <div class="ic">${skillIcon(id, locked ? '#5b6a94' : d.color)}</div>
         <div><div class="nm">${d.name}</div><div class="cat">${locked ? `Unlocks at level ${d.unlock}` : meta}</div><div class="ds">${d.desc}</div></div>
         <div class="rk"><div class="pips">${Array.from({ length: MAX_RANK }, (_, i) => `<i class="${i < rank ? 'on' : ''}"></i>`).join('')}</div>${can ? '<div class="canup">▲ Rank up</div>' : ''}</div>
       </div>`;
