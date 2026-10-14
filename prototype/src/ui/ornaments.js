@@ -103,7 +103,13 @@ export function frieze() {
 }
 
 // ---------------------------------------------------------------- stone grain
-const STONE = `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220"><filter id="n" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".55" numOctaves="4" seed="11" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 .72  0 0 0 0 .8  0 0 0 0 1  0 0 0 .5 -.19"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>`;
+function stone() {
+  const r = rng(41);
+  let flecks = '';
+  for (let i = 0; i < 16; i++) flecks += `<circle cx="${(r() * 300).toFixed(0)}" cy="${(r() * 300).toFixed(0)}" r="${(0.5 + r() * 0.7).toFixed(2)}" fill="${P.pyrite}" opacity="${(0.22 + r() * 0.2).toFixed(2)}"/>`;
+  const veins = '<path d="M-10 90 C60 60 110 140 190 100 S280 70 320 110" fill="none" stroke="#a9c4ff" stroke-width=".7" opacity=".08"/><path d="M-10 230 C50 250 120 190 200 230 S290 260 320 220" fill="none" stroke="#a9c4ff" stroke-width=".6" opacity=".06"/>';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><filter id="n" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".16" numOctaves="3" seed="11" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 .72  0 0 0 0 .8  0 0 0 0 1  0 0 0 .34 -.12"/></filter><rect width="100%" height="100%" filter="url(#n)"/>${veins}${flecks}</svg>`;
+}
 const GRAIN = `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .55 0"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>`;
 const WAVE = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="12" viewBox="0 0 60 12"><path d="M0 6 Q7.5 0 15 6 T30 6 T45 6 T60 6 V12 H0 Z" fill="#000"/></svg>`;
 const ZIGZAG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="8" viewBox="0 0 16 8"><path d="M0 7 L4 1 L8 7 L12 1 L16 7" fill="none" stroke="${P.gold}" stroke-width="1.2" opacity=".7"/></svg>`;
@@ -309,7 +315,7 @@ export function installOrnaments() {
   set('--tri-band-fire', triBand({ up: ['#ff9a4a', '#ffc36a'], down: [P.carn, P.carnDeep] }));
   set('--tri-band-clay', triBand({ up: ['#3a2410', '#1c1208'], down: ['#8a5a2c', '#6e4520'] }));
   set('--frieze', frieze());
-  set('--stone', STONE);
+  set('--stone', stone());
   set('--grain', GRAIN);
   set('--wave', WAVE);
   set('--zigzag', ZIGZAG);
