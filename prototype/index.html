@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Gates of Kur" />
   <meta name="theme-color" content="#0b1a3e" />
   <title>The Seven Gates of Kur</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -25,9 +29,11 @@
         <i class="mm-n">N</i>
       </div>
       <div id="region"><b id="region-name"></b><span id="region-level"></span></div>
+      <div id="tr-info">
       <div id="ash" hidden title="Ghost-ash: bring it to Ninsun for a Night Blessing"><i class="ash-gem">◈</i><b>0</b><span>Ghost-ash</span></div>
       <div id="tracker"></div>
       <div id="event" hidden></div>
+      </div>
     </div>
 
     <!-- top centre: target frame and boss bar -->
@@ -92,6 +98,7 @@
   <div id="menu" class="overlay" hidden>
     <div class="menu-card">
       <span class="mc-c tl" data-orn="corner"></span><span class="mc-c tr" data-orn="corner"></span><span class="mc-c bl" data-orn="corner"></span><span class="mc-c br" data-orn="corner"></span>
+      <button type="button" class="x-close" data-close aria-label="Close">&#10005;</button>
       <div id="menu-tabs"></div>
       <div id="menu-body"></div>
       <div id="menu-help"></div>
@@ -101,6 +108,7 @@
   <div id="map" class="overlay" hidden>
     <div class="map-card">
       <div class="map-head"><span class="mh-orn" data-orn="rosette-s"></span><b>The Land Before Kur</b><span class="mh-orn" data-orn="rosette-s"></span></div>
+      <button type="button" class="x-close" id="map-close" aria-label="Close map">&#10005;</button>
       <div class="map-help-row"><span id="map-help"></span></div>
       <div class="map-frame">
         <span class="mc-c tl" data-orn="corner"></span><span class="mc-c tr" data-orn="corner"></span><span class="mc-c bl" data-orn="corner"></span><span class="mc-c br" data-orn="corner"></span>
@@ -114,6 +122,7 @@
   <div id="pause" class="overlay" hidden>
     <div class="pause-card">
       <span class="mc-c tl" data-orn="corner"></span><span class="mc-c tr" data-orn="corner"></span><span class="mc-c bl" data-orn="corner"></span><span class="mc-c br" data-orn="corner"></span>
+      <button type="button" class="x-close" id="pause-close" aria-label="Resume">&#10005;</button>
       <div id="pause-reason" hidden></div>
       <div class="p-sigil" data-orn="rosette-l"></div>
       <h2 id="pause-title">Paused</h2>
@@ -137,6 +146,7 @@
         <dt>Fonts</dt><dd>Cinzel, Alegreya Sans (Google Fonts, SIL OFL)</dd>
         <dt>Art &amp; audio</dt><dd>All art and audio are procedurally generated</dd>
       </dl>
+      <p class="cr-a2hs tch">Tip: on iPhone and iPad, tap Share and choose Add to Home Screen to play full-screen, without the browser bars. Turn the phone sideways.</p>
       <div class="credits-foot"><span class="cr-ver"></span></div>
       <div class="plaque-row"><div class="btn plaque focus" id="credits-close"><span>Back</span></div></div>
     </div>
@@ -147,6 +157,7 @@
   </div>
 
   <div id="dialog" hidden>
+    <button type="button" class="x-close" id="dialog-close" aria-label="Close">&#10005;</button>
     <div class="d-portrait"></div>
     <div class="d-name"></div>
     <div class="d-text"></div>
@@ -164,7 +175,7 @@
       <p class="t-lede">Gallu, scorpion-men and stone-born Asag spill across the plains of Eridu. Take up the Tether, bind your sedu spirit, and descend.</p>
       <div id="title-options"></div>
     </div>
-    <p class="t-foot"><span class="pad"><kbd class="pad gp gp-a">A</kbd> choose</span><span class="kbm">Arrow keys + <kbd class="kbm key">Enter</kbd>, or click · a controller works too</span></p>
+    <p class="t-foot"><span class="tch">Tap an option · turn your phone sideways</span><span class="pad"><kbd class="pad gp gp-a">A</kbd> choose</span><span class="kbm">Arrow keys + <kbd class="kbm key">Enter</kbd>, or click · a controller works too</span></p>
     <div class="t-corner l"><span class="t-credit">A game by JohanLyn · Built with three.js</span></div>
     <div class="t-corner r"><span class="t-version" id="t-version"></span></div>
   </div>
@@ -173,7 +184,7 @@
     <div class="bar top"></div>
     <div class="intro-lines"></div>
     <div class="bar bottom"></div>
-    <div class="intro-skip"><kbd class="pad gp gp-a">A</kbd><kbd class="kbm key key-wide">Enter</kbd> skip</div>
+    <div class="intro-skip"><span class="tch">Tap to skip</span><kbd class="pad gp gp-a">A</kbd><kbd class="kbm key key-wide">Enter</kbd> skip</div>
   </div>
 
   <div id="death" class="overlay" hidden>
@@ -182,7 +193,7 @@
       <h1 class="red">You Have Fallen</h1>
       <div class="p-divider" data-orn="divider"></div>
       <p class="t-lede">Your sedu spirit carries you back to the last waypoint you touched.</p>
-      <div class="start"><span class="pad"><kbd class="pad gp gp-a">A</kbd> rise again</span><span class="kbm"><kbd class="kbm key key-wide">Enter</kbd> or click to rise again</span></div>
+      <div class="start"><span class="tch">Tap to rise again</span><span class="pad"><kbd class="pad gp gp-a">A</kbd> rise again</span><span class="kbm"><kbd class="kbm key key-wide">Enter</kbd> or click to rise again</span></div>
     </div>
   </div>
 

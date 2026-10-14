@@ -1,0 +1,298 @@
+/* ---------- touch: on-screen controls and the phone layout (Lapis Mosaic) ----------
+   Everything device-specific hangs off body[data-device="touch"], which input.js sets on the first touch
+   (or at load on a phone or tablet with no mouse). Desktop and controller layouts never match these rules.
+   touch.js builds the overlay (#touch) and sets --ts (layout scale) and the t-lefty class. */
+
+/* ---------- no page scroll, no pinch or double-tap zoom, no callouts ---------- */
+html, body { overscroll-behavior: none; }
+body { touch-action: pan-x pan-y; }
+canvas#game, #touch, #t-pad { touch-action: none; }
+body[data-device="touch"] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+
+/* ---------- glyph sets: each device shows its own ---------- */
+#tr-info { display: contents; }
+body:not([data-device="touch"]) .tch, body:not([data-device="touch"]) .only-touch, body:not([data-device="touch"]) .x-close { display: none !important; }
+body[data-device="touch"] .kbm, body[data-device="touch"] .pad, body[data-device="touch"] .not-touch { display: none !important; }
+/* a round-ended lapis tablet with a gold rim: the touch equivalent of a key cap */
+.tg { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 10px; border-radius: 13px; font: 700 12px var(--font-body); letter-spacing: 0.03em; white-space: nowrap; color: var(--gold-hi); text-shadow: 0 1px 2px #000;
+  background: radial-gradient(circle at 50% 22%, #2d5fc8, #0e2457 82%); border: 2px solid var(--gold); box-shadow: 0 0 0 1px var(--bitumen), 0 1px 3px #000, inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+#tutorial kbd.tg { transform: scale(1.05); }
+#prompt kbd.tg { transform: none; }
+
+/* ---------- close button (touch only) ---------- */
+.x-close { position: absolute; z-index: 6; top: 6px; right: 8px; width: 44px; height: 44px; padding: 0; display: grid; place-items: center; border-radius: 50%; cursor: pointer; font: 700 20px/1 var(--font-body); color: var(--gold-hi); text-shadow: 0 1px 2px #000;
+  background: radial-gradient(circle at 50% 25%, #2d5fc8, #0e2457 85%); border: 2px solid var(--gold); box-shadow: 0 0 0 1px var(--bitumen), 0 3px 8px rgba(0, 0, 0, 0.6); -webkit-tap-highlight-color: transparent; }
+.x-close:active { filter: brightness(1.3); }
+
+/* ---------- "rotate your phone" (portrait on a phone; the game is paused behind it) ---------- */
+#rotate { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 24px; text-align: center;
+  background: radial-gradient(ellipse at 50% 38%, #14306e, #060b1e 78%); }
+#rotate::before, #rotate::after { content: ''; position: absolute; left: 0; right: 0; height: 30px; background: var(--frieze) repeat-x 0 0 / auto 30px; opacity: 0.9; }
+#rotate::before { top: 0; } #rotate::after { bottom: 0; }
+.ro-card { max-width: 360px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.ro-phone { width: 92px; height: 92px; color: var(--gold-hi); filter: drop-shadow(0 0 14px rgba(246, 210, 122, 0.5)); animation: roTurn 2.6s ease-in-out infinite; }
+@keyframes roTurn { 0%, 15% { transform: rotate(0); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
+.ro-card h2 { margin: 0; font: 800 22px var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; line-height: 1.25; background: linear-gradient(180deg, #fff3c4, #d9a441 60%, #8d5f19); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ro-card p { margin: 0; font-size: 16px; line-height: 1.5; color: var(--shell-dim); }
+
+/* ---------- the overlay ---------- */
+#touch { position: fixed; inset: 0; z-index: 4; pointer-events: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; --t-op: 0.8; --ts: 1; }
+#t-pad { position: absolute; inset: 0; pointer-events: auto; }
+
+.t-btn { position: absolute; box-sizing: border-box; pointer-events: auto; display: grid; place-items: center; color: var(--shell); cursor: pointer;
+  border: 6px solid transparent; border-image: var(--mosaic-s) 8 / 6px round;
+  background: radial-gradient(circle at 50% 26%, rgba(36, 78, 176, 0.94), rgba(9, 22, 60, 0.95) 82%); background-clip: padding-box;
+  opacity: var(--t-op); filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6)); transition: transform 0.07s, filter 0.1s, opacity 0.15s; -webkit-tap-highlight-color: transparent; }
+.t-btn .icon { position: absolute; inset: 2px; display: grid; place-items: center; }
+.t-btn .icon svg { width: 100%; height: 100%; filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.8)); }
+.t-btn.down { transform: scale(0.9); opacity: 1; filter: brightness(1.4) drop-shadow(0 0 12px rgba(246, 210, 122, 0.9)); }
+.t-btn.empty { opacity: calc(var(--t-op) * 0.28); pointer-events: none; } /* an empty slot is not a target: a drag over it still steers */
+.t-btn .cdwrap { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.t-btn .cd { position: absolute; inset: 0; opacity: 0; background: conic-gradient(from 0deg, transparent calc((1 - var(--p, 0)) * 360deg), rgba(6, 14, 46, 0.84) 0); }
+.t-btn .cd::after { content: ''; position: absolute; inset: 0; background: conic-gradient(from 0deg, transparent calc((1 - var(--p, 0)) * 360deg - 4deg), rgba(143, 180, 255, 0.7) calc((1 - var(--p, 0)) * 360deg), transparent 0); mix-blend-mode: screen; }
+.t-btn .cdt { position: absolute; inset: 0; display: grid; place-items: center; font: 800 16px var(--font-display); color: var(--shell); text-shadow: 0 1px 3px #000, 0 0 6px #000; pointer-events: none; }
+.t-btn.oncd .icon { filter: brightness(0.7); }
+.t-btn.nores .icon { filter: grayscale(0.75) brightness(0.55); }
+.t-btn .charges { position: absolute; top: 0; left: 3px; font: 700 13px var(--font-display); color: var(--gold-hi); text-shadow: 0 1px 2px #000; }
+.t-btn .badge { position: absolute; z-index: 2; top: -9px; right: -9px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; display: none; place-items: center; font: 800 13px var(--font-display); font-style: normal; color: var(--shell); text-shadow: 0 1px 2px #000;
+  background: radial-gradient(circle at 50% 25%, #3d6bd6, #0e2457 85%); border: 2px solid var(--gold); box-shadow: 0 0 0 1px var(--bitumen), 0 2px 4px rgba(0, 0, 0, 0.7); }
+.t-potion .badge, .t-evade .badge, .t-btn .badge.on { display: grid; }
+.t-btn .badge.on { background: radial-gradient(circle at 50% 25%, #e0683f, #8a2a18 85%); animation: badgePulse 1.6s ease-in-out infinite; }
+.t-btn.ready { animation: tReady 0.65s ease-out; }
+@keyframes tReady { 0% { filter: brightness(2.6) drop-shadow(0 0 16px #fff3c4); } 100% { filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6)); } }
+
+/* the big strike / interact button: gold inlay */
+.t-attack { border: 8px solid transparent; border-image: var(--mosaic-s-gold) 8 / 8px round; background: radial-gradient(circle at 50% 24%, rgba(61, 107, 214, 0.96), rgba(12, 30, 82, 0.96) 85%); background-clip: padding-box; color: var(--gold-hi); }
+.t-attack .icon svg { width: 78%; height: 78%; }
+.t-attack.interact { animation: tPulse 1.1s ease-in-out infinite; }
+@keyframes tPulse { 50% { filter: brightness(1.25) drop-shadow(0 0 18px rgba(246, 210, 122, 0.95)); } }
+.t-evade, .t-potion { border-image-source: var(--mosaic-s-carn); }
+.t-potion { background: radial-gradient(circle at 50% 26%, rgba(138, 44, 28, 0.94), rgba(46, 14, 10, 0.95) 82%); background-clip: padding-box; }
+.t-potion.nores, .t-evade.nores { opacity: calc(var(--t-op) * 0.5); }
+.t-aspect { border-width: 5px; border-image-width: 5px; }
+.t-aspect .icon svg { position: absolute; width: 66%; height: 66%; opacity: 0.5; }
+.t-aspect .gem { position: relative; z-index: 1; width: 16px; height: 16px; transform: rotate(45deg); border: 2px solid rgba(255, 255, 255, 0.65); box-shadow: 0 0 10px var(--glow, #5d95ff); }
+.t-top { border-width: 5px; border-image-width: 5px; }
+.t-top .icon { inset: 4px; }
+.t-top .icon svg { width: 64%; height: 64%; }
+.t-portal.dim { opacity: calc(var(--t-op) * 0.45); }
+
+/* sticks: a mosaic ring of shell, carnelian and lapis wedges with a lapis knob */
+.t-stick { position: absolute; left: 0; top: 0; width: var(--sz, 120px); height: var(--sz, 120px); margin: calc(var(--sz, 120px) / -2) 0 0 calc(var(--sz, 120px) / -2); border-radius: 50%; opacity: 0; pointer-events: none; will-change: transform; transition: opacity 0.14s; }
+.t-stick.on { opacity: var(--t-op); }
+.t-stick::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: repeating-conic-gradient(from -7.5deg, #efe6cf 0 15deg, #b8432c 15deg 30deg, #3d6bd6 30deg 45deg);
+  -webkit-mask: radial-gradient(circle closest-side, transparent calc(100% - 10px), #000 calc(100% - 9px)); mask: radial-gradient(circle closest-side, transparent calc(100% - 10px), #000 calc(100% - 9px)); filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.7)); }
+.t-stick::after { content: ''; position: absolute; inset: 9px; border-radius: 50%; background: radial-gradient(circle, rgba(20, 48, 110, 0.34), rgba(8, 18, 50, 0.16)); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(246, 210, 122, 0.4); }
+.t-knob { position: absolute; z-index: 1; left: 50%; top: 50%; width: 44%; height: 44%; margin: -22% 0 0 -22%; border-radius: 50%; border: 3px solid var(--gold);
+  background: radial-gradient(circle at 38% 28%, #7aa3f0, #1b3f95 60%, #0a1c4a); box-shadow: 0 0 0 1px #000, 0 3px 8px rgba(0, 0, 0, 0.6), inset 0 0 8px rgba(0, 0, 0, 0.5); }
+.t-knob::after { content: ''; position: absolute; inset: 30%; transform: rotate(45deg); background: var(--carnelian-hi); border: 1px solid var(--gold-hi); box-shadow: 0 0 6px rgba(224, 104, 63, 0.7); }
+/* the Tether stick is fainter: a gold ring and a small sedu spark */
+.t-stick.aim.on { opacity: calc(var(--t-op) * 0.7); }
+.t-stick.aim::before { background: repeating-conic-gradient(from -7.5deg, #f6d27a 0 15deg, #8a6422 15deg 30deg); }
+.t-stick.aim .t-knob { width: 34%; height: 34%; margin: -17% 0 0 -17%; border-color: var(--gold-hi); background: radial-gradient(circle at 38% 28%, #fff3c4, #d9a441 60%, #7a5a1c); }
+.t-stick.aim .t-knob::after { background: #5d95ff; }
+
+/* Cinematics keep the touch layer (a drag still skips a reveal) but hide the buttons. */
+body.cinematic #touch .t-btn, body.cinematic #touch .t-stick { opacity: 0; pointer-events: none; }
+
+/* =====================================================================================================
+   PHONE LAYOUT: body[data-device="touch"] (landscape ~844x390; works down to ~568x320)
+   ===================================================================================================== */
+body[data-device="touch"] { --bw: calc(7px * var(--ui-scale)); --tm: clamp(70px, 23vh, 104px); --to: clamp(52px, 17vh, 74px); }
+
+/* ----- HUD: no skill bar or key hints (the touch cluster replaces them); orbs above the sticks ----- */
+body[data-device="touch"] #hint, body[data-device="touch"] #slots-row, body[data-device="touch"] .plate-gem, body[data-device="touch"] #xp-text,
+body[data-device="touch"] .mm-n, body[data-device="touch"] #region-level { display: none; }
+body[data-device="touch"] #bottom { inset: 0; padding: 0; display: block; transform: none; }
+body[data-device="touch"] #bar { display: contents; }
+body[data-device="touch"] .orb { position: absolute; width: var(--to); height: var(--to); bottom: calc(max(30vh, 108px) + env(safe-area-inset-bottom, 0px)); left: calc(10px + env(safe-area-inset-left, 0px)); }
+body[data-device="touch"] #anima-orb { left: calc(10px + var(--to) + 12px + env(safe-area-inset-left, 0px)); }
+body[data-device="touch"].t-lefty .orb { left: auto; right: calc(10px + env(safe-area-inset-right, 0px)); }
+body[data-device="touch"].t-lefty #anima-orb { right: calc(10px + var(--to) + 12px + env(safe-area-inset-right, 0px)); }
+body[data-device="touch"] .orb::before, body[data-device="touch"] .orb::after { width: 30px; height: 10px; margin-left: -15px; }
+body[data-device="touch"] .orb::before { top: -7px; } body[data-device="touch"] .orb::after { bottom: -7px; }
+body[data-device="touch"] .orb-well { inset: 5px; }
+body[data-device="touch"] .orb span { font-size: calc(var(--to) * 0.27); }
+body[data-device="touch"] .orb small { display: none; }
+/* slim XP strand along the bottom edge */
+body[data-device="touch"] #center { position: absolute; left: 50%; bottom: calc(5px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: min(38vw, 330px); min-width: 0; margin: 0; padding: 0; border: 0; border-image: none; background: none; box-shadow: none; }
+body[data-device="touch"] #xpwrap { gap: 6px; margin: 0; }
+body[data-device="touch"] #xp-lvl { width: 22px; height: 22px; margin: 0; font-size: 11px; border-width: 2px; }
+body[data-device="touch"] #xp { height: 9px; background-size: 33px 9px; }
+body[data-device="touch"] #xp i { background-size: 33px 9px; }
+body[data-device="touch"] #buffs { position: absolute; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); }
+body[data-device="touch"] #buffs div { font-size: 11px; border-width: 4px; border-image-width: 4px; }
+
+/* top right: a small minimap, the region plate under it, the tracker to its left */
+body[data-device="touch"] #topright { top: calc(6px + env(safe-area-inset-top, 0px)); right: calc(8px + env(safe-area-inset-right, 0px)); width: var(--tm); transform: none; align-items: flex-end; gap: 4px; }
+body[data-device="touch"] #minimap-wrap { width: var(--tm); height: var(--tm); }
+body[data-device="touch"] #minimap, body[data-device="touch"] .mm-shade { inset: 8%; width: 84%; height: 84%; }
+body[data-device="touch"] #region { width: max-content; max-width: 170px; margin: -6px 0 0; padding: 3px 18px; }
+body[data-device="touch"] #region::before, body[data-device="touch"] #region::after { width: 6px; height: 6px; margin-top: -3px; }
+body[data-device="touch"] #region::before { left: 6px; } body[data-device="touch"] #region::after { right: 6px; }
+body[data-device="touch"] #region-name { font-size: 11px; letter-spacing: 0.06em; white-space: nowrap; }
+body[data-device="touch"] #tr-info { display: flex; flex-direction: column; gap: 4px; position: absolute; top: 0; right: calc(var(--tm) + 10px); width: 168px; }
+body[data-device="touch"] #tracker { padding: 4px 8px 5px 11px; gap: 3px; }
+body[data-device="touch"] #tracker .q-kicker { display: none; }
+body[data-device="touch"] #tracker .q-title { font-size: 12.5px; }
+body[data-device="touch"] #tracker .q-obj { font-size: 12px; line-height: 1.25; gap: 5px; }
+body[data-device="touch"] #tracker .q-obj::before { margin-top: 4px; }
+body[data-device="touch"] #tracker::before { top: 6px; }
+body[data-device="touch"] #event { padding: 4px 8px; } body[data-device="touch"] #event b, body[data-device="touch"] #event span { font-size: 11.5px; }
+body[data-device="touch"] #ash { padding: 1px 10px 1px 8px; } body[data-device="touch"] #ash span { display: none; }
+/* top centre */
+body[data-device="touch"] #topcenter { top: calc(6px + env(safe-area-inset-top, 0px)); }
+/* messages stay out of the thumbs' way */
+body[data-device="touch"] #notify { bottom: calc(46px + env(safe-area-inset-bottom, 0px)); }
+body[data-device="touch"] #prompt { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); pointer-events: none; }
+body[data-device="touch"] #channel { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
+body[data-device="touch"] #tutorial { top: calc(64px + env(safe-area-inset-top, 0px)); max-width: min(480px, 56vw); font-size: 15px; padding: 5px 16px 5px 8px; border-width: 7px; border-image-width: 7px; }
+body[data-device="touch"] #feed { left: calc(10px + env(safe-area-inset-left, 0px)); top: calc(66px + env(safe-area-inset-top, 0px)); }
+body[data-device="touch"] #banner { top: 21%; }
+
+/* ----- overlays: padding and safe areas ----- */
+body[data-device="touch"] #menu, body[data-device="touch"] #map { padding: calc(6px + env(safe-area-inset-top, 0px)) calc(8px + env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) calc(8px + env(safe-area-inset-left, 0px)); }
+body[data-device="touch"] #pause, body[data-device="touch"] #credits { padding: calc(6px + env(safe-area-inset-top, 0px)) calc(8px + env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) calc(8px + env(safe-area-inset-left, 0px)); }
+
+/* ----- menu card: tabs on one row, a close button, panes that scroll on their own ----- */
+body[data-device="touch"] .menu-card { width: 100%; min-height: 0; height: calc(100vh - 12px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); max-height: none; }
+@supports (height: 100dvh) { body[data-device="touch"] .menu-card { height: calc(100dvh - 12px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); } }
+body[data-device="touch"] .menu-card::before { display: none; }
+body[data-device="touch"] .menu-card .x-close { top: 3px; right: 6px; }
+body[data-device="touch"] #menu-tabs { padding: 4px 58px 4px 10px; gap: 4px; flex-wrap: nowrap; overflow-x: auto; }
+body[data-device="touch"] #menu-tabs .tab { flex: none; min-height: 44px; display: flex; align-items: center; justify-content: center; padding: 0 12px; font-size: 12.5px; letter-spacing: 0.06em; }
+body[data-device="touch"] #menu-body { padding: 8px 12px; touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+body[data-device="touch"] #menu-help { display: none; }
+body[data-device="touch"] #menu-tabs .badge { margin-left: 6px; }
+body[data-device="touch"] h3.sec { margin-bottom: 7px; font-size: 11.5px; }
+
+/* inventory: equipment | bag | details with explicit Equip / Salvage buttons */
+body[data-device="touch"] .inv { grid-template-columns: 164px minmax(0, 1fr) 240px; gap: 10px; height: 100%; }
+body[data-device="touch"] .inv-col { overflow-y: auto; min-height: 0; touch-action: pan-y; overscroll-behavior: contain; }
+body[data-device="touch"] .inv-col:last-child { grid-column: auto; }
+body[data-device="touch"] .paperdoll { grid-template-columns: repeat(3, 48px); grid-auto-rows: 48px; gap: 5px; padding: 2px 0 6px; }
+body[data-device="touch"] .cell { width: 48px; height: 48px; }
+body[data-device="touch"] .cell .lbl { display: none; }
+body[data-device="touch"] .grid { grid-template-columns: repeat(auto-fill, 48px); gap: 5px; }
+body[data-device="touch"] .stats { font-size: 12px; padding: 6px 8px; gap: 2px 6px; }
+body[data-device="touch"] .gold-line { font-size: 12.5px; flex-wrap: wrap; gap: 4px 6px; margin-top: 8px; }
+body[data-device="touch"] .gamble .g-btn { padding: 10px; min-height: 44px; }
+body[data-device="touch"] .inv-detail { display: flex; flex-direction: column; overflow: hidden; }
+body[data-device="touch"] #tt { flex: 1; min-height: 0; overflow-y: auto; touch-action: pan-y; }
+body[data-device="touch"] .tt-hint { padding: 14px 10px; color: var(--shell-dim); font-style: italic; font-size: 14px; }
+body[data-device="touch"] .t-actions { display: flex; gap: 8px; padding-top: 8px; flex: none; }
+body[data-device="touch"] .tooltip { border-width: 6px; border-image-width: 6px; }
+body[data-device="touch"] .tt-name { font-size: 15px; } body[data-device="touch"] .tt-body { font-size: 13px; padding: 6px 10px 8px; }
+body[data-device="touch"] .tt-main b { font-size: 24px; }
+body[data-device="touch"] .tt-delta { font-size: 12.5px; padding: 6px 8px; }
+body[data-device="touch"] .tt-sell { font-size: 12.5px; }
+body[data-device="touch"] .plaque.t-do { min-width: 0; flex: 1; height: 46px; padding: 0 8px; font-size: 13px; gap: 6px; letter-spacing: 0.05em; }
+body[data-device="touch"] .plaque.t-do::before, body[data-device="touch"] .plaque.t-do::after { display: none; }
+body[data-device="touch"] .plaque.t-do.go { --mos: var(--mosaic-s-gold); color: var(--gold-hi); }
+body[data-device="touch"] .plaque.t-do.dim { opacity: 0.55; }
+body[data-device="touch"] .plaque.t-do:active { filter: brightness(1.3); }
+
+/* skills: list | selection actions + action bar */
+body[data-device="touch"] .skills { grid-template-columns: minmax(0, 1fr) 244px; gap: 12px; height: 100%; }
+body[data-device="touch"] .skills > div { overflow-y: auto; min-height: 0; touch-action: pan-y; overscroll-behavior: contain; }
+body[data-device="touch"] .skill-row { grid-template-columns: 44px minmax(0, 1fr) auto; gap: 9px; padding: 6px 8px; margin-bottom: 5px; min-height: 56px; }
+body[data-device="touch"] .skill-row .ic { width: 44px; height: 44px; border-width: 2px; }
+body[data-device="touch"] .skill-row .nm { font-size: 14px; } body[data-device="touch"] .skill-row .cat { font-size: 11.5px; } body[data-device="touch"] .skill-row .ds { font-size: 12px; }
+body[data-device="touch"] #skill-act { margin-bottom: 10px; padding: 8px; border: 1px solid rgba(217, 164, 65, 0.4); border-radius: 2px; background: rgba(3, 8, 28, 0.5); }
+body[data-device="touch"] .sa-name { font: 700 14px var(--font-display); color: var(--gold-hi); letter-spacing: 0.03em; }
+body[data-device="touch"] .sa-hint { font-size: 13px; color: var(--shell-dim); font-style: italic; }
+body[data-device="touch"] .bindings { gap: 6px; }
+body[data-device="touch"] .bind { min-height: 64px; padding: 4px 2px; cursor: pointer; }
+body[data-device="touch"] .bind .bind-ic { width: 30px; height: 30px; }
+body[data-device="touch"] .bind span { font-size: 11px; }
+body[data-device="touch"] .bind.pick { border-color: var(--gold-hi); box-shadow: 0 0 12px rgba(246, 210, 122, 0.55), inset 0 2px 8px rgba(0, 0, 0, 0.4); animation: pulse 1.2s infinite; }
+body[data-device="touch"] .aspects { font-size: 12.5px; }
+
+/* quests */
+body[data-device="touch"] .quest-log { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; }
+body[data-device="touch"] .tablet { padding: 40px 16px 18px; }
+body[data-device="touch"] .tablet h2 { font-size: 19px; } body[data-device="touch"] .tablet p { font-size: 14.5px; }
+body[data-device="touch"] .qrow { font-size: 13.5px; padding: 6px 10px; }
+
+/* settings and controls */
+body[data-device="touch"] .settings { grid-template-columns: 1fr 1fr; gap: 4px 16px; }
+body[data-device="touch"] .set-row { min-height: 48px; padding: 5px 10px; margin-bottom: 5px; gap: 8px; }
+body[data-device="touch"] .sr-l b { font-size: 13.5px; }
+body[data-device="touch"] .slider { width: 96px; height: 10px; touch-action: none; }
+body[data-device="touch"] .slider::before { inset: -18px -10px; }
+body[data-device="touch"] .slider u { width: 22px; height: 22px; margin: -11px 0 0 -11px; }
+body[data-device="touch"] .sr-arrow { padding: 14px 9px; font-size: 14px; }
+body[data-device="touch"] .sv { min-width: 40px; font-size: 13px; }
+body[data-device="touch"] .switch { width: 56px; height: 28px; }
+body[data-device="touch"] .switch i { top: 4px; left: 4px; width: 18px; height: 18px; }
+body[data-device="touch"] .switch.on i { left: 30px; }
+body[data-device="touch"] .seg { max-width: 100%; }
+body[data-device="touch"] .seg span { padding: 13px 6px; font-size: 12px; flex: 1 1 auto; text-align: center; }
+body[data-device="touch"] #set-desc { font-size: 13px; min-height: 18px; }
+body[data-device="touch"] .sys-actions .plaque { height: 46px; font-size: 13px; }
+body[data-device="touch"] .controls { grid-template-columns: 1fr; gap: 12px; }
+body[data-device="touch"] .controls table { font-size: 13px; }
+body[data-device="touch"] .controls td:first-child { width: 36%; }
+body[data-device="touch"] .controls td:first-child .tg { margin: 2px 4px 2px 0; }
+
+/* ----- pause: two columns of big tap targets ----- */
+body[data-device="touch"] .pause-card { width: min(600px, 100%); padding: 10px 18px 14px; gap: 2px; }
+body[data-device="touch"] .pause-card::before { display: none; }
+body[data-device="touch"] .pause-card h2 { font-size: 22px; margin-top: 2px; }
+body[data-device="touch"] .pause-card .p-sigil, body[data-device="touch"] .pause-card .p-divider, body[data-device="touch"] #pause-help { display: none; }
+body[data-device="touch"] #pause-sub { margin-bottom: 6px; }
+body[data-device="touch"] #pause-options { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+body[data-device="touch"] #pause-options .plaque { min-width: 0; height: 46px; padding: 0 10px; font-size: 13px; }
+body[data-device="touch"] #pause-options .plaque::before, body[data-device="touch"] #pause-options .plaque::after { display: none; }
+body[data-device="touch"] #pause-reason { font-size: 13px; margin: 4px 0; }
+body[data-device="touch"] .pause-card .x-close { top: 6px; right: 6px; }
+
+/* ----- title and credits ----- */
+body[data-device="touch"] #title { padding: calc(36px + env(safe-area-inset-top, 0px)) 12px 36px; }
+body[data-device="touch"] .title-card h1 .h-main { font-size: clamp(30px, 12vh, 62px); }
+body[data-device="touch"] .title-card h1 .h-the, body[data-device="touch"] .title-card h1 .h-of { font-size: 14px; }
+body[data-device="touch"] .t-eyebrow, body[data-device="touch"] .t-gates, body[data-device="touch"] .t-lede { display: none; }
+body[data-device="touch"] #title-options { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; width: min(560px, 100%); margin-top: 6px; }
+body[data-device="touch"] #title-options .plaque { min-width: 0; height: 46px; padding: 0 10px; font-size: 14px; }
+body[data-device="touch"] #title-options .plaque::before, body[data-device="touch"] #title-options .plaque::after { display: none; }
+body[data-device="touch"] #title-options .plaque:last-child:nth-child(odd) { grid-column: 1 / -1; }
+body[data-device="touch"] .t-foot { bottom: 12px; font-size: 12px; }
+body[data-device="touch"] .t-corner { bottom: 36px; font-size: 11px; }
+body[data-device="touch"] .t-corner.l { left: calc(12px + env(safe-area-inset-left, 0px)); } body[data-device="touch"] .t-corner.r { right: calc(12px + env(safe-area-inset-right, 0px)); }
+body[data-device="touch"] .t-foot { display: none; }
+body[data-device="touch"] .credits-card { width: min(640px, 100%); padding: 10px 18px 12px; }
+body[data-device="touch"] .credits-card::before { display: none; }
+body[data-device="touch"] .credits-card .p-sigil, body[data-device="touch"] .credits-card .p-divider { display: none; }
+body[data-device="touch"] .credits-card h2 { font-size: 22px; }
+body[data-device="touch"] .credits-card dl { grid-template-columns: 1fr 1fr; column-gap: 20px; }
+body[data-device="touch"] .credits-card dt { margin-top: 6px; } body[data-device="touch"] .credits-card dd { font-size: 14px; }
+.cr-a2hs { margin: 10px 0 0; font-size: 13px; line-height: 1.4; color: var(--pyrite); max-width: 52ch; }
+body[data-device="touch"] .plaque-row .plaque { min-width: 200px; height: 46px; }
+body[data-device="touch"] .t-version { font-size: 11px; }
+
+/* ----- world map: square map on the left, name and travel info on the right ----- */
+body[data-device="touch"] .map-card { position: relative; display: grid; grid-template-columns: auto minmax(0, 250px); grid-template-rows: auto auto 1fr; column-gap: 16px; row-gap: 6px; align-items: start; align-content: center; justify-items: start; }
+body[data-device="touch"] .map-frame { grid-column: 1; grid-row: 1 / span 3; padding: 4px; }
+body[data-device="touch"] #map-canvas { width: min(calc(100vh - 36px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)), 54vw); }
+body[data-device="touch"] .map-head { grid-column: 2; grid-row: 1; margin-top: 16px; padding-right: 56px; font-size: 15px; gap: 8px; text-align: left; justify-content: flex-start; flex-wrap: wrap; }
+body[data-device="touch"] .map-head .mh-orn { display: none; }
+body[data-device="touch"] .map-help-row { grid-column: 2; grid-row: 2; font-size: 13px; }
+body[data-device="touch"] #map-info { grid-column: 2; grid-row: 3; font-size: 14px; }
+body[data-device="touch"] #map-close { position: absolute; top: 0; right: 0; }
+
+/* ----- dialogue ----- */
+body[data-device="touch"] #dialog { bottom: calc(8px + env(safe-area-inset-bottom, 0px)); width: min(780px, calc(100vw - 28px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px))); padding: 16px 16px 10px; grid-template-columns: 78px minmax(0, 1fr); column-gap: 12px; }
+body[data-device="touch"] #dialog .d-portrait { width: 78px; height: 78px; }
+body[data-device="touch"] #dialog .d-name { left: 100px; font-size: 13px; padding: 2px 24px 3px; }
+body[data-device="touch"] #dialog .d-text { font-size: 15px; line-height: 1.4; margin: 2px 0 8px; min-height: 0; }
+body[data-device="touch"] #dialog .opt { min-height: 44px; padding: 6px 12px; font-size: 14.5px; }
+body[data-device="touch"] #dialog .opt .o-k { display: none; }
+body[data-device="touch"] #dialog .d-more { top: auto; bottom: 4px; right: 14px; }
+body[data-device="touch"] #dialog .x-close { top: -26px; right: 4px; width: 44px; height: 44px; }
+body[data-device="touch"] #dialog::after { display: none; }
+body[data-device="touch"] #intro .intro-skip { right: calc(20px + env(safe-area-inset-right, 0px)); }
+
+/* tall phones-in-landscape are not a thing, but tablets are: give them room */
+@media (min-height: 600px) {
+  body[data-device="touch"] .orb { bottom: calc(max(26vh, 150px) + env(safe-area-inset-bottom, 0px)); }
+}

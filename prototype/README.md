@@ -67,6 +67,8 @@ Quality can also be changed in Settings. In the browser console, `window.__game`
 | Pause menu | Start | Esc |
 | Inventory · Skills · Quests | From the pause menu (then LB/RB for tabs) | I · K · J |
 
+**Phones and tablets** (landscape): drag on the left half to move (the stick appears under your thumb), drag on empty space on the right to steer the Tether, and use the buttons on the right: the big one strikes (and talks, loots and opens things when no enemies are near), the arc above it casts your other skills, with Evade, Potion and Aspect beside it. Menu, Map, Town Portal and Zoom are top-left; the Menu button opens the pause menu (inventory, skills, quests, settings). Touch size, opacity and a left-handed layout are in Settings. On iPhone, Share, then Add to Home Screen, plays full-screen. Run `node e2e/mobile.mjs` against `npm run preview` for the touch end-to-end test.
+
 In menus, use the D-pad or stick (arrow keys or WASD) to move, A (Enter) to choose, X for the second action (sell, salvage or assign to a button), B (Esc) to go back, and LB/RB (Q/E) to switch tabs. The Controls screen in the pause and title menus shows the same bindings.
 
 ## Code map

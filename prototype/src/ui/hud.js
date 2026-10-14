@@ -3,7 +3,7 @@ import { xpToNext, MAX_LEVEL } from '../game/stats.js';
 import { ELITE_AFFIXES } from '../entities/enemies.js';
 import { skillIcon, itemIcon } from './icons.js';
 import { drawMap } from './mapdraw.js';
-import { padGlyph, keyGlyph, styleKbd, watchKbd } from './glyphs.js';
+import { padGlyph, keyGlyph, touchGlyph, styleKbd, watchKbd } from './glyphs.js';
 
 const $ = (id) => document.getElementById(id);
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -41,6 +41,7 @@ export class Hud {
     this._cache = new WeakMap();
     this._ghosts = { life: new Ghost(), anima: new Ghost(), target: new Ghost(), boss: new Ghost() };
     this._prevLeft = [];
+    this.slotInfo = []; // per slot: what the touch buttons (src/ui/touch.js) mirror
     this._lastItem = null;
     this._trackerKey = null;
     this.slotsEl.innerHTML = SLOT_BUTTONS.map((b, i) => `<div class="slot" data-i="${i}"><div class="icon"></div><div class="cdwrap"><div class="cd"></div></div><div class="cdt"></div><span class="charges"></span>${padGlyph(b.pad)}${keyGlyph(b.kbm)}</div>`).join('');
@@ -163,7 +164,7 @@ export class Hud {
     }
     this.slotRefs.forEach(({ el, cd, cdt, charges }, i) => {
       const id = p.slots[i];
-      if (!id) return;
+      if (!id) { this.slotInfo[i] = { id: null }; return; }
       const total = g.abilities.cooldownTotal(id, s);
       const left = g.abilities.cooldownLeft(id, s);
       const onCd = total > 0 && left > 0.02;
@@ -174,11 +175,14 @@ export class Hud {
       if (cdt.textContent !== String(txt)) cdt.textContent = txt;
       if (this._prevLeft[i] > 0.05 && left <= 0.05) {
         el.classList.remove('ready'); void el.offsetWidth; el.classList.add('ready');
+        (this._readyCount ??= [])[i] = (this._readyCount[i] ?? 0) + 1;
       }
       this._prevLeft[i] = left;
-      el.classList.toggle('nores', !!SKILLS[id].cost && p.anima < SKILLS[id].cost);
+      const nores = !!SKILLS[id].cost && p.anima < SKILLS[id].cost;
+      el.classList.toggle('nores', nores);
       const c = id === 'wings' && g.abilities.maxWingCharges(s) > 1 ? g.abilities.charges.wings : '';
       if (charges.textContent !== String(c)) charges.textContent = c;
+      this.slotInfo[i] = { id, p: onCd ? left / total : 0, txt, nores, charges: c, ready: this._readyCount?.[i] ?? 0 };
     });
     const aspect = ASPECTS[p.aspectIndex];
     R.gem.style.background = aspect.css;
@@ -189,7 +193,7 @@ export class Hud {
     const need = xpToNext(p.level);
     R.xpFill.style.width = p.level >= MAX_LEVEL ? '100%' : `${clamp01(p.xp / need) * 100}%`;
     this._set(R.xpLvl, 'v', p.level, (v) => { R.xpLvl.textContent = v; });
-    const pts = p.skillPoints ? ` · <b>${p.skillPoints} skill point${p.skillPoints > 1 ? 's' : ''}: ${padGlyph('Start')}${keyGlyph('K')}</b>` : '';
+    const pts = p.skillPoints ? ` · <b>${p.skillPoints} skill point${p.skillPoints > 1 ? 's' : ''}: ${padGlyph('Start')}${keyGlyph('K')}${touchGlyph('Menu')}</b>` : '';
     const xpHtml = p.level >= MAX_LEVEL ? `Level ${p.level} (max)` : `${Math.floor(p.xp)} / ${need} XP${pts}`;
     this._set(R.xpText, 'h', xpHtml, (v) => { R.xpText.innerHTML = v; });
 
@@ -243,7 +247,7 @@ export class Hud {
     if (g.interactTarget && !g.uiOpen && !p.dead) {
       prompt.hidden = false;
       const kbd = prompt.querySelector('kbd');
-      const k = g.input.device === 'pad' ? 'A' : 'E';
+      const k = g.input.device === 'pad' ? 'A' : g.input.device === 'touch' ? 'Tap' : 'E';
       if (kbd.textContent !== k) { kbd.textContent = k; styleKbd(kbd); }
       const label = g.interactTarget.label;
       const sp = prompt.querySelector('span');

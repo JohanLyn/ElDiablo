@@ -11,6 +11,10 @@ All notable changes to the Gates of Kur prototype. The format follows [Keep a Ch
   - Cheaper shaders: distance and height fog without the extra in-scatter work, terrain, water, sky and prop cloud shadows read a baked noise texture, no procedural bump, no Voronoi cracks. One fixed environment map, never re-baked. No grass or light shafts, thinner particles and wildlife, soft contact shadows under the hero and monsters.
   - Dynamic resolution (pixel ratio 0.6 to 1) with hysteresis: lowered after about 2 s of slow frames, raised after about 8 s of healthy ones, and a ratio that just failed is not retried for 40 s.
 - **Show FPS** (Settings > Graphics, or `?fps`): corner readout of fps, frame time, render scale, draw calls, triangles and lights.
+- **Phones and tablets (touch controls, landscape).** A floating move stick on the left, a Tether stick on any empty space on the right (drag to steer your sedu), a big strike / interact button, an arc of skill buttons with cooldown sweeps, evade, potion (with count) and aspect swap, and menu, map, town portal and zoom buttons top-left. Settings has touch layout size, opacity and a left-handed layout.
+- Phone layout: compact HUD with the orbs above the sticks and a slim XP strand; tap-first inventory (select, then Equip or Salvage), skills (Learn / Rank up, then assign to a button) and map; two-column pause menu; close buttons on every menu; dialogue options are tappable.
+- Portrait shows a "Rotate your phone to landscape" screen and pauses the game. Fullscreen button on the title screen where the browser supports it (iPhone Safari does not: use Share, then Add to Home Screen). No page scroll, pinch zoom or double-tap zoom; audio unlocks on the first touch.
+- `e2e/mobile.mjs`: real multi-touch end-to-end test (see the README).
 
 ## [0.5.0-alpha]
 
