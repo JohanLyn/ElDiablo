@@ -74,6 +74,11 @@ export function drawMap(ctx, g, { cx, cz, scale, width, height, full = false, se
     // a wash of lapis ties the terrain colours to the UI
     ctx.fillStyle = 'rgba(14, 36, 96, 0.26)';
     ctx.fillRect(toX(-HALF), toY(-HALF), S, S);
+    if (full) {
+      const vg = ctx.createRadialGradient(width / 2, height / 2, width * 0.34, width / 2, height / 2, width * 0.74);
+      vg.addColorStop(0, 'rgba(6, 12, 34, 0)'); vg.addColorStop(1, 'rgba(6, 12, 34, 0.82)');
+      ctx.fillStyle = vg; ctx.fillRect(0, 0, width, height);
+    }
 
     if (full) {
       ctx.font = '600 13px Cinzel, serif';
