@@ -2,6 +2,49 @@
 
 All notable changes to the Gates of Kur prototype. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.0-alpha]
+
+A visual pass: a new interface built from the world's own lapis, shell and carnelian, a full day cycle, and set pieces and combat moments that hit harder.
+
+### Added
+- **Lapis Mosaic interface**, after the Standard of Ur.
+  - Frames: lapis panels framed by inlaid shell, carnelian and lapis triangles, with gold studs and rosettes.
+  - Orbs: Life and Anima are carved beads (etched carnelian, and lapis with pyrite flecks) with a clear fill line.
+  - Skill bar and XP: the skill bar is a register strip, and XP is a strand of beads.
+  - Minimap and quest tracker: a mosaic minimap ring, a cartouche region plate and a shell quest tab.
+  - Tooltips: the border inlay shows the rarity.
+  - Title: a title lockup with a seven-gate emblem.
+  - Transitions: a cylinder-seal frieze rolls across when menus and banners open.
+- **Day cycle**: a 14-minute day (dawn, day, golden hour, dusk, moonlit night). Each time of day has its own sun, sky, fog, exposure, bloom and colour grade, and each region keeps its own mood on top. New heroes start at dawn. The **Time of day** setting can hold one time, and the `?time=` URL flag sets it for one visit.
+- **Atmosphere**
+  - Height fog that pools in hollows, with sun-tinted haze.
+  - A sky-lit environment map, so gold, lapis and metal glint.
+  - Light shafts through palms, the ziggurat, the First Gate and dungeon ceilings.
+  - Two cloud layers, a moon with phases, and stars.
+  - Water that reflects the sky, the sun or moon, and nearby lanterns.
+  - Grass that catches the light.
+  - Chromatic aberration and lens dirt on High and Ultra.
+- **Set pieces**
+  - A lightning storm over the First Gate, with thunder.
+  - Fire beacons and smoke on the ziggurat.
+  - Eridu lantern strings, pennants and lamplit windows that come alive at dusk.
+  - A short camera reveal the first time you enter each region.
+- **Living world**: dove flocks that scatter as you approach, vultures over the ruins, crows in the Ashen Approach, dragonflies and jumping fish in the marsh, dust devils, and wind gusts that roll across the grass.
+- **Combat impact**
+  - Hit-stop and hit flashes scale with the weight of the hit.
+  - A squash-and-rebound on hit and a directional camera kick.
+  - Screen-space shockwaves on crits, slams, landings and boss moments.
+  - Ichor bursts and ground stains in each monster family's colour.
+  - A warm rim light on the hero, and a silhouette when the hero is hidden behind walls.
+- **Boss entrances**: Neti and the Drowned Voice (who rises from the pool) get letterboxed camera intros with title cards. Elite and boss deaths get a brief slow-motion moment and a loot fountain.
+
+### Changed
+- Point lights now come from a shared pool of 12 that follow the nearest lanterns, braziers and fires. The scene's light count stays fixed, so lanterns are cheap.
+- The HUD fades during boss entrances and region reveals, except for the title banner.
+
+### Fixed
+- Ground decals (cracks, scorch marks, glyphs) were never drawn because of back-face culling; they now show.
+
 ## [0.3.0-alpha]
 
 The first alpha. The v2 open-world prototype now looks, sounds and plays like a game, and the first 15 minutes are scripted and balanced.

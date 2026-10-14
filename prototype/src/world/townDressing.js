@@ -212,7 +212,7 @@ export function dressTown(scene, colliders, { cx, cz, r }, lights = null) {
   const halos = []; // always-on glows (braziers, temple)
 
   // ---- braziers with billboard flames
-  const flames = [], brazierPos = [[-5, -23.5], [5, -23.5], [0, 12.5], [-14, -1], [-5, 23.5], [5, 23.5], [-4.6, -2.4], [-11.4, -2.4]];
+  const flames = [], brazierPos = [[-5, -23.5], [5, -23.5], [0, 12.5], [-14, -1], [-5, 23.5], [5, 23.5], [-3.4, -0.8], [-12.4, -0.6]]; // the last two flank Ninsun, clear of the temple corner
   for (const [px, pz] of brazierPos) {
     const [x, z] = at(px, pz);
     gold.push(part(cyl(0.1, 0.2, 1.1, 6), 0x3a2a1c, { x, y: 0.55, z }));
