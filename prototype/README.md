@@ -1,4 +1,4 @@
-# The Seven Gates of Kur: prototype 0.6.0-alpha
+# The Seven Gates of Kur: prototype 0.6.1-alpha
 
 An open-world action RPG slice in three.js that plays like Diablo 3/4. It's controller-first; keyboard and mouse work too, and since 0.6 it plays on phones. See [CHANGELOG.md](CHANGELOG.md) for what changed and the known issues, and [../docs/ROADMAP.md](../docs/ROADMAP.md) for the alpha checklist.
 
@@ -26,6 +26,7 @@ Open the same link on the phone and hold it in landscape (portrait shows a rotat
 
 - **Android Chrome:** tap **Fullscreen** on the title screen; it also locks landscape.
 - **iPhone Safari:** Share, then **Add to Home Screen**, and start the game from the new icon to play full-screen.
+- **Inside the Claude app** the viewer header takes some height off the screen (about 60 px). The layout adapts, but for the most room open the link in the phone's browser and use Fullscreen (Android) or Add to Home Screen (iPhone).
 - Left thumb moves, right thumb on empty space steers the Tether, and the big button strikes and talks. See [Controls](#controls) for the rest.
 - Settings > Controls has touch size, opacity and a left-handed layout. Settings > Graphics > **Show FPS** puts a frame-rate readout in the bottom-left corner.
 

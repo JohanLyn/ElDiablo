@@ -43,6 +43,8 @@ export class Hud {
     this._prevLeft = [];
     this.slotInfo = []; // per slot: what the touch buttons (src/ui/touch.js) mirror
     this._lastItem = null;
+    this._bannerUntil = 0;
+    this.bossUp = false;
     this._trackerKey = null;
     this.slotsEl.innerHTML = SLOT_BUTTONS.map((b, i) => `<div class="slot" data-i="${i}"><div class="icon"></div><div class="cdwrap"><div class="cd"></div></div><div class="cdt"></div><span class="charges"></span>${padGlyph(b.pad)}${keyGlyph(b.kbm)}</div>`).join('');
     this.slotEls = [...this.slotsEl.children];
@@ -84,7 +86,11 @@ export class Hud {
     el.innerHTML = `<div class="bn-ring"></div><div class="bn-row"><span class="bn-line l"></span><i class="bn-gem"></i><div class="bn-main"><div class="bn-title">${escapeHtml(text)}</div>${sub ? `<div class="bn-sub">${escapeHtml(sub)}</div>` : ''}</div><i class="bn-gem"></i><span class="bn-line r"></span></div>`;
     void el.offsetWidth; // restart the CSS animation
     el.classList.add('show');
+    this._bannerUntil = performance.now() + (document.body.dataset.device === 'touch' ? 2600 : 3600);
   }
+
+  // On a phone the banner shares one message lane with the tutorial card and the target frame, so they wait while it is up.
+  bannerActive() { return performance.now() < this._bannerUntil; }
 
   toast(title, desc) { this.banner(title, '', desc); }
 
@@ -121,14 +127,15 @@ export class Hud {
 
   setEvent(ev) {
     const el = $('event');
+    $('tr-info').classList.toggle('ev', !!ev); // the phone layout folds the event into the tracker's single line
     if (!ev) { el.hidden = true; return; }
     el.hidden = false;
     if (ev.hint) { // untimed pointer line
-      const html = `<b>${escapeHtml(ev.name)}</b><span>${escapeHtml(ev.text)}</span>`;
+      const html = `<b>${escapeHtml(ev.name)}</b><span><u class="ev-t">${escapeHtml(ev.text)}</u></span>`;
       if (el.innerHTML !== html) el.innerHTML = html;
       return;
     }
-    el.innerHTML = `<b>${escapeHtml(ev.name)}</b><span>${escapeHtml(ev.text)} · ${Math.max(0, Math.ceil(ev.time))}s</span><div class="ev-bar"><i style="width:${Math.min(1, Math.max(0, ev.time / (ev.total ?? 50))) * 100}%"></i></div>`;
+    el.innerHTML = `<b>${escapeHtml(ev.name)}</b><span><u class="ev-t">${escapeHtml(ev.text)}</u><u class="ev-s"> · ${Math.max(0, Math.ceil(ev.time))}s</u></span><div class="ev-bar"><i style="width:${Math.min(1, Math.max(0, ev.time / (ev.total ?? 50))) * 100}%"></i></div>`;
   }
 
   update(dt, g) {
@@ -261,10 +268,12 @@ export class Hud {
 
     // Target frame / boss bar
     this.targetTime -= dt;
+    const touch = document.body.dataset.device === 'touch';
     const t = this.target;
     const boss = g.enemies.list.find((e) => e.boss && e.alive && e.aggro);
     const bb = $('bossbar');
     bb.hidden = !boss;
+    this.bossUp = !!boss;
     if (boss) {
       const [main, ...rest] = boss.name.split(',');
       this._set(bb, 'n', boss.name, () => { bb.querySelector('.b-name').textContent = main; bb.querySelector('.b-sub').textContent = rest.join(',').trim(); });
@@ -295,6 +304,11 @@ export class Hud {
       el.querySelector('i').style.width = `${f * 100}%`;
       el.querySelector('b').style.width = `${this._ghosts.target.step(f, dt) * 100}%`;
     } else this._ghosts.target.value = 1;
+    // Phone message lane: banner > boss bar > tutorial card > plain target frame (the classes only matter under body[data-device="touch"]).
+    if (touch) {
+      $('topcenter').classList.toggle('t-yield', this.bannerActive());
+      $('target').classList.toggle('t-yield', !$('tutorial').hidden);
+    }
 
     // Minimap
     drawMap(this.minimap, g, { cx: p.pos.x, cz: p.pos.z, scale: 2.2, width: 200, height: 200 });

@@ -2,6 +2,22 @@
 
 All notable changes to the Gates of Kur prototype. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.1-alpha]
+
+Phone layout fixes from a real-phone test inside the Claude app, where the viewer header leaves only about 740 x 300 px. Desktop and controller layouts are unchanged.
+
+### Changed
+- **The touch skill arc fits the screen.** `layout()` measures the bottom of the minimap and fits the cluster into the height that is left: buttons and arc shrink (never below 40 px, strike never below 64 px, gaps of at least 6 px), then the arc flattens, and on very short screens the buttons sit in two rows in the bottom-right corner. It re-runs on `resize`, `orientationchange` and `visualViewport` resize.
+- **Only bound skills get a button.** Empty skill slots no longer draw faded tiles; the bound skills pack from the first arc position and the arc re-packs when a binding changes. The geometry lives in `src/ui/touchlayout.js` (unit-tested).
+- **Compact top-right on phones.** Smaller minimap, no region plate, and the quest tracker is one line (current objective, fixed height) to the left of it. Tap it to open the Quests tab. A running world event takes the tracker's place; Ghost-ash sits under it. The kill feed keeps to two short lines and the orbs, buffs and perf readout no longer collide with the top-left buttons or the feed on short screens.
+- **One message lane, clear middle.** On a phone the banner is a slim strip in the top band between the menu buttons and the tracker (subtitle hidden, about 2.5 s), the tutorial card is a compact card in the same lane and waits while a banner or the boss bar is up (tap it to dismiss it), and the target frame and boss bar use the lane too (a banner takes it over briefly). The pick-up prompt, channel bar and notifications sit in a slim slot at the bottom, above the XP strand. Nothing sits in the ellipse around the hero. Several touch tutorial hints are shorter.
+
+### Fixed
+- The skill arc, region plate, tracker and event banner overlapping each other and covering the hero on short phone viewports.
+
+### Tests
+- `e2e/mobile.mjs`: a "no HUD overlaps" check collects every HUD and touch element at 844x390, 844x320, 740x300, 667x290, 932x380 and 640x280 in four busy scenarios (caravan banner, tutorial card, all six skills bound with an event and a channel bar, boss bar) and asserts no two overlap and none enters the hero-safe ellipse. It also covers bound-only skill buttons, tutorial tap-to-dismiss and the tracker tap.
+
 ## [0.6.0-alpha]
 
 Playable on phones: touch controls, a phone layout and a Mobile graphics preset. Desktop, keyboard and controller play are unchanged.
