@@ -1,5 +1,6 @@
 import { SKILLS, ASPECTS } from '../game/skills.js';
 import { skillIcon } from './icons.js';
+import { SKILL_BTNS, clusterLayout } from './touchlayout.js';
 
 // Touch overlay ("Lapis Mosaic" tiles over the scene), shown while body[data-device="touch"] and a
 // game is running. It only writes into the shared Input (src/core/input.js): touchMove / touchAim
@@ -25,24 +26,15 @@ const GLYPH = {
   swap: svg('<path d="M5 12 H25 L20 7 M27 20 H7 L12 25"/>'),
 };
 
-// [name, action, size, ring, angle] ring 0 = the attack button itself, 1 = inner ring, 2 = skill arc.
-// Angles run counter-clockwise from "straight toward the screen centre" (0) up to "straight up" (90).
+// [name, action]. The geometry lives in touchlayout.js: attack in the corner, evade / potion / aspect curled around
+// it, then the BOUND skills (s2-s6 mirror slots 2-6) as an outer arc. Unbound slots get no button at all.
 const CLUSTER = [
-  ['attack', 'skill1', 84, 0, 0],
-  ['evade', 'evade', 62, 1, 14],
-  ['potion', 'potion', 58, 1, 52],
-  ['aspect', 'aspectNext', 46, 1, 88],
-  ['s2', 'skill2', 56, 2, 0],
-  ['s3', 'skill3', 56, 2, 24],
-  ['s4', 'skill4', 56, 2, 48],
-  ['s5', 'skill5', 56, 2, 72],
-  ['s6', 'skill6', 56, 2, 96],
+  ['attack', 'skill1'], ['evade', 'evade'], ['potion', 'potion'], ['aspect', 'aspectNext'],
+  ['s2', 'skill2'], ['s3', 'skill3'], ['s4', 'skill4'], ['s5', 'skill5'], ['s6', 'skill6'],
 ];
-const RING_R = { 1: 100, 2: 164 };
-const CORNER = 66; // attack button centre, from the screen corner
 const TOP_BUTTONS = [['menu', 'menu', 'Menu'], ['map', 'map', 'Map'], ['portal', 'portal', 'Town Portal'], ['zoom', 'zoom', 'Zoom']];
 
-const rad = (d) => (d * Math.PI) / 180;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 export class Touch {
   constructor(g, ui) {
@@ -58,7 +50,11 @@ export class Touch {
     this._cache = {};
     this.build();
     this.layout();
-    addEventListener('resize', () => this.layout());
+    // Re-measure whenever the viewport changes: rotation, the Claude app's viewer header, browser bars sliding away.
+    const relayout = () => this.layout();
+    addEventListener('resize', relayout);
+    addEventListener('orientationchange', relayout);
+    window.visualViewport?.addEventListener('resize', relayout);
     this.s.onChange((k) => { if (k.startsWith('touch')) this.layout(); });
   }
 
@@ -119,6 +115,18 @@ export class Touch {
   buzz(ms) { if (this.s.get('rumble') !== false) try { navigator.vibrate?.(ms); } catch { /* ignore */ } }
 
   // ---- layout ----------------------------------------------------------------------------------
+  // Safe-area insets in px (notches), read through a hidden probe because env() is CSS-only.
+  safeInsets() {
+    let p = this._probe;
+    if (!p) {
+      p = this._probe = document.createElement('div');
+      p.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
+      document.body.appendChild(p);
+    }
+    const cs = getComputedStyle(p);
+    return { top: parseFloat(cs.paddingTop) || 0, bottom: parseFloat(cs.paddingBottom) || 0 };
+  }
+
   layout() {
     const h = innerHeight, w = innerWidth;
     this.scale = Math.max(0.6, Math.min(1.3, h / 390, w / 740)) * (this.s.get('touchScale') ?? 1);
@@ -131,27 +139,36 @@ export class Touch {
     document.documentElement.style.setProperty('--ts', sc.toFixed(3));
     const side = this.lefty ? 'left' : 'right', other = this.lefty ? 'right' : 'left';
     const inset = (edge) => `env(safe-area-inset-${edge}, 0px)`;
-    const place = (el, cx, cy, size) => { // cx, cy: centre in layout units from the cluster's corner
-      const px = size * sc;
-      el.style.width = el.style.height = `${px}px`;
+    const place = (el, cx, cy, px) => { // cx, cy: centre in px from the cluster's corner
+      el.style.width = el.style.height = `${px.toFixed(1)}px`;
       el.style[other] = 'auto';
-      el.style[side] = `calc(${inset(side)} + ${(cx * sc - px / 2).toFixed(1)}px)`;
-      el.style.bottom = `calc(${inset('bottom')} + ${(cy * sc - px / 2).toFixed(1)}px)`;
+      el.style[side] = `calc(${inset(side)} + ${(cx - px / 2).toFixed(1)}px)`;
+      el.style.bottom = `calc(${inset('bottom')} + ${(cy - px / 2).toFixed(1)}px)`;
       el.style.top = 'auto';
     };
-    const ccx = CORNER + 8, ccy = CORNER + 4; // a little in from the corner
-    for (const [name, , size, ring, ang] of CLUSTER) {
-      const r = RING_R[ring] ?? 0;
-      place(this.btn[name], ccx + r * Math.cos(rad(ang)), ccy + r * Math.sin(rad(ang)), size);
+    // Height budget: the cluster must stay below the top-right block (minimap, with the tracker and ash beside it).
+    const safe = this.safeInsets();
+    const mm = $('minimap-wrap')?.getBoundingClientRect();
+    const topEdge = mm && mm.height > 0 ? mm.bottom : safe.top + 6 + clamp(h * 0.2, 58, 90); // HUD hidden: same maths as the CSS --tm
+    const bound = SKILL_BTNS.filter((n, i) => this.g.hud?.slotInfo?.[i + 1]?.id);
+    const lay = clusterLayout({ scale: sc, avail: h - topEdge - 6 - safe.bottom, bound, maxWidth: w * 0.28 - 4 });
+    this.cluster = lay;
+    for (const [name] of CLUSTER) {
+      const it = lay.items[name], el = this.btn[name];
+      el.classList.toggle('unbound', !it);
+      if (it) place(el, it.x, it.y, it.size);
     }
-    // top-left buttons stay top-left for either hand
+    // top-left buttons stay top-left for either hand; --tlw / --tbh tell the CSS where the message lane and the feed start
+    const tpx = Math.max(44, 50 * Math.max(0.85, sc)), tgap = h < 340 ? 6 : 8;
     TOP_BUTTONS.forEach(([name], i) => {
-      const el = this.btn[name], px = 50 * Math.max(0.85, sc);
-      el.style.width = el.style.height = `${px}px`;
-      el.style.left = `calc(env(safe-area-inset-left, 0px) + ${10 + i * (px + 8)}px)`;
-      el.style.top = `calc(env(safe-area-inset-top, 0px) + 8px)`;
+      const el = this.btn[name];
+      el.style.width = el.style.height = `${tpx}px`;
+      el.style.left = `calc(env(safe-area-inset-left, 0px) + ${10 + i * (tpx + tgap)}px)`;
+      el.style.top = `calc(env(safe-area-inset-top, 0px) + 6px)`;
       el.style.right = el.style.bottom = 'auto';
     });
+    document.documentElement.style.setProperty('--tlw', `${(10 + TOP_BUTTONS.length * tpx + (TOP_BUTTONS.length - 1) * tgap).toFixed(1)}px`);
+    document.documentElement.style.setProperty('--tbh', `${tpx.toFixed(1)}px`);
     const sz = { move: 120 * sc, aim: 132 * sc };
     for (const k of ['move', 'aim']) this.sticksEl[k].style.setProperty('--sz', `${sz[k]}px`);
     this.stickR = { move: 54 * sc, aim: 60 * sc };
@@ -176,6 +193,14 @@ export class Touch {
         return;
       }
     }
+    // Tapping the tutorial card dismisses it; tapping the quest line opens the Quests tab.
+    const hit = (el, pad) => {
+      if (!el || el.hidden) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && getComputedStyle(el).visibility !== 'hidden' && e.clientX >= r.left - pad && e.clientX <= r.right + pad && e.clientY >= r.top - pad && e.clientY <= r.bottom + pad;
+    };
+    if (hit($('tutorial'), 6)) { this.g.tutorial?.dismiss(); return; }
+    if (hit($('tr-info').classList.contains('ev') ? $('event') : $('tracker'), 8)) { if (this.ui.mode === null) this.ui.openMenu('quests'); return; }
     const which = this.zoneOf(e.clientX);
     if (this.sticks[which]) return; // that thumb is already on the glass
     try { this.pad.setPointerCapture(e.pointerId); } catch { /* ignore */ }
@@ -243,10 +268,13 @@ export class Touch {
     if (on !== this.visible) {
       this.visible = on;
       this.root.hidden = !on;
-      if (!on) this.releaseAll();
+      if (!on) this.releaseAll(); else this.layout(); // the HUD is measurable now
     }
     if (!on) return;
     const p = g.player, hud = g.hud;
+    // Only bound skills get a button: pack the arc again whenever a binding changes.
+    const boundKey = SKILL_BTNS.map((n, i) => (hud.slotInfo[i + 1]?.id ? 1 : 0)).join('');
+    if (boundKey !== this._boundKey) { this._boundKey = boundKey; this.layout(); }
     // cheap DOM writes: only when a value changes
     const cache = this._cache;
     const put = (key, v, apply) => { if (cache[key] !== v) { cache[key] = v; apply(v); } };

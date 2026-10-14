@@ -289,6 +289,130 @@ await wait(1800);
 const landscape = await G(() => ({ shown: !document.getElementById('rotate').hidden, mode: window.__game.ui.mode }));
 check('back in landscape: overlay clears and the game resumes', !landscape.shown && landscape.mode === null, landscape);
 
+// ------------------------------------------------------------------------------------------ layout: no HUD overlaps
+// Real phones differ a lot (the Claude app's viewer header alone eats ~60px), so every HUD / touch element's
+// rect is collected at several landscape sizes in three busy scenarios and no pair may intersect (2px tolerance)
+// and none may enter the hero-safe ellipse (44% x 50% of the screen around the hero's projected position).
+const LAYOUT_DIR = process.env.LAYOUT_SHOTS || `${OUT}/layout`;
+mkdirSync(LAYOUT_DIR, { recursive: true });
+await G(() => { clearInterval(window.__god); window.__game.player.life = window.__game.player.stats.maxLife; });
+await G(() => {
+  const g = window.__game, hud = g.hud;
+  const $ = (id) => document.getElementById(id);
+  window.__slots0 = [...g.player.slots];
+  g.settings.set('showFps', true); // the performance readout (bottom-left on phones) must not collide either
+  // Freeze CSS animations so the rect check and the screenshot (seconds apart in software GL) see the same thing.
+  const st = document.createElement('style');
+  st.textContent = '#feed div, #notify div, #prompt, #tutorial, #bossbar, #target, #tracker, #event { animation: none !important; } #feed div, #notify div { opacity: 1 !important; }';
+  document.head.appendChild(st);
+  const origUpdate = hud.update;
+  hud.update = function (dt, gg) { origUpdate.call(this, dt, gg); window.__forceHud?.(); };
+  window.__scenario = (name) => {
+    window.__forceHud = null;
+    $('feed').innerHTML = ''; $('notify').innerHTML = '';
+    hud._bannerUntil = 0; hud.setEvent(null);
+    const b = $('banner'); b.classList.remove('show'); b.style.animation = ''; b.style.opacity = '';
+    g.tutorial.current = null; g.tutorial.hide();
+    g.player.slots.splice(0, 6, ...(name === 'allskills' ? ['strike', 'javelin', 'snap', 'wings', 'storm', 'aegis'] : window.__slots0));
+    g.player.ghostAsh = 12; g.flags.gidimSeen = true;
+    // messages live for ever here: the real timers would remove them before the screenshot
+    const real = window.setTimeout;
+    window.setTimeout = (fn, ms, ...a) => (ms === 3200 || ms === 2600 ? 0 : real(fn, ms, ...a));
+    hud.feed('Gold 42', 'gold'); hud.feed('Potion of Lapis', 'potion'); hud.feed('Gold 7', 'gold');
+    hud.notify('Your pack is full', 'warn'); hud.notify('The gate stirs', '');
+    window.setTimeout = real;
+    if (name === 'caravan') { // the screenshot case: caravan banner up, tutorial queued behind it, tracker, target, prompt
+      hud.banner('The caravan is under attack!', 'event', 'Defend it');
+      b.style.animation = 'none'; b.style.opacity = '1'; hud._bannerUntil = performance.now() + 600000;
+    }
+    if (name === 'caravan' || name === 'tutorial' || name === 'boss') {
+      const tut = { id: 'move', done: () => false, text: { touch: ['Left thumb', 'Drag the left side to move'] } };
+      g.settings.set('tutorials', true); g.flags.tutorialSkipped = false; g.tutorial.start();
+      g.tutorial.current = tut; g.tutorial.shownFor = 0; g.tutorial.show(tut);
+    }
+    window.__forceHud = () => {
+      const prompt = $('prompt'); prompt.hidden = false; prompt.querySelector('kbd').textContent = 'Tap'; prompt.querySelector('span').textContent = 'Open the chest';
+      if (name === 'allskills') {
+        hud.setEvent({ name: 'The Wailing Pyres', text: 'Light the pyres: 1/3', time: 38, total: 50 });
+        $('channel').hidden = false;
+      }
+      if (name === 'boss') {
+        const bb = $('bossbar'); bb.hidden = false; hud.bossUp = true;
+        bb.querySelector('.b-name').textContent = 'Aqrabu'; bb.querySelector('.b-sub').textContent = "the Desert's Sting";
+        const bar = bb.querySelector('.b-bar'); bar.querySelector('i').style.width = '70%'; bar.querySelector('span').textContent = '1400 / 2000';
+        $('target').hidden = true;
+      } else {
+        const t = $('target'); t.hidden = false;
+        t.querySelector('.t-name').textContent = 'Gallu Brute · Lv 8'; t.querySelector('.t-bar i').style.width = '60%';
+      }
+    };
+  };
+  window.__collect = () => {
+    const vis = (el) => {
+      if (!el || el.hidden) return false;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity < 0.05) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 1 && r.height > 1;
+    };
+    const items = [];
+    const add = (name, el, grow = 0) => { if (vis(el)) { const r = el.getBoundingClientRect(); items.push({ name, l: r.left, t: r.top - grow, r: r.right, b: r.bottom + grow }); } };
+    add('life-orb', $('life-orb'), 7); add('anima-orb', $('anima-orb'), 7);
+    for (const [n, sel] of [['xp', '#xpwrap'], ['minimap', '#minimap-wrap'], ['tracker', '#tracker'], ['event', '#event'], ['ash', '#ash'], ['banner', '#banner'], ['tutorial', '#tutorial'],
+      ['prompt', '#prompt'], ['channel', '#channel'], ['target', '#target'], ['bossbar', '#bossbar'], ['perf', '#perf-meter']]) add(n, document.querySelector(sel));
+    document.querySelectorAll('#touch .t-btn').forEach((el) => add(el.dataset.name, el));
+    document.querySelectorAll('#feed div').forEach((el, i) => add(`feed${i}`, el));
+    document.querySelectorAll('#notify div').forEach((el, i) => add(`notify${i}`, el));
+    document.querySelectorAll('#buffs div').forEach((el, i) => add(`buff${i}`, el));
+    const p = g.player.pos.clone(); p.y += 1; p.project(g.camera);
+    return { items, hero: { x: ((p.x + 1) / 2) * innerWidth, y: ((1 - p.y) / 2) * innerHeight }, vw: innerWidth, vh: innerHeight };
+  };
+});
+const overlaps = (A, B, tol = 2) => Math.min(A.r, B.r) - Math.max(A.l, B.l) > tol && Math.min(A.b, B.b) - Math.max(A.t, B.t) > tol;
+const inEllipse = (R, c) => { // does rect R enter the hero-safe ellipse (a, b = half of 44% x 50%), shrunk by the 2px tolerance?
+  const a = c.vw * 0.22 - 2, b = c.vh * 0.25 - 2;
+  const nx = Math.max(R.l, Math.min(c.hero.x, R.r)), ny = Math.max(R.t, Math.min(c.hero.y, R.b));
+  return ((nx - c.hero.x) / a) ** 2 + ((ny - c.hero.y) / b) ** 2 < 1;
+};
+const must = { caravan: ['banner', 'tracker', 'minimap', 'ash', 'feed', 'notify', 'prompt', 'attack', 'evade', 'menu'], tutorial: ['tutorial', 'tracker', 'minimap', 'ash', 'prompt'], allskills: ['event', 's2', 's3', 's4', 's5', 's6', 'channel', 'notify'], boss: ['bossbar', 'tracker', 'ash', 'prompt'] };
+const mustNot = { caravan: ['tutorial', 'target'], tutorial: ['banner', 'bossbar', 'target'], allskills: ['tracker', 'prompt'], boss: ['tutorial', 'target'] };
+const VIEWPORTS = [[844, 390], [844, 320], [740, 300], [667, 290], [932, 380], [640, 280]];
+for (const [vw, vh] of VIEWPORTS) {
+  await page.setViewportSize({ width: vw, height: vh });
+  await wait(3000);
+  for (const sc of ['caravan', 'tutorial', 'allskills', 'boss']) {
+    await G((n) => window.__scenario(n), sc);
+    await wait(3500);
+    const c = await G(() => window.__collect());
+    const names = c.items.map((i) => i.name);
+    const hits = [];
+    for (let i = 0; i < c.items.length; i++) for (let j = i + 1; j < c.items.length; j++) if (overlaps(c.items[i], c.items[j])) hits.push(`${c.items[i].name}x${c.items[j].name}`);
+    const inHero = c.items.filter((r) => inEllipse(r, c)).map((r) => r.name);
+    const missing = must[sc].filter((n) => !names.some((x) => x.startsWith(n)));
+    const unwanted = mustNot[sc].filter((n) => names.some((x) => x === n));
+    check(`no HUD overlaps at ${vw}x${vh}, ${sc}`, !hits.length && !inHero.length && !missing.length && !unwanted.length, { hits, inHero, missing, unwanted, hero: { x: Math.round(c.hero.x), y: Math.round(c.hero.y) }, shown: names.length });
+    await page.screenshot({ path: `${LAYOUT_DIR}/${vw}x${vh}_${sc}.png`, scale: 'css', timeout: 120000 });
+  }
+}
+// Unbound skills get no button; the tracker and tutorial card are tappable.
+await page.setViewportSize({ width: 844, height: 390 });
+await wait(3000);
+await G(() => window.__scenario('tutorial'));
+await wait(3000);
+const bound = await G(() => ({ shown: [...document.querySelectorAll('#touch .t-skill')].filter((e) => getComputedStyle(e).display !== 'none').length, slots: window.__game.player.slots.filter(Boolean).length }));
+check('only bound skills get a button', bound.shown === bound.slots - 1, bound);
+await tapEl('#tutorial');
+await wait(1500);
+const tutTap = await G(() => ({ current: window.__game.tutorial.current?.id ?? null, hidden: document.getElementById('tutorial').hidden, done: !!window.__game.flags.tut.done.move }));
+check('tapping the tutorial card dismisses it', tutTap.current !== 'move' && tutTap.done, tutTap);
+await G(() => { window.__forceHud = null; });
+await tapEl('#tracker');
+await until(() => window.__game.ui.mode === 'menu', null, 20000).catch(() => {});
+const trkTap = await G(() => ({ mode: window.__game.ui.mode, tab: window.__game.ui.menus.tab }));
+check('tapping the quest line opens the Quests tab', trkTap.mode === 'menu' && trkTap.tab === 'quests', trkTap);
+await G(() => window.__game.ui.closeMenu());
+await G(() => { const h = window.__game.hud; window.__game.player.slots.splice(0, 6, ...window.__slots0); window.__god = setInterval(() => { const g = window.__game; if (!g.player.dead) { g.player.life = Math.max(g.player.life, g.player.stats.maxLife * 0.6); g.player.anima = 100; } }, 200); });
+
 // ------------------------------------------------------------------------------------------ report
 await G(() => clearInterval(window.__god));
 await browser.close();

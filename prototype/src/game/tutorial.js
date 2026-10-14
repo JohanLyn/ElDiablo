@@ -15,7 +15,7 @@ export const STEPS = [
   },
   {
     id: 'tether', when: (g, s) => s.hits >= 4 && nearEnemy(g, 12),
-    text: { pad: ['Right stick', 'Steer your sedu spirit. Its tether cuts through enemies; whip it fast for more damage'], kbm: ['Mouse', 'Your sedu spirit follows the cursor. Sweep its tether through enemies'], touch: ['Right thumb', 'Drag the right side to steer your sedu. Sweep its tether through enemies'] },
+    text: { pad: ['Right stick', 'Steer your sedu spirit. Its tether cuts through enemies; whip it fast for more damage'], kbm: ['Mouse', 'Your sedu spirit follows the cursor. Sweep its tether through enemies'], touch: ['Right thumb', 'Drag the right side to steer your sedu through enemies'] },
     done: (g, s) => s.tetherHits >= 6, timeout: 25,
   },
   {
@@ -25,17 +25,17 @@ export const STEPS = [
   },
   {
     id: 'potion', when: (g) => g.player.life < g.player.stats.maxLife * 0.55 && g.player.potions > 0,
-    text: { pad: ['LB', 'Drink a healing potion. Red orbs from monsters refill them'], kbm: ['Q', 'Drink a healing potion. Red orbs from monsters refill them'], touch: ['Potion', 'Tap the potion to heal. Red orbs from monsters refill them'] },
+    text: { pad: ['LB', 'Drink a healing potion. Red orbs from monsters refill them'], kbm: ['Q', 'Drink a healing potion. Red orbs from monsters refill them'], touch: ['Potion', 'Tap the potion to heal. Red orbs refill your potions'] },
     done: (g, s) => s.potions >= 1, timeout: 15,
   },
   {
     id: 'loot', when: (g) => !g.combatNearby && g.loot.items.length > 0 && g.loot.nearestItem(g.player.pos, 14),
-    text: { pad: ['A', 'Walk to loot and press A to pick it up'], kbm: ['E', 'Walk to loot and press E to pick it up'], touch: ['Tap', 'Walk to loot and tap the prompt (or ⚔) to pick it up'] },
+    text: { pad: ['A', 'Walk to loot and press A to pick it up'], kbm: ['E', 'Walk to loot and press E to pick it up'], touch: ['Tap', 'Walk to loot, then tap the prompt (or ⚔)'] },
     done: (g, s) => s.pickups >= 1, timeout: 30,
   },
   {
     id: 'equip', when: (g, s) => s.pickups >= 1 && !g.combatNearby,
-    text: { pad: ['Start', 'Open your inventory and equip items marked ▲'], kbm: ['I', 'Open your inventory and equip items marked ▲'], touch: ['Menu', 'Tap Menu, then Inventory. Select an item marked ▲ and tap Equip'] },
+    text: { pad: ['Start', 'Open your inventory and equip items marked ▲'], kbm: ['I', 'Open your inventory and equip items marked ▲'], touch: ['Menu', 'Tap Menu, then Inventory. Pick an item marked ▲ and tap Equip'] },
     done: (g, s) => s.equips >= 1, timeout: 40,
   },
   {
@@ -45,12 +45,12 @@ export const STEPS = [
   },
   {
     id: 'skill', when: (g) => g.player.skillPoints > 0 && g.player.level >= 2 && !g.combatNearby,
-    text: { pad: ['Start', 'You have a skill point. Open Skills (RB) and learn Lapis Javelin'], kbm: ['K', 'You have a skill point. Open Skills and learn Lapis Javelin'], touch: ['Menu', 'You have a skill point. Tap Menu, then Skills, and learn Lapis Javelin'] },
+    text: { pad: ['Start', 'You have a skill point. Open Skills (RB) and learn Lapis Javelin'], kbm: ['K', 'You have a skill point. Open Skills and learn Lapis Javelin'], touch: ['Menu', 'Skill point! Tap Menu, then Skills, to learn Lapis Javelin'] },
     done: (g) => (g.player.skillRanks.javelin ?? 0) > 0, timeout: 60,
   },
   {
     id: 'javelin', when: (g) => (g.player.skillRanks.javelin ?? 0) > 0 && nearEnemy(g, 14),
-    text: { pad: ['X', 'Hurl a Lapis Javelin. It spends Anima, the blue orb'], kbm: ['Right click', 'Hurl a Lapis Javelin. It spends Anima, the blue orb'], touch: ['Skill', 'Tap a skill in the arc to hurl a Lapis Javelin. It spends Anima, the blue orb'] },
+    text: { pad: ['X', 'Hurl a Lapis Javelin. It spends Anima, the blue orb'], kbm: ['Right click', 'Hurl a Lapis Javelin. It spends Anima, the blue orb'], touch: ['Skill', 'Tap the Javelin in the arc. It spends Anima, the blue orb'] },
     done: (g, s) => s.casts.javelin >= 2, timeout: 25,
   },
   {
@@ -60,12 +60,12 @@ export const STEPS = [
   },
   {
     id: 'aspect', when: (g) => g.player.level >= 3 && !g.combatNearby,
-    text: { pad: ['D-pad ◀ ▶', 'New Tether Aspect unlocked: try the Aspect of Gibil (fire)'], kbm: ['R', 'New Tether Aspect unlocked: try the Aspect of Gibil (fire)'], touch: ['Aspect', 'New Tether Aspect unlocked: tap the Aspect gem to try the Aspect of Gibil (fire)'] },
+    text: { pad: ['D-pad ◀ ▶', 'New Tether Aspect unlocked: try the Aspect of Gibil (fire)'], kbm: ['R', 'New Tether Aspect unlocked: try the Aspect of Gibil (fire)'], touch: ['Aspect', 'New Tether Aspect: tap the gem to try the Aspect of Gibil (fire)'] },
     done: (g, s) => s.aspects >= 1, timeout: 25,
   },
   {
     id: 'portal', when: (g) => g.player.inventory.length >= 12 && !g.combatNearby && !g.inSafeZone,
-    text: { pad: ['D-pad ▲', 'Town Portal: return to Eridu to sell loot to Ubar'], kbm: ['T', 'Town Portal: return to Eridu to sell loot to Ubar'], touch: ['Portal', 'Tap Town Portal to return to Eridu and sell loot to Ubar'] },
+    text: { pad: ['D-pad ▲', 'Town Portal: return to Eridu to sell loot to Ubar'], kbm: ['T', 'Town Portal: return to Eridu to sell loot to Ubar'], touch: ['Portal', 'Tap Town Portal to sell loot to Ubar in Eridu'] },
     done: (g, s) => s.portals >= 1, timeout: 30,
   },
   // Night of the Gidim (src/game/gidim.js): the first night, and the first Ghost-ash.
@@ -74,13 +74,13 @@ export const STEPS = [
     text: {
       pad: ['\u263E', 'The gidim cannot enter shrines, waypoints or lantern light. Your sedu spirit is a lantern now: sweep its tether across them to ward them back'],
       kbm: ['\u263E', 'The gidim cannot enter shrines, waypoints or lantern light. Your sedu spirit is a lantern now: sweep its tether across them to ward them back'],
-      touch: ['\u263E', 'The gidim cannot enter shrines, waypoints or lantern light. Your sedu spirit is a lantern now: steer it across them to ward them back'],
+      touch: ['\u263E', 'Gidim cannot enter lantern light. Steer your sedu across shrines and waypoints to ward them back'],
     },
     done: (g, s) => s.wards >= 3, timeout: 26,
   },
   {
     id: 'ash', when: (g) => (g.player.ghostAsh ?? 0) > 0 && !g.combatNearby,
-    text: { pad: ['\u25C8', 'Bring Ghost-ash to Ninsun in Eridu for a Night Blessing'], kbm: ['\u25C8', 'Bring Ghost-ash to Ninsun in Eridu for a Night Blessing'], touch: ['\u25C8', 'Bring Ghost-ash to Ninsun in Eridu for a Night Blessing'] },
+    text: { pad: ['\u25C8', 'Bring Ghost-ash to Ninsun in Eridu for a Night Blessing'], kbm: ['\u25C8', 'Bring Ghost-ash to Ninsun in Eridu for a Night Blessing'], touch: ['\u25C8', 'Bring Ghost-ash to Ninsun for a Night Blessing'] },
     done: (g) => !!g.gidim?.blessing, timeout: 20,
   },
 ];
@@ -153,7 +153,16 @@ export class Tutorial {
         this.show(next);
       }
     }
-    if (this.current) this.el.hidden = g.uiOpen;
+    // On a phone the card shares the top message lane: it waits while a banner or the boss bar is up.
+    if (this.current) this.el.hidden = g.uiOpen || (g.input.device === 'touch' && (g.hud.bannerActive() || g.hud.bossUp));
+  }
+
+  // A tap on the card dismisses it for good (phone: touch.js hit-tests the tap).
+  dismiss() {
+    if (!this.current) return;
+    this.g.flags.tut.done[this.current.id] = true;
+    this.current = null;
+    this.hide();
   }
 
   show(step) {

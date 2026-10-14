@@ -47,6 +47,7 @@ body[data-device="touch"] .kbm, body[data-device="touch"] .pad, body[data-device
 .t-btn .icon svg { width: 100%; height: 100%; filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.8)); }
 .t-btn.down { transform: scale(0.9); opacity: 1; filter: brightness(1.4) drop-shadow(0 0 12px rgba(246, 210, 122, 0.9)); }
 .t-btn.empty { opacity: calc(var(--t-op) * 0.28); pointer-events: none; } /* an empty slot is not a target: a drag over it still steers */
+.t-btn.unbound { display: none; } /* no skill bound to this slot: no button (touch.js packs the rest from the first arc position) */
 .t-btn .cdwrap { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .t-btn .cd { position: absolute; inset: 0; opacity: 0; background: conic-gradient(from 0deg, transparent calc((1 - var(--p, 0)) * 360deg), rgba(6, 14, 46, 0.84) 0); }
 .t-btn .cd::after { content: ''; position: absolute; inset: 0; background: conic-gradient(from 0deg, transparent calc((1 - var(--p, 0)) * 360deg - 4deg), rgba(143, 180, 255, 0.7) calc((1 - var(--p, 0)) * 360deg), transparent 0); mix-blend-mode: screen; }
@@ -98,57 +99,115 @@ body.cinematic #touch .t-btn, body.cinematic #touch .t-stick { opacity: 0; point
 /* =====================================================================================================
    PHONE LAYOUT: body[data-device="touch"] (landscape ~844x390; works down to ~568x320)
    ===================================================================================================== */
-body[data-device="touch"] { --bw: calc(7px * var(--ui-scale)); --tm: clamp(70px, 23vh, 104px); --to: clamp(52px, 17vh, 74px); }
+body[data-device="touch"] { --bw: calc(7px * var(--ui-scale)); --tm: clamp(58px, 20vh, 90px); --to: clamp(48px, 17vh, 74px);
+  --tw: clamp(118px, 22vw, 170px);                    /* the one-line quest tracker, left of the minimap */
+  --sl: env(safe-area-inset-left, 0px); --sr: env(safe-area-inset-right, 0px); --st: env(safe-area-inset-top, 0px); --sb: env(safe-area-inset-bottom, 0px);
+  --lane-t: calc(6px + var(--st));                     /* the message lane: top band between the menu buttons (--tlw, set by touch.js) and the tracker */
+  --lane-l: calc(var(--tlw, 210px) + 12px + var(--sl));
+  --lane-r: calc(var(--tm) + var(--tw) + 26px + var(--sr)); }
 
 /* ----- HUD: no skill bar or key hints (the touch cluster replaces them); orbs above the sticks ----- */
 body[data-device="touch"] #hint, body[data-device="touch"] #slots-row, body[data-device="touch"] .plate-gem, body[data-device="touch"] #xp-text,
 body[data-device="touch"] .mm-n, body[data-device="touch"] #region-level { display: none; }
 body[data-device="touch"] #bottom { inset: 0; padding: 0; display: block; transform: none; }
 body[data-device="touch"] #bar { display: contents; }
-body[data-device="touch"] .orb { position: absolute; width: var(--to); height: var(--to); bottom: calc(max(30vh, 108px) + env(safe-area-inset-bottom, 0px)); left: calc(10px + env(safe-area-inset-left, 0px)); }
-body[data-device="touch"] #anima-orb { left: calc(10px + var(--to) + 12px + env(safe-area-inset-left, 0px)); }
-body[data-device="touch"].t-lefty .orb { left: auto; right: calc(10px + env(safe-area-inset-right, 0px)); }
-body[data-device="touch"].t-lefty #anima-orb { right: calc(10px + var(--to) + 12px + env(safe-area-inset-right, 0px)); }
+body[data-device="touch"] .orb { position: absolute; width: var(--to); height: var(--to); bottom: calc(max(30vh, 100px) + var(--sb)); left: calc(10px + var(--sl)); }
+body[data-device="touch"] #anima-orb { left: calc(10px + var(--to) + 12px + var(--sl)); }
+body[data-device="touch"].t-lefty .orb { left: auto; right: calc(10px + var(--sr)); }
+body[data-device="touch"].t-lefty #anima-orb { right: calc(10px + var(--to) + 12px + var(--sr)); }
 body[data-device="touch"] .orb::before, body[data-device="touch"] .orb::after { width: 30px; height: 10px; margin-left: -15px; }
 body[data-device="touch"] .orb::before { top: -7px; } body[data-device="touch"] .orb::after { bottom: -7px; }
 body[data-device="touch"] .orb-well { inset: 5px; }
 body[data-device="touch"] .orb span { font-size: calc(var(--to) * 0.27); }
 body[data-device="touch"] .orb small { display: none; }
 /* slim XP strand along the bottom edge */
-body[data-device="touch"] #center { position: absolute; left: 50%; bottom: calc(5px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: min(38vw, 330px); min-width: 0; margin: 0; padding: 0; border: 0; border-image: none; background: none; box-shadow: none; }
+body[data-device="touch"] #center { position: absolute; left: 50%; bottom: calc(3px + var(--sb)); transform: translateX(-50%); width: min(24vw, 220px); min-width: 0; margin: 0; padding: 0; border: 0; border-image: none; background: none; box-shadow: none; }
 body[data-device="touch"] #xpwrap { gap: 6px; margin: 0; }
-body[data-device="touch"] #xp-lvl { width: 22px; height: 22px; margin: 0; font-size: 11px; border-width: 2px; }
-body[data-device="touch"] #xp { height: 9px; background-size: 33px 9px; }
-body[data-device="touch"] #xp i { background-size: 33px 9px; }
-body[data-device="touch"] #buffs { position: absolute; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); }
-body[data-device="touch"] #buffs div { font-size: 11px; border-width: 4px; border-image-width: 4px; }
+body[data-device="touch"] #xp-lvl { width: 18px; height: 18px; margin: 0; font-size: 10px; border-width: 2px; }
+body[data-device="touch"] #xp { height: 8px; background-size: 30px 8px; }
+body[data-device="touch"] #xp i { background-size: 30px 8px; }
+/* buffs sit in the bottom corner under the orbs, out of the middle */
+body[data-device="touch"] #buffs { position: absolute; left: calc(10px + var(--sl)); right: auto; bottom: calc(46px + var(--sb)); transform: none; flex-direction: column; align-items: flex-start; gap: 2px; max-width: calc(33vw - 24px); }
+body[data-device="touch"].t-lefty #buffs { left: auto; right: calc(10px + var(--sr)); align-items: flex-end; }
+body[data-device="touch"] #buffs div { font-size: 10.5px; line-height: 1.1; border-width: 3px; border-image-width: 3px; padding: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 
-/* top right: a small minimap, the region plate under it, the tracker to its left */
-body[data-device="touch"] #topright { top: calc(6px + env(safe-area-inset-top, 0px)); right: calc(8px + env(safe-area-inset-right, 0px)); width: var(--tm); transform: none; align-items: flex-end; gap: 4px; }
+/* the optional FPS readout (bottom-left on phones) stays compact so it clears the bottom-centre slot */
+body[data-device="touch"] #perf-meter { min-width: 0; padding: 2px 6px 3px; font-size: 9.5px; letter-spacing: 0; }
+
+/* top right: a small minimap; the quest tracker is ONE line to its left (the world event takes its place while it runs) */
+body[data-device="touch"] #topright { top: var(--lane-t); right: calc(8px + var(--sr)); width: var(--tm); transform: none; align-items: flex-end; gap: 0; }
 body[data-device="touch"] #minimap-wrap { width: var(--tm); height: var(--tm); }
 body[data-device="touch"] #minimap, body[data-device="touch"] .mm-shade { inset: 8%; width: 84%; height: 84%; }
-body[data-device="touch"] #region { width: max-content; max-width: 170px; margin: -6px 0 0; padding: 3px 18px; }
-body[data-device="touch"] #region::before, body[data-device="touch"] #region::after { width: 6px; height: 6px; margin-top: -3px; }
-body[data-device="touch"] #region::before { left: 6px; } body[data-device="touch"] #region::after { right: 6px; }
-body[data-device="touch"] #region-name { font-size: 11px; letter-spacing: 0.06em; white-space: nowrap; }
-body[data-device="touch"] #tr-info { display: flex; flex-direction: column; gap: 4px; position: absolute; top: 0; right: calc(var(--tm) + 10px); width: 168px; }
-body[data-device="touch"] #tracker { padding: 4px 8px 5px 11px; gap: 3px; }
-body[data-device="touch"] #tracker .q-kicker { display: none; }
-body[data-device="touch"] #tracker .q-title { font-size: 12.5px; }
-body[data-device="touch"] #tracker .q-obj { font-size: 12px; line-height: 1.25; gap: 5px; }
-body[data-device="touch"] #tracker .q-obj::before { margin-top: 4px; }
-body[data-device="touch"] #tracker::before { top: 6px; }
-body[data-device="touch"] #event { padding: 4px 8px; } body[data-device="touch"] #event b, body[data-device="touch"] #event span { font-size: 11.5px; }
-body[data-device="touch"] #ash { padding: 1px 10px 1px 8px; } body[data-device="touch"] #ash span { display: none; }
-/* top centre */
-body[data-device="touch"] #topcenter { top: calc(6px + env(safe-area-inset-top, 0px)); }
-/* messages stay out of the thumbs' way */
-body[data-device="touch"] #notify { bottom: calc(46px + env(safe-area-inset-bottom, 0px)); }
-body[data-device="touch"] #prompt { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); pointer-events: none; }
-body[data-device="touch"] #channel { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
-body[data-device="touch"] #tutorial { top: calc(64px + env(safe-area-inset-top, 0px)); max-width: min(480px, 56vw); font-size: 15px; padding: 5px 16px 5px 8px; border-width: 7px; border-image-width: 7px; }
-body[data-device="touch"] #feed { left: calc(10px + env(safe-area-inset-left, 0px)); top: calc(66px + env(safe-area-inset-top, 0px)); }
-body[data-device="touch"] #banner { top: 21%; }
+body[data-device="touch"] #region { display: none; }
+body[data-device="touch"] #tr-info { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; position: absolute; top: 0; right: calc(var(--tm) + 8px); width: var(--tw); }
+body[data-device="touch"] #tracker, body[data-device="touch"] #event { height: 26px; box-sizing: border-box; padding: 0 8px 0 11px; gap: 0; justify-content: center; overflow: visible; pointer-events: none; }
+body[data-device="touch"] #tracker .q-kicker, body[data-device="touch"] #tracker .q-title { display: none; }
+body[data-device="touch"] #tracker .q-obj { font-size: 12px; line-height: 1.2; gap: 5px; align-items: center; min-width: 0; }
+body[data-device="touch"] #tracker .q-obj::before { margin-top: 0; width: 6px; height: 6px; }
+body[data-device="touch"] #tracker .q-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body[data-device="touch"] #tracker .q-prog { position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; border-width: 0; }
+body[data-device="touch"] #tracker::before { top: 7px; }
+body[data-device="touch"] #tr-info.ev #tracker { display: none; }
+body[data-device="touch"] #event { display: flex; align-items: center; padding: 0 8px 0 9px; }
+body[data-device="touch"] #event b { display: none; }
+body[data-device="touch"] #event span { display: flex; gap: 4px; font-size: 12px; min-width: 0; white-space: nowrap; }
+body[data-device="touch"] #event .ev-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+body[data-device="touch"] #event .ev-s { flex: none; }
+body[data-device="touch"] #event .ev-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; margin: 0; }
+body[data-device="touch"] #ash { height: 20px; box-sizing: border-box; padding: 0 9px 0 7px; margin: 0; gap: 5px; } body[data-device="touch"] #ash span { display: none; }
+body[data-device="touch"] #ash b { font-size: 13px; } body[data-device="touch"] #ash .ash-gem { font-size: 13px; }
+
+/* top centre: the target frame and boss bar share the message lane (a banner takes it over briefly, see hud.js) */
+body[data-device="touch"] #topcenter { top: var(--lane-t); left: var(--lane-l); right: var(--lane-r); width: auto; transform: none; }
+body[data-device="touch"] #topcenter.t-yield, body[data-device="touch"] #target.t-yield { visibility: hidden; }
+body[data-device="touch"] #target .t-name { font-size: 13px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body[data-device="touch"] #target .t-name.elite::before, body[data-device="touch"] #target .t-name.elite::after { margin: 0 4px; font-size: 9px; }
+body[data-device="touch"] #target .t-affixes { display: none; }
+body[data-device="touch"] #target .t-bar { height: 10px; border-width: 1px; width: 100%; margin-top: 3px; }
+body[data-device="touch"] #bossbar .b-name { font-size: 14px; line-height: 1.2; letter-spacing: 0.08em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body[data-device="touch"] #bossbar .b-sub { display: none; }
+body[data-device="touch"] #bossbar .b-frame { margin-top: 1px; gap: 0; }
+body[data-device="touch"] #bossbar .b-end { display: none; }
+body[data-device="touch"] #bossbar .b-bar { height: 20px; border-width: 5px; border-image-width: 5px; }
+body[data-device="touch"] #bossbar .b-bar u { top: -6px; bottom: -6px; }
+body[data-device="touch"] #bossbar .b-bar span { font-size: 10px; }
+
+/* ----- messages: ONE lane at the top (banner, tutorial) and one slim slot at the bottom (channel, prompt, notify) ----- */
+body[data-device="touch"] #banner { top: var(--lane-t); left: var(--lane-l); right: var(--lane-r); width: auto; min-height: 36px; box-sizing: border-box; padding: 3px 8px; display: grid; align-items: center; transform: none; transform-origin: center; }
+body[data-device="touch"] #banner:not(.show) { visibility: hidden; }
+body[data-device="touch"] #banner.show { animation: bnInT 2.6s ease-out forwards; }
+body[data-device="touch"] #banner::before { left: 0; right: 0; top: 0; bottom: 0; -webkit-mask: none; mask: none; background: var(--bn-tri) repeat-x 0 0 / 24px 4px, var(--bn-tri) repeat-x 0 100% / 24px 4px, linear-gradient(90deg, rgba(8, 18, 52, 0), var(--bn-fill) 12%, var(--bn-fill) 88%, rgba(8, 18, 52, 0)); filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.6)); }
+body[data-device="touch"] #banner::after, body[data-device="touch"] #banner.region::after, body[data-device="touch"] #banner.waypoint::after { content: none; animation: none; }
+body[data-device="touch"] #banner .bn-ring, body[data-device="touch"] #banner .bn-line { display: none; }
+body[data-device="touch"] #banner .bn-row { gap: 7px; }
+body[data-device="touch"] #banner .bn-gem { width: 7px; height: 7px; border-width: 1.5px; }
+body[data-device="touch"] #banner .bn-main { max-width: 100%; min-width: 0; }
+body[data-device="touch"] #banner .bn-title { font-size: clamp(12px, 1.9vw, 16px); letter-spacing: 0.05em; line-height: 1.15; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; text-shadow: 0 2px 8px #000, 0 0 2px #000; }
+body[data-device="touch"] #banner .bn-sub { display: none; }
+@keyframes bnInT { 0% { opacity: 0; transform: translateY(-8px); visibility: visible; } 10% { opacity: 1; transform: none; } 78% { opacity: 1; visibility: visible; } 100% { opacity: 0; visibility: hidden; } }
+
+body[data-device="touch"] #tutorial { top: var(--lane-t); left: var(--lane-l); right: var(--lane-r); max-width: none; transform: none; box-sizing: border-box; min-height: 36px; gap: 7px; padding: 2px 8px 2px 4px; font-size: 12px; line-height: 1.2; border-width: 5px; border-image-width: 5px; pointer-events: none; }
+body[data-device="touch"] #tutorial::before, body[data-device="touch"] #tutorial::after { display: none; }
+body[data-device="touch"] #tutorial kbd, body[data-device="touch"] #tutorial kbd.tg { transform: none; margin: 0; font-size: 10.5px; min-width: 0; height: 20px; padding: 0 7px; max-width: 74px; overflow: hidden; text-overflow: ellipsis; }
+body[data-device="touch"] #tutorial span { min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+body[data-device="touch"] #tutorial.pop { animation: tutpopT 0.4s ease-out; }
+@keyframes tutpopT { 0% { opacity: 0; transform: translateY(-6px); } 100% { opacity: 1; transform: none; } }
+
+body[data-device="touch"] #notify { bottom: calc(48px + var(--sb)); left: 50%; width: max-content; max-width: 40vw; gap: 0; }
+body[data-device="touch"] #notify div { padding: 1px 18px 2px; font-size: 13px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; background: var(--tri-band) repeat-x 0 0 / 24px 3px, var(--tri-band) repeat-x 0 100% / 24px 3px, linear-gradient(90deg, transparent, rgba(8, 18, 52, 0.92) 18%, rgba(8, 18, 52, 0.92) 82%, transparent); }
+body[data-device="touch"] #notify div:not(:last-child) { display: none; }
+body[data-device="touch"] #prompt { bottom: calc(24px + var(--sb)); transform: translateX(-50%); padding: 0 14px 0 4px; gap: 6px; height: 24px; box-sizing: border-box; font-size: 13px; pointer-events: none; border: 2px solid var(--gold); border-radius: 12px; background: linear-gradient(180deg, #1d4392, #0e2457); box-shadow: 0 0 0 1px var(--bitumen), 0 3px 8px rgba(0, 0, 0, 0.6); animation: none; }
+body[data-device="touch"] #prompt kbd, body[data-device="touch"] #prompt kbd.tg { transform: none; height: 18px; min-width: 0; padding: 0 8px; font-size: 11px; border-width: 1.5px; }
+body[data-device="touch"] #channel { bottom: calc(24px + var(--sb)); transform: translateX(-50%); width: 150px; font-size: 11px; line-height: 1; display: flex; align-items: center; gap: 8px; }
+body[data-device="touch"] #channel span { flex: none; }
+body[data-device="touch"] #channel .ch-bar { flex: 1; margin: 0; height: 8px; }
+body[data-device="touch"] #hud:has(#channel:not([hidden])) #prompt { display: none; }
+/* the feed keeps to two short lines under the menu buttons */
+body[data-device="touch"] #feed { left: calc(10px + var(--sl)); top: calc(var(--lane-t) + var(--tbh, 50px) + 8px); transform: none; max-width: 190px; gap: 3px; }
+body[data-device="touch"] #feed div { font-size: 12.5px; line-height: 1.2; padding: 1px 16px 1px 5px; max-width: 190px; box-sizing: border-box; }
+body[data-device="touch"] #feed div:nth-last-child(n+3) { display: none; }
+body[data-device="touch"] #feed .ft { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body[data-device="touch"] #feed .fi { width: 16px; height: 16px; }
 
 /* ----- overlays: padding and safe areas ----- */
 body[data-device="touch"] #menu, body[data-device="touch"] #map { padding: calc(6px + env(safe-area-inset-top, 0px)) calc(8px + env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) calc(8px + env(safe-area-inset-left, 0px)); }
