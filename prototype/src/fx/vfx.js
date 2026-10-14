@@ -40,6 +40,7 @@ export class Vfx {
     this.ps.heightAt = this.surface;
     this.A = this.ps.add;
     this.B = this.ps.alpha;
+    this.G = this.ps.ground; // dark ground decals, under the telegraphs
     this.frame = 0;
     this.now = 0;
     this.hitBudget = MAX_HIT_FX;
@@ -221,7 +222,7 @@ export class Vfx {
 
   // Ground stain / crack on the terrain, alpha-blended (dark) or additive (glowing).
   decal(x, z, size, frame, hex, a, life, glow = false, k = 1) {
-    const L = glow ? this.A : this.B;
+    const L = glow ? this.A : this.G;
     const t = L.begin(frame);
     t.x = x; t.y = 0.05; t.z = z; t.s0 = t.s1 = size; t.life = life; t.a = a; t.mode = 1; t.rot = Math.random() * 6.28;
     t.fp = glow ? 1.5 : 0.6; t.fin = 0.02; c0(t, hex, k);

@@ -414,7 +414,7 @@ export class EnemyManager {
       u.uBase.value = e.pos.y;
       e.flash = Math.max(0, e.flash - dt * 6);
       e.mat.emissive.setRGB(e.flash * 0.55, e.flash * 0.45, e.flash * 0.35);
-      e.u.uHit.value = Math.min(0.55, e.flash * e.flash * 0.5);
+      e.u.uHit.value = Math.min(0.4, e.flash * e.flash * 0.4);
       if (e.sqOn) this.squash(e, dt);
       if (e.group.userData.outline) e.group.userData.outline.visible = false;
       if (d > 0.3 && !e.shadowOff) { e.shadowOff = true; e.group.userData.rig.setShadows(false); }
@@ -480,11 +480,11 @@ export class EnemyManager {
     // Visuals
     e.group.rotation.y = e.facing;
     e.flash = Math.max(0, e.flash - dt * 6);
-    e.u.uHit.value = Math.min(0.55, e.flash * e.flash * 0.5); // white-hot on the blow, gone within ~0.12 s
+    e.u.uHit.value = Math.min(0.4, e.flash * e.flash * 0.4); // white-hot on the blow, gone within ~0.12 s
     if (e.sqOn) this.squash(e, dt);
     if (e.group.userData.outline) e.group.userData.outline.visible = dist < 40;
     // Hit flash stays warm and partial so the silhouette still reads.
-    e.mat.emissive.setRGB(e.flash * 0.55 + (e.burn > 0 ? 0.25 : 0), e.flash * 0.45 + (e.burn > 0 ? 0.08 : 0), e.flash * 0.35 + (e.slow > 0 ? 0.3 : 0) + (e.vulnerable > 0 ? 0.15 : 0));
+    e.mat.emissive.setRGB(e.flash * 0.3 + (e.burn > 0 ? 0.25 : 0), e.flash * 0.22 + (e.burn > 0 ? 0.08 : 0), e.flash * 0.15 + (e.slow > 0 ? 0.3 : 0) + (e.vulnerable > 0 ? 0.15 : 0));
     // Far enemies animate at a third of the rate and drop their shadows.
     e.animDt = (e.animDt || 0) + dt;
     if (dist < 46 || ((e.id + (e.animTick = (e.animTick || 0) + 1)) % 3 === 0)) {

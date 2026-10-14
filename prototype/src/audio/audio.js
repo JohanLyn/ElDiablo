@@ -174,6 +174,8 @@ export class Audio {
       this.play(SFX[name] ? name : 'die_gallu', { pos: p.pos ?? e.pos, elite: !!e.elite });
     });
     on('bossPhase', () => { this.play('netiPhase'); this.music?.stinger(); });
+    // Boss entrance (src/fx/bossIntro.js): the roar lands with the camera push; the aggro roar is skipped afterwards.
+    on('bossIntro', (p) => { if (p.stage === 'roar') { this.play(p.kind === 'neti' ? 'netiRoar' : 'netiPhase', { pos: p.pos }); this.music?.stinger(); } });
 
     // loot and progression
     on('lootDrop', (p) => {
@@ -263,8 +265,7 @@ export class Audio {
     // boss notices you: roar on the aggro edge
     if (bossAggro && !this.prevBossAggro) {
       const boss = g.enemies.list.find((e) => e.boss && e.alive);
-      this.play('netiRoar', { pos: boss?.pos });
-      this.music.stinger();
+      if (!boss?.introDone) { this.play('netiRoar', { pos: boss?.pos }); this.music.stinger(); }
     }
     this.prevBossAggro = bossAggro;
 

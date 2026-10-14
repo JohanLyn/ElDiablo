@@ -17,7 +17,7 @@ export const CHAR_ORDER = 2;
 
 const STYLES = {
   // Lapis fill with a bright gold rim: the hero is never lost behind a building.
-  hero: { fill: [0.07, 0.2, 0.78], edge: [1.0, 0.74, 0.28], alpha: 0.46, edgeAlpha: 0.95 },
+  hero: { fill: [0.04, 0.14, 0.95], edge: [1.0, 0.78, 0.3], alpha: 0.58, edgeAlpha: 1.0 },
   // Elites and named monsters: a quieter ember outline so threats stay findable.
   foe: { fill: [0.5, 0.12, 0.06], edge: [1.0, 0.45, 0.2], alpha: 0.2, edgeAlpha: 0.6 },
   // Guardians: violet-gold, a little stronger than ordinary elites.

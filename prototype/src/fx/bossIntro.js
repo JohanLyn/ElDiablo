@@ -82,7 +82,6 @@ export class BossIntro {
     this.l2.set(bx, by + cfg.look2, bz);
     g.rig.setCinematic(this.fn);
     this.showBars(true);
-    g.combatNearby = false;
     if (cfg.kind === 'voice') {
       e.group.userData.rig.setShadows(true);
       e.spawnTotal = 1; e.spawning = 1;
@@ -266,6 +265,7 @@ export class BossIntro {
         e.spawning = 0.0001;
       }
       e.group.rotation.y = e.facing;
+      if (!abort && cfg.kind === 'voice') g.enemies.alertPack(e); // the fight starts the moment the song ends
       if (!abort) g.events.emit('bossIntro', { stage: 'end', boss: e, kind: cfg.kind, name: cfg.name, pos: e.pos });
     }
     this.e = null;

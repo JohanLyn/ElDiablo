@@ -118,6 +118,21 @@ export class CombatFx {
     v.wisps(x, y, z, Math.max(1, Math.round(n * 0.6)), 0.3, f.hot, f.dark, size * 1.1, 0.9, 1.4, 1.1);
   }
 
+  // A fast soft puff of ichor colour thrown out of the wound (alpha layer).
+  spray(f, x, y, z, dx, dz, n, size) {
+    n = this.v.ps.n(n);
+    const B = this.v.B;
+    for (let i = 0; i < n; i++) {
+      const t = B.begin(F.SMOKE);
+      t.x = x; t.y = y; t.z = z;
+      t.vx = dx * rr(2.5, 4.5) + rr(-0.6, 0.6); t.vz = dz * rr(2.5, 4.5) + rr(-0.6, 0.6); t.vy = rr(0.4, 1.6);
+      t.life = rr(0.28, 0.42); t.s0 = size * 0.45; t.s1 = size * rr(1.1, 1.5);
+      t.rot = Math.random() * 6.28; t.rotVel = rr(-3, 3); t.drag = 3.2; t.a = 0.6; t.fin = 0.01; t.fp = 1.3;
+      col0(t, f.core); col1(t, f.dark);
+      B.emit();
+    }
+  }
+
   // Stone chips (Asag): tumbling alpha shards.
   chips(f, x, y, z, dx, dz, n, spd, size) {
     n = this.v.ps.n(n);
@@ -150,14 +165,16 @@ export class CombatFx {
     const big = crit || (direct && this.g.abilities.combo === 2) || e.amount >= en.maxHp * 0.22;
     if (this.ichorLeft <= 0 && !crit) return;
     this.ichorLeft--;
-    const n = crit ? 9 : big ? 6 : 3;
+    const n = crit ? 14 : big ? 9 : 5;
     if (f.mist) {
-      this.mist(f, x, y, z, crit ? 5 : 2, crit ? 1.4 : 0.9);
-      this.flecks(f, x, y, z, dx, dz, n - 1, 5, 0.9, 0.2, 0.5);
+      this.mist(f, x, y, z, crit ? 5 : 2, crit ? 1.6 : 1.1);
+      this.flecks(f, x, y, z, dx, dz, n - 1, 5, 0.9, 0.3, 0.55);
     } else {
-      this.droplets(f, x, y, z, dx, dz, n, crit ? 9 : 6, crit ? 0.9 : 0.6, 0.24, 0.55);
-      if (f.chips) this.chips(f, x, y, z, dx, dz, crit ? 6 : big ? 4 : 2, 8, 0.3);
-      if (f.glow > 0.3) this.flecks(f, x, y, z, dx, dz, crit ? 5 : 2, 7, 0.7, 0.18, 0.4);
+      this.droplets(f, x, y, z, dx, dz, n, crit ? 9.5 : 6.5, crit ? 0.9 : 0.65, 0.42, 0.6);
+      // A short, soft spray of wet colour at the wound so the hit has a visible "splash" and not just sparks.
+      this.spray(f, x, y, z, dx, dz, crit ? 2 : 1, crit ? 1.5 : 1.0);
+      if (f.chips) this.chips(f, x, y, z, dx, dz, crit ? 7 : big ? 5 : 3, 8, 0.36);
+      if (f.glow > 0.3) this.flecks(f, x, y, z, dx, dz, crit ? 6 : 3, 7, 0.7, 0.3, 0.45);
     }
     if (crit || big || Math.random() < 0.3) this.splat(f, en.pos.x, en.pos.z, dx, dz, rr(0.9, 2.2), crit ? rr(1.2, 1.9) : rr(0.6, 1.2), crit ? 8 : 6);
   }
@@ -171,13 +188,14 @@ export class CombatFx {
       this.flecks(f, x, y, z, 0, 0, Math.round(10 * k), 5, 0, 0.22, 0.8);
       return;
     }
-    this.droplets(f, x, y, z, 0, 0, Math.round(14 * k), 7, 0, 0.3, 0.7);
-    if (f.chips) this.chips(f, x, y, z, 0, 0, Math.round(10 * k), 9, 0.34);
-    if (f.glow > 0.3) this.flecks(f, x, y, z, 0, 0, Math.round(8 * k), 8, 0, 0.2, 0.55);
+    this.droplets(f, x, y, z, 0, 0, Math.round(18 * k), 7.5, 0, 0.48, 0.75);
+    this.spray(f, x, y, z, 0, 0, Math.round(3 * k), 2.0 + tier * 0.5);
+    if (f.chips) this.chips(f, x, y, z, 0, 0, Math.round(12 * k), 9, 0.4);
+    if (f.glow > 0.3) this.flecks(f, x, y, z, 0, 0, Math.round(10 * k), 8, 0, 0.3, 0.6);
     const n = 2 + tier;
     for (let i = 0; i < n; i++) {
       const a = Math.random() * TAU;
-      this.splat(f, x, z, Math.sin(a), Math.cos(a), rr(0.5, 1.8 + tier * 0.7) * en.scale, rr(1.1, 1.8 + tier * 0.8), 8);
+      this.splat(f, x, z, Math.sin(a), Math.cos(a), rr(0.5, 1.8 + tier * 0.7) * en.scale, rr(1.3, 2.2 + tier * 0.9), 8);
     }
   }
 

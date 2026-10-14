@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ParticleSystem } from '../fx/particles.js';
 import { F } from '../fx/atlas.js';
+import { SlowMo } from './slowmo.js';
 
 const _c = new THREE.Color();
 
@@ -15,7 +16,7 @@ export class Fx {
     this.hitstop = 0;
     // Slow-motion: a game-time scale (main.js multiplies simulate's dt by it). It is driven by the
     // real dt passed to update(), so it always expires, even if a harness steps simulate by hand.
-    this.slow = 0; this.slowDur = 0; this.slowScale = 1;
+    this.slowState = new SlowMo();
     this.timeScale = 1;
     // Directional camera kick (springs back) and a brief field-of-view punch.
     this.kx = 0; this.kz = 0; this.kvx = 0; this.kvz = 0;
@@ -82,24 +83,14 @@ export class Fx {
 
   // Game-time slow motion: `scale` (0.2..1) held for `seconds` of real time with eased edges.
   // A stronger or longer request wins; they never stack into a long freeze.
-  slowmo(scale, seconds) {
-    const left = this.slow > 0 ? this.slow : 0;
-    if (left > 0 && scale > this.slowScale && seconds <= left) return;
-    this.slowScale = Math.max(0.2, scale);
-    this.slow = this.slowDur = Math.min(0.8, Math.max(seconds, left));
-  }
+  slowmo(scale, seconds) { this.slowState.request(scale, seconds); }
   rumble(strong, weak, ms) { this.input.rumble(strong, weak, ms); }
 
   // Called with real (unscaled) dt so effects keep animating during hit-stop.
   update(dt) {
     this.ps.q = this.settings?.quality.particles ?? 1;
 
-    if (this.slow > 0) {
-      this.slow = Math.max(0, this.slow - dt);
-      const t = 1 - this.slow / this.slowDur;
-      const env = t < 0.1 ? t / 0.1 : t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45;
-      this.timeScale = 1 - (1 - this.slowScale) * Math.max(0, env);
-    } else this.timeScale = 1;
+    this.timeScale = this.slowState.update(dt);
     // Sparks and dust linger a little in slow motion, but never freeze.
     this.ps.update(dt * (0.35 + 0.65 * this.timeScale));
 
