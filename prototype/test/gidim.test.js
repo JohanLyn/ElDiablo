@@ -153,3 +153,17 @@ test('Tether ward doubles damage and the Lamp strengthens it by half', () => {
   assert.equal(wardStrength(true).dmg, 2.5);
   assert.ok(wardStrength(true).push > wardStrength(false).push);
 });
+
+test('the three gidim sounds exist and their recipes run against a synth', async () => {
+  const { SFX } = await import('../src/audio/sfx.js');
+  const { VOICE_LIMITS } = await import('../src/audio/audio.js');
+  for (const name of ['gidimRise', 'gidimDeath', 'gidimRecoil']) {
+    const def = SFX[name];
+    assert.ok(def, name);
+    assert.ok(def.type in VOICE_LIMITS, `${name} has a voice limit`);
+    const calls = [];
+    const S = new Proxy({}, { get: (_, k) => (...a) => { calls.push([k, a]); return null; } });
+    def.fn(S, {}, {});
+    assert.ok(calls.length >= 3, `${name} builds several nodes`);
+  }
+});
