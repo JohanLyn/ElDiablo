@@ -9,6 +9,8 @@ import { INSTANCES } from '../world/instances.js';
 import { getTelegraphs, styleForColor } from '../fx/telegraph.js';
 import { makeEnemyBolt } from '../fx/models.js';
 import { addOcclusionOutline } from '../fx/silhouette.js';
+import { ghostify } from '../fx/gidimFx.js';
+import { VARIANTS, BASE } from '../game/gidimRules.js';
 
 // ai: melee = chase + telegraphed arc, brute = slow chase + ground slam,
 // ranged = keep distance + bolt, caster = keep distance + delayed ground blast.
@@ -37,7 +39,7 @@ const RESPAWN_TIME = 150;
 let nextId = 1;
 
 export class Enemy {
-  constructor(type, { level, elite = null, named = null, camp = null, x, z }, scene) {
+  constructor(type, { level, elite = null, named = null, camp = null, gidim = null, x, z }, scene) {
     this.id = nextId++;
     this.type = type;
     this.def = TYPES[type];
@@ -54,6 +56,19 @@ export class Enemy {
     this.scale = this.boss ? 1 : named ? 1.5 : elite ? 1.3 : 1;
     this.radius = this.def.radius * this.scale;
     this.name = named ? named.name : elite ? `${elite.prefix} ${this.def.name}` : this.def.name;
+    // Risen dead (Night of the Gidim, src/game/gidim.js): a ghost of the type at the hero's level.
+    // HP x0.7, damage x0.8, speed x0.8 and XP x0.5 of the base monster, then the variant's own tuning.
+    this.gidim = gidim;
+    if (gidim) {
+      const V = VARIANTS[gidim.variant];
+      this.maxHp = Math.max(1, Math.round(this.def.hp * monsterLifeMult(level) * BASE.hp * V.hp));
+      this.hp = this.maxHp;
+      this.dmg = this.def.dmg * monsterDamageMult(level) * BASE.dmg * V.dmg;
+      this.speedMult = BASE.speed * V.speed;
+      this.scale = V.scale;
+      this.radius = this.def.radius * this.scale;
+      this.name = gidim.name ?? `${V.title} ${this.def.name}`;
+    }
     this.alive = true;
     this.spawning = SPAWN_TIME;
     this.state = 'idle';
@@ -75,7 +90,8 @@ export class Enemy {
 
     const auraAffix = (named?.affixes ?? elite)?.[0];
     const aura = auraAffix && ELITE_AFFIXES[auraAffix] ? parseInt(ELITE_AFFIXES[auraAffix].color.slice(1), 16) : (elite || named ? 0xf2d24b : 0);
-    this.group = makeEnemyModel(type, elite || named ? shade(this.def.color) : this.def.color, { aura: elite || named ? aura : 0 });
+    this.group = makeEnemyModel(type, elite || named ? shade(this.def.color) : this.def.color, { aura: gidim ? (gidim.lord ? 0x66f0ff : 0) : elite || named ? aura : 0 });
+    if (gidim) ghostify(this.group, gidim);
     this.group.scale.setScalar(this.scale);
     if (this.group.userData.aura) this.group.userData.aura.holder.scale.setScalar(this.def.radius * 1.7);
     this.mat = this.group.userData.mat;
@@ -101,7 +117,7 @@ export class Enemy {
     }
   }
 
-  get xp() { return monsterXp(this.level, this.def.xp * (this.named ? 8 : this.elite ? 4 : 1)); }
+  get xp() { return monsterXp(this.level, this.def.xp * (this.gidim ? this.gidim.xpMult : this.named ? 8 : this.elite ? 4 : 1)); }
 
   setState(s) { this.state = s; this.stateTime = 0; }
 
@@ -291,8 +307,10 @@ export class EnemyManager {
     e.alive = false;
     e.dying = 0.5;
     if (e.bar) e.bar.visible = false;
-    g.fx.burst(e.pos.clone().setY(e.pos.y + 1), 0xd6a740, 22, 6, { up: 4, life: 0.9 });
-    g.fx.burst(e.pos.clone().setY(e.pos.y + 0.8), 0x5a2bd8, 12, 3, { up: 6, life: 1.1, gravity: -2 });
+    if (!e.gidim) { // risen dead shatter in their own cold light instead (gidimFx.death)
+      g.fx.burst(e.pos.clone().setY(e.pos.y + 1), 0xd6a740, 22, 6, { up: 4, life: 0.9 });
+      g.fx.burst(e.pos.clone().setY(e.pos.y + 0.8), 0x5a2bd8, 12, 3, { up: 6, life: 1.1, gravity: -2 });
+    }
     g.fx.stop(e.boss ? 0.16 : e.named ? 0.1 : e.elite ? 0.08 : 0.04);
     g.fx.rumble(0.25, 0.4, 60);
     if (e.elite?.includes('molten')) this.hazard({ x: e.pos.x, z: e.pos.z, r: 3.6, delay: 1.3, dmg: e.dmg * 1.6, color: 0xff6a1a, level: e.level });
@@ -312,11 +330,11 @@ export class EnemyManager {
     this.hazards.push({ x, z, r, delay, t: 0, dmg, color, level, group, fitted: false, onHit });
   }
 
-  fire(from, facing, speed, damage, level) {
+  fire(from, facing, speed, damage, level, gidim = false) {
     const mesh = makeEnemyBolt();
     mesh.position.set(from.x + Math.sin(facing) * 0.8, from.y + 1.1, from.z + Math.cos(facing) * 0.8);
     this.scene.add(mesh);
-    this.projectiles.push({ mesh, pos: mesh.position, vx: Math.sin(facing) * speed, vz: Math.cos(facing) * speed, damage, level, life: 2.5 });
+    this.projectiles.push({ mesh, pos: mesh.position, vx: Math.sin(facing) * speed, vz: Math.cos(facing) * speed, damage, level, life: 2.5, gidim });
   }
 
   // ---- per frame -------------------------------------------------------------------------
@@ -375,7 +393,7 @@ export class EnemyManager {
       let gone = b.life <= 0 || g.world.colliders.pointBlocked(b.pos.x, b.pos.z);
       if (!gone && g.tether.blocksProjectile(b.pos, g)) gone = true;
       if (!gone && Math.hypot(b.pos.x - p.pos.x, b.pos.z - p.pos.z) < 0.7) {
-        if (p.takeDamage(b.damage, g, b.level)) gone = true;
+        if (p.takeDamage(b.damage, g, b.level)) { gone = true; if (b.gidim) g.gidim?.chill(); }
       }
       if (gone) { this.scene.remove(b.mesh); this.projectiles.splice(i, 1); }
     }
@@ -450,7 +468,7 @@ export class EnemyManager {
     const aggroRange = e.elite || e.named ? 13 : 11;
     if (!e.aggro && !p.dead && dist < aggroRange && !g.inSafeZone) this.alertPack(e);
     const homeDist = Math.hypot(e.pos.x - e.home.x, e.pos.z - e.home.z);
-    if (e.aggro && (p.dead || g.inSafeZone || (homeDist > 34 && dist > 12)) && !e.boss) {
+    if (e.aggro && (p.dead || g.inSafeZone || (homeDist > 34 && dist > 12)) && !e.boss && !e.gidim) { // the risen dead are relentless: no leash
       e.aggro = false;
       e.hp = e.maxHp;
       e.setState('idle');
@@ -458,6 +476,7 @@ export class EnemyManager {
 
     if (e.boss) e.think(dt, g, dist);
     else if (!e.aggro) this.idle(e, dt);
+    else if (e.gidim && g.gidim?.heroSafe) this.hover(e, dt, g);
     else this.fight(e, dt, g, dist);
 
     // Elite affixes
@@ -477,8 +496,8 @@ export class EnemyManager {
     e.pos.x += (e.vel.x + e.knock.x) * dt;
     e.pos.z += (e.vel.z + e.knock.z) * dt;
     e.knock.multiplyScalar(Math.max(0, 1 - dt * 8));
-    g.world.colliders.resolve(e.pos, e.radius, !!e.dungeon || g.inDungeon);
-    e.pos.y = g.world.heightAt(e.pos.x, e.pos.z);
+    if (!e.gidim) g.world.colliders.resolve(e.pos, e.radius, !!e.dungeon || g.inDungeon); // gidim pass through props
+    e.pos.y = g.world.heightAt(e.pos.x, e.pos.z) + (e.gidim ? 0.22 + Math.sin(g.time * 2 + e.id) * 0.07 : 0);
 
     // Visuals
     e.group.rotation.y = e.facing;
@@ -525,6 +544,17 @@ export class EnemyManager {
     e.vel.z += ((d > 0 ? dz / d : 0) * want - e.vel.z) * damp(4, dt);
     if (want) e.facing += angleDelta(e.facing, Math.atan2(dx, dz)) * damp(4, dt);
     e.state = 'idle';
+  }
+
+  // A gidim whose prey is inside a sanctuary: it hangs at the edge, watching, and does not attack.
+  hover(e, dt, g) {
+    const p = g.player;
+    e.facing += angleDelta(e.facing, Math.atan2(p.pos.x - e.pos.x, p.pos.z - e.pos.z)) * damp(6, dt);
+    e.vel.x -= e.vel.x * damp(8, dt);
+    e.vel.z -= e.vel.z * damp(8, dt);
+    if (e.state !== 'chase') e.setState('chase');
+    this.hideArc(e);
+    e.cooldown = Math.max(e.cooldown, 0.6);
   }
 
   fight(e, dt, g, dist) {
@@ -579,7 +609,7 @@ export class EnemyManager {
         if (def.ai === 'ranged') this.showLine(e, g, e.stateTime / windup, Math.min(d, 15));
         if (e.stateTime >= windup) {
           if (def.ai === 'ranged') {
-            this.fire(e.pos, e.facing, def.projSpeed, e.dmg, e.level);
+            this.fire(e.pos, e.facing, def.projSpeed, e.dmg, e.level, !!e.gidim);
             g.events.emit('enemyProjectile', { pos: e.pos, enemy: e });
             if (e.named) { this.fire(e.pos, e.facing + 0.25, def.projSpeed, e.dmg, e.level); this.fire(e.pos, e.facing - 0.25, def.projSpeed, e.dmg, e.level); }
             this.hideArc(e);
@@ -596,6 +626,7 @@ export class EnemyManager {
   }
 
   onEnemyHit(e, g) {
+    if (e.gidim) g.gidim?.chill(); // a gidim's touch chills the hero
     if (e.elite?.includes('vampiric') || e.named?.affixes.includes('vampiric')) {
       e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.08);
       g.fx.burst(e.pos.clone().setY(e.pos.y + 1.2), 0xff3a5a, 10, 2, { up: 2, life: 0.5, gravity: -2 });

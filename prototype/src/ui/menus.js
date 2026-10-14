@@ -31,6 +31,7 @@ const SETTINGS = [
       { key: 'damageNumbers', label: 'Damage numbers', type: 'toggle' },
       { key: 'rumble', label: 'Controller rumble', type: 'toggle' },
       { key: 'tutorials', label: 'Tutorial hints', type: 'toggle' },
+      { key: 'gidim', label: 'Night of the Gidim', type: 'toggle', desc: 'The monsters you slay by day rise as ghosts at night. Off: no marks, no risings.' },
     ]],
     ['Interface', [
       { key: 'uiScale', label: 'UI scale', type: 'slider', min: 0.9, max: 1.3, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
@@ -367,7 +368,7 @@ export class Menus {
     return `<div class="inv">
       <div class="inv-col"><h3 class="sec">${this.merchant ? 'Trading with Ubar' : 'Equipped'}</h3><div class="paperdoll">${dollHtml}</div>
         <div class="stats">${statRows.map(([a, b]) => `<span>${a}</span><b>${b}</b>`).join('')}</div>
-        <div class="gold-line"><i class="coin"></i>${p.gold} gold <span class="sep">·</span> ${p.potions}/${p.maxPotions} potions</div></div>
+        <div class="gold-line"><i class="coin"></i>${p.gold} gold <span class="sep">·</span> ${p.potions}/${p.maxPotions} potions${p.ghostAsh > 0 || this.g.flags.gidimSeen ? ` <span class="sep">·</span> <span class="ash-line"><i class="ash-gem">◈</i>${p.ghostAsh ?? 0} Ghost-ash</span>` : ''}</div></div>
       <div class="inv-col"><h3 class="sec">Inventory <small>${p.inventory.length}/30</small></h3><div class="grid">${grid}</div>${gambleHtml}</div>
       <div class="inv-col"><h3 class="sec">Details</h3><div id="tt"></div></div>
     </div>`;

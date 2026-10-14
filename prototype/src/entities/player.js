@@ -40,6 +40,7 @@ export class Player {
     this.level = save?.level ?? 1;
     this.xp = save?.xp ?? 0;
     this.gold = save?.gold ?? 0;
+    this.ghostAsh = save?.ghostAsh ?? 0; // Night of the Gidim currency (src/game/gidim.js)
     this.inventory = save?.inventory ?? [];
     this.equipment = save?.equipment ?? { weapon: startingWeapon() };
     this.skillRanks = save?.skillRanks ?? { strike: 1 };
@@ -243,7 +244,7 @@ export class Player {
   // Damage from an attacker of a given level. Returns true if it landed.
   takeDamage(raw, g, attackerLevel = 1) {
     if (this.dead || this.invuln > 0 || this.state === 'evade' || this.state === 'leap') return false;
-    let amount = raw * (1 - armorReduction(this.stats.armor, attackerLevel));
+    let amount = raw * (1 - armorReduction(this.stats.armor, attackerLevel)) * (g.gidim?.damageTakenMult() ?? 1); // Ash-skin blessing
     if (this.barrier > 0) {
       const absorbed = Math.min(this.barrier, amount);
       this.barrier -= absorbed;
@@ -273,7 +274,7 @@ export class Player {
 
   serialize() {
     return {
-      level: this.level, xp: this.xp, gold: this.gold, inventory: this.inventory, equipment: this.equipment,
+      level: this.level, xp: this.xp, gold: this.gold, ghostAsh: this.ghostAsh, inventory: this.inventory, equipment: this.equipment,
       skillRanks: this.skillRanks, skillPoints: this.skillPoints, slots: this.slots, aspectIndex: this.aspectIndex,
       potionLevel: this.potionLevel, lastWaypoint: this.lastWaypoint,
     };

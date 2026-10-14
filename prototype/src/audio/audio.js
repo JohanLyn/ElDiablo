@@ -13,6 +13,7 @@ export const VOICE_LIMITS = {
   swing: 3, hit: 6, crit: 3, evade: 2, potion: 1, footstep: 4, hurt: 2, heart: 2, death: 1, javelin: 2, javelinHit: 3,
   tether: 4, snap: 2, lightning: 3, stormCast: 1, leap: 2, boom: 2, aegis: 1, pyre: 1, pyrePulse: 2, ui: 3,
   windup: 4, attack: 4, projectile: 3, hazard: 4, boss: 1, coin: 4, loot: 3, pickup: 3, stinger: 2, die: 4, chest: 2, portal: 1,
+  gidimRise: 2, gidimDeath: 3, gidimRecoil: 2, // Night of the Gidim
 };
 
 // Sound types dropped first when many voices are already playing
@@ -169,10 +170,14 @@ export class Audio {
     on('hazardBlast', (p) => this.play(`blast_${hazardKind(p.color ?? 0xff2a2a)}`, { pos: { x: p.x, z: p.z } }));
     on('kill', (p) => {
       const e = p.enemy;
-      if (!e) return;
+      if (!e || e.gidim) return; // gidim break with their own sound (gidimDeath)
       const name = `die_${e.type}`;
       this.play(SFX[name] ? name : 'die_gallu', { pos: p.pos ?? e.pos, elite: !!e.elite });
     });
+    // Night of the Gidim
+    on('gidimRise', (p) => this.play('gidimRise', { pos: p.pos }));
+    on('gidimDeath', (p) => this.play('gidimDeath', { pos: p.pos }));
+    on('gidimRecoil', (p) => this.play('gidimRecoil', { pos: p.pos }));
     on('bossPhase', () => { this.play('netiPhase'); this.music?.stinger(); });
     // Boss entrance (src/fx/bossIntro.js): the roar lands with the camera push; the aggro roar is skipped afterwards.
     on('bossIntro', (p) => { if (p.stage === 'roar') { this.play(p.kind === 'neti' ? 'netiRoar' : 'netiPhase', { pos: p.pos }); this.music?.stinger(); } });

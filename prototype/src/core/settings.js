@@ -20,6 +20,7 @@ export const DEFAULTS = {
   colorblind: false,
   uiScale: 1,
   tutorials: true,
+  gidim: true, // Night of the Gidim: the day's dead rise at night
   timeOfDay: 'cycle', // or a world/timeofday.js preset: dawn, noon, golden, dusk, night
 };
 

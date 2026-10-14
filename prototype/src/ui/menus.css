@@ -195,3 +195,7 @@ body[data-device] .controls kbd.pad, body[data-device] .controls kbd.kbm { displ
   .paperdoll { grid-template-columns: repeat(3, 60px); grid-auto-rows: 60px; }
   .slider { width: 120px; }
 }
+
+/* Ghost-ash (Night of the Gidim): a pale shell glyph beside the gold line */
+.ash-line { color: #9fe8ee; display: inline-flex; align-items: center; gap: 5px; text-shadow: 0 0 8px rgba(120, 230, 240, 0.45); }
+.ash-gem { font-style: normal; color: #bff6fa; }

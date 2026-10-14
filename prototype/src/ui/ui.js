@@ -254,10 +254,12 @@ export class UI {
   }
 
   // ---- dialogue --------------------------------------------------------------------
-  talk(npc) {
+  talk(npc, view = null) {
     const g = this.g, p = g.player, q = g.quests;
     let text, options;
-    if (npc.id === 'ninsun') {
+    if (npc.id === 'ninsun' && view === 'night') {
+      ({ text, options } = g.gidim.nightDialog(this, npc)); // Night Blessings (src/game/gidim.js)
+    } else if (npc.id === 'ninsun') {
       p.potions = p.maxPotions;
       const pend = q.pending;
       if (pend && pend.giver === 'ninsun') {
@@ -278,6 +280,7 @@ export class UI {
             run: () => { p.gold -= cost; p.potionLevel++; p.potions = p.maxPotions; g.hud.notify('Your potions grow stronger', 'good'); g.save(); },
           });
         }
+        options.push(...(g.gidim?.ninsunOptions(this, npc) ?? [])); // Night Blessing, once the gidim have risen
         options.push({ label: 'Farewell', run: () => {} });
       }
     } else if (npc.id === 'ubar') {
@@ -352,7 +355,7 @@ export class UI {
 
   chooseOption() {
     const o = this.dialog.options[this.dialog.focus];
-    if (o.disabled) { this.g.hud.notify('Not enough gold', 'warn'); return; }
+    if (o.disabled) { this.g.hud.notify(o.disabledMsg ?? 'Not enough gold', 'warn'); return; }
     $('dialog').hidden = true;
     this.mode = null;
     o.run();
