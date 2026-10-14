@@ -138,6 +138,9 @@ await log('menus/map/dialog', () => {
 await log('portal + save', () => {
   const g = window.__game;
   const w = g.world.waypoints.find((w) => w.id === 'wp-ruins'); g.teleport(w.x + 10, w.z);
+  // Clear nearby monsters first: knockback cancels the channel (it's meant to).
+  for (const e of g.enemies.list) if (e.alive && e.pos.distanceTo(g.player.pos) < 30) g.enemies.damage(e, 1e9, g, { silent: true });
+  sim.step(5);
   g.player.invuln = 99; g.startTownPortal(); sim.step(60); g.player.invuln = 0;
   const inTown = g.world.regionAt(g.player.pos.x, g.player.pos.z);
   g.interactions.returnThroughPortal();
