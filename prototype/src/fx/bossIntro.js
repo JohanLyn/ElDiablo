@@ -3,6 +3,7 @@ import { F } from './atlas.js';
 import { TAU, rr, clamp01 } from './shared.js';
 import { angleDelta, damp } from '../core/util.js';
 import { driveEnemy } from '../entities/enemyModels.js';
+import { AQRABU as AQRABU_POS } from '../world/layout.js';
 
 // Boss entrances. The first time the hero comes near a guardian (and again on
 // every fresh run of its dungeon, since dungeons rebuild on entry) gameplay
@@ -16,6 +17,9 @@ import { driveEnemy } from '../entities/enemyModels.js';
 
 const NETI = { kind: 'neti', name: 'NETI', sub: 'Keeper of the First Gate', dur: 3.3, trigger: 22, dist: 15, height: 4.2, look: 3.0, dist2: 11, height2: 3.4, look2: 3.5 };
 const VOICE = { kind: 'voice', name: 'The Drowned Voice', sub: 'Singer of the Cistern of Enki', dur: 3.8, trigger: 18, dist: 12, height: 3.4, look: 2.0, dist2: 9, height2: 2.6, look2: 2.4 };
+
+// Aqrabu the Venomed rears up in the middle of his pillar ring (overworld: no dungeon, no instance).
+const AQRABU = { kind: 'aqrabu', name: 'AQRABU', sub: 'the Venomed', dur: 3.7, trigger: 16, dist: 11.5, height: 3.4, look: 2.1, dist2: 9, height2: 3.0, look2: 2.5 };
 
 const _v = new THREE.Vector3();
 const ease = (t) => { t = clamp01(t); return t * t * (3 - 2 * t); };
@@ -50,7 +54,8 @@ export class BossIntro {
 
   scan() {
     const g = this.g;
-    if (!g.inDungeon || !g.instance || g.player.dead || !g.started) return;
+    if (!g.inDungeon) { this.scanOverworld(); return; }
+    if (!g.instance || g.player.dead || !g.started) return;
     const list = g.enemies.list, p = g.player.pos;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
@@ -60,6 +65,18 @@ export class BossIntro {
       if (neti && e.spawning > 0) continue;
       const cfg = neti ? NETI : VOICE;
       if (Math.hypot(e.pos.x - p.x, e.pos.z - p.z) < cfg.trigger) { this.begin(e, cfg); return; }
+    }
+  }
+
+  // Aqrabu: the first time the hero comes within ~16 m of his camp (once per hero).
+  scanOverworld() {
+    const g = this.g, p = g.player.pos;
+    if (g.flags.aqrabuIntro || g.player.dead || !g.started || g.revealing) return;
+    if (Math.hypot(p.x - AQRABU_POS.x, p.z - AQRABU_POS.z) > AQRABU.trigger + 8) return;
+    for (const e of g.enemies.list) {
+      if (e.named?.id !== AQRABU_POS.id || !e.alive || e.spawning > 0) continue;
+      if (Math.hypot(e.pos.x - p.x, e.pos.z - p.z) < AQRABU.trigger) { g.flags.aqrabuIntro = true; this.begin(e, AQRABU); }
+      return;
     }
   }
 
@@ -102,7 +119,7 @@ export class BossIntro {
 
   advance(dt) {
     const g = this.g, v = this.v, e = this.e, cfg = this.cfg;
-    if (!e.alive || !g.inDungeon || g.player.dead || (g.instance && !g.enemies.list.includes(e))) { this.end(true); return; }
+    if (!e.alive || (cfg.kind === 'aqrabu' ? g.inDungeon : !g.inDungeon) || g.player.dead || ((g.instance || cfg.kind === 'aqrabu') && !g.enemies.list.includes(e))) { this.end(true); return; }
     if (!this.skipped && this.t > 0.4) {
       const inp = g.input;
       let any = false;
@@ -119,6 +136,7 @@ export class BossIntro {
     e.group.rotation.y = e.facing;
 
     if (cfg.kind === 'neti') this.playNeti(t, dt, bx, bz, gy);
+    else if (cfg.kind === 'aqrabu') this.playAqrabu(t, dt, bx, bz, gy);
     else this.playVoice(t, dt, bx, bz, gy);
 
     // Keep the guardian animating (the simulation is frozen), then layer the roar pose on top.
@@ -131,6 +149,10 @@ export class BossIntro {
   roarPose(e, k) {
     const B = e.group.userData.rig?.b;
     if (!B) return;
+    if (B.tl0) { // scorpion-man: the stinger rears up over the back
+      B.tl0.rotation.x += 0.7 * k;
+      for (let i = 1; i < 5; i++) B['tl' + i].rotation.x -= 0.2 * k;
+    }
     const r = B.spine?.rotation;
     if (r) r.x -= 0.4 * k;
     if (B.chest) B.chest.rotation.x -= 0.3 * k;
@@ -178,12 +200,12 @@ export class BossIntro {
     this.roar = ease(clamp01((t - 1.0) / 0.3)) * (1 - ease(clamp01((t - 2.1) / 0.8)));
   }
 
-  roarBurst(bx, gy, bz, hex, hot = 0xe0d0ff) {
+  roarBurst(bx, gy, bz, hex, hot = 0xe0d0ff, pulse = 0xc9b0ff) {
     const g = this.g, v = this.v;
     g.fx.shake(0.75);
     g.fx.fovPunch(30);
     g.fx.rumble(0.9, 0.7, 500);
-    g.renderer.pulse(0xc9b0ff, 0.28);
+    g.renderer.pulse(pulse, 0.28);
     v.combat.waveT[2] = -9;
     v.combat.shock(bx, gy + 2.5, bz, 0.05, 24, 1.0, 2);
     v.ringFlat(bx, 0.12, bz, 2, 24, 1.0, hex, 1, 1.7);
@@ -192,6 +214,42 @@ export class BossIntro {
     v.wisps(bx, gy, bz, 18, 3.5, hot, hex, 1.6, 1.6);
     v.puffs(bx, gy + 0.3, bz, 24, 1.0, 8, 1.2, 0xb0a08a, 1.2, 3.6, 1.3, 0.45);
     v.flashLight(bx, gy + 3, bz, 0xb48aff, 45, 0.6);
+  }
+
+  // ------------------------------------------------------------------ Aqrabu
+  playAqrabu(t, dt, bx, bz, gy) {
+    const g = this.g, v = this.v, e = this.e;
+    if (this.stage === 0 && t > 0.3) {
+      this.stage = 1;
+      // The sand splits around him and venom seeps up through the cracks.
+      v.decal(bx, bz, 12, F.CRACK, 0x9aff3a, 0.9, 1.6, true, 1.6);
+      v.decal(bx, bz, 12, F.CRACK, 0x120c06, 0.9, 9, false);
+      v.ringFlat(bx, 0.1, bz, 1, 11, 0.9, 0xe8d4a0, 0.9, 1.5);
+      g.fx.rumble(0.5, 0.5, 600);
+      g.fx.shake(0.3);
+    }
+    if (t > 0.3 && t < 2.6) {
+      if (Math.random() < dt * 22) {
+        const a = Math.random() * TAU, r = rr(1.2, 5.5);
+        v.puffs(bx + Math.cos(a) * r, gy + 0.2, bz + Math.sin(a) * r, 1, 0.3, 1.4, 1.1, 0xcdb487, 1.0, 3.0, 1.3, 0.45);
+      }
+      if (Math.random() < dt * 9) {
+        const a = Math.random() * TAU, r = rr(0.5, 4);
+        v.motes(bx + Math.cos(a) * r, gy + 0.3, bz + Math.sin(a) * r, 2, 0.2, 1.2, 4, 0xeaffb0, 0x58a020, 0.26, 0.9, 10, F.DOT, 1.2);
+      }
+      g.fx.shake(0.012);
+    }
+    if (this.stage === 1 && t > 1.0) {
+      this.stage = 2;
+      g.hud.banner(this.cfg.name, 'boss', this.cfg.sub);
+    }
+    if (this.stage === 2 && t > 1.25) {
+      this.stage = 3;
+      this.roarBurst(bx, gy, bz, 0x9aff3a, 0xeaffb0, 0xb8ff6a);
+      v.puffs(bx, gy + 0.3, bz, 18, 1.4, 7, 2.4, 0xcdb487, 1.2, 4, 1.2, 0.55);
+      g.events.emit('bossIntro', { stage: 'roar', boss: e, kind: 'aqrabu', name: this.cfg.name, pos: e.pos });
+    }
+    this.roar = ease(clamp01((t - 1.0) / 0.3)) * (1 - ease(clamp01((t - 2.3) / 0.8)));
   }
 
   // ------------------------------------------------------------ Drowned Voice
@@ -268,7 +326,7 @@ export class BossIntro {
         e.spawning = 0.0001;
       }
       e.group.rotation.y = e.facing;
-      if (!abort && cfg.kind === 'voice') g.enemies.alertPack(e); // the fight starts the moment the song ends
+      if (!abort && (cfg.kind === 'voice' || cfg.kind === 'aqrabu')) g.enemies.alertPack(e); // the fight starts the moment the song / roar ends
       if (!abort) g.events.emit('bossIntro', { stage: 'end', boss: e, kind: cfg.kind, name: cfg.name, pos: e.pos });
     }
     this.e = null;

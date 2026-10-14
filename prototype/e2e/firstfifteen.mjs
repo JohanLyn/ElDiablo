@@ -40,6 +40,10 @@ await page.evaluate((seed) => {
   g.events.on('potion', () => stats.potions++);
   g.events.on('evade', () => stats.evades++);
   g.events.on('waypoint', (e) => mark(`waypoint ${e.id}`));
+  g.events.on('bossIntro', (e) => { if (e.stage === 'start') mark(`boss intro: ${e.name}`); });
+  g.events.on('aqrabuBurrow', () => mark('Aqrabu burrows'));
+  g.events.on('aqrabuEmerge', () => mark('Aqrabu erupts'));
+  g.events.on('pyresComplete', () => mark('pyres complete'));
   g.events.on('hit', (e) => { stats.hits++; if (!stats.firstHit.has(e.enemy)) stats.firstHit.set(e.enemy, t()); });
   g.events.on('kill', (e) => {
     const en = e.enemy;
@@ -47,6 +51,7 @@ await page.evaluate((seed) => {
     const t0 = stats.firstHit.get(en);
     if (t0 !== undefined) (en.elite || en.named || en.boss ? stats.eliteTtk : stats.ttk).push(t() - t0);
     if (en.elite || en.named) { stats.eliteKills++; mark(`killed ${en.name}`); }
+    if (en.named?.id === 'aqrabu' && t0 !== undefined) mark(`Aqrabu fight lasted ${(t() - t0).toFixed(0)} s (first hit to kill)`);
     if (en.boss) mark(`killed ${en.name}`);
   });
   g.events.on('pickup', (e) => {
@@ -253,6 +258,7 @@ const checks = [
   ['deaths <= 2', report.metrics.deaths <= 2],
   ['normal TTK 1-5 s', report.metrics.avgTtkNormal !== null && report.metrics.avgTtkNormal >= 1 && report.metrics.avgTtkNormal <= 5],
 ];
+checks.push(['no stuck marks on quest legs', !report.timeline.some((e) => /^stuck at/.test(e.what))]);
 console.log('--- targets ---');
 for (const [name, ok] of checks) console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}`);
 console.log('errors:', errors.length ? errors.slice(0, 5).join('\n') : 'none');

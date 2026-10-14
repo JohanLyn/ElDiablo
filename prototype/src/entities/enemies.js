@@ -9,6 +9,7 @@ import { INSTANCES } from '../world/instances.js';
 import { getTelegraphs, styleForColor } from '../fx/telegraph.js';
 import { makeEnemyBolt } from '../fx/models.js';
 import { addOcclusionOutline } from '../fx/silhouette.js';
+import { initAqrabu, updateAqrabu, drawAqrabu } from './aqrabu.js';
 
 // ai: melee = chase + telegraphed arc, brute = slow chase + ground slam,
 // ranged = keep distance + bolt, caster = keep distance + delayed ground blast.
@@ -46,7 +47,7 @@ export class Enemy {
     this.named = named;
     this.camp = camp;
     this.boss = this.def.ai === 'boss';
-    const eliteMult = named ? 6 : elite ? 3.0 : 1;
+    const eliteMult = named ? (named.hpMult ?? 6) : elite ? 3.0 : 1;
     this.maxHp = Math.round(this.def.hp * monsterLifeMult(level) * eliteMult);
     this.hp = this.maxHp;
     this.dmg = this.def.dmg * monsterDamageMult(level) * (elite ? 1.4 : 1);
@@ -75,6 +76,7 @@ export class Enemy {
 
     const auraAffix = (named?.affixes ?? elite)?.[0];
     const aura = auraAffix && ELITE_AFFIXES[auraAffix] ? parseInt(ELITE_AFFIXES[auraAffix].color.slice(1), 16) : (elite || named ? 0xf2d24b : 0);
+    if (named?.id === 'aqrabu') initAqrabu(this); // burrow phase (entities/aqrabu.js)
     this.group = makeEnemyModel(type, elite || named ? shade(this.def.color) : this.def.color, { aura: elite || named ? aura : 0 });
     this.group.scale.setScalar(this.scale);
     if (this.group.userData.aura) this.group.userData.aura.holder.scale.setScalar(this.def.radius * 1.7);
@@ -167,7 +169,7 @@ export class EnemyManager {
     // Aqrabu the Venomed and his guard.
     this.camps.push({
       id: 'camp-aqrabu', x: AQRABU.x, z: AQRABU.z, region: 'ruins', members: ['scorpion', 'scorpion', 'scorpion', 'gallu'],
-      named: { id: AQRABU.id, name: 'Aqrabu the Venomed', type: 'scorpion', affixes: ['fast', 'storm'] }, state: 'dormant', clearedAt: 0, enemies: [],
+      named: { id: AQRABU.id, name: 'Aqrabu the Venomed', type: 'scorpion', affixes: ['fast', 'storm'], hpMult: 14, firstDrop: { flag: 'aqrabuSting', rarity: 'rare', kind: 'weapon', name: 'Sting of Aqrabu' } }, state: 'dormant', clearedAt: 0, enemies: [],
     });
   }
 
@@ -258,11 +260,20 @@ export class EnemyManager {
 
   add(enemy) { this.list.push(enemy); return enemy; }
 
+  // A reinforcement that joins a camp's fight (Aqrabu's brood).
+  spawnAdd(camp, type, x, z, level, g) {
+    const e = new Enemy(type, { level, camp, x, z }, this.scene);
+    e.aggro = true;
+    if (camp) { e.home.set(camp.x, 0, camp.z); camp.enemies.push(e); }
+    this.list.push(e);
+    return e;
+  }
+
   // ---- damage --------------------------------------------------------------------
   // source: what dealt the blow (strike, javelin, tether, snap, storm, wings, pyre, burn, other);
   // kept on the enemy so death effects and the gidim know how it died.
   damage(e, amount, g, { crit = false, knockX = 0, knockZ = 0, color = '#fff', silent = false, source = 'other' } = {}) {
-    if (!e.alive || e.spawning > 0) return 0;
+    if (!e.alive || e.spawning > 0 || e.untouchable) return 0; // untouchable: Aqrabu underground
     e.lastHit = { source, crit };
     if (e.vulnerable > 0) amount *= 1.2;
     if (e.shielded) amount *= 0.25;
@@ -457,12 +468,14 @@ export class EnemyManager {
       e.setState('idle');
     }
 
+    const underground = !!e.aqrabu && updateAqrabu(e, dt, g, this);
     if (e.boss) e.think(dt, g, dist);
+    else if (underground) e.vel.set(0, 0, 0);
     else if (!e.aggro) this.idle(e, dt);
     else this.fight(e, dt, g, dist);
 
     // Elite affixes
-    if (e.aggro && (e.elite || e.named)) {
+    if (e.aggro && (e.elite || e.named) && !underground) {
       const affixes = e.named?.affixes ?? e.elite;
       e.affixTimer -= dt;
       if (e.affixTimer <= 0) {
@@ -503,6 +516,7 @@ export class EnemyManager {
       e.barFill.scale.x = Math.max(0.001, e.hp / e.maxHp);
       e.barFill.position.x = -0.53 * (1 - e.barFill.scale.x);
     }
+    if (e.aqrabu) drawAqrabu(e, g);
   }
 
   // Critically-damped-ish spring on the body scale: sq > 0 squashes (shorter, wider), < 0 stretches.
