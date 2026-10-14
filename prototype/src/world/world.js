@@ -149,7 +149,7 @@ export function buildWorld(scene, settings = null) {
   configureGfx(settings?.quality);
   const colliders = new Colliders();
   const env = createEnv();
-  installFog(GFX.cheap);
+  installFog(GFX.cheap, GFX.direct);
   scene.background = new THREE.Color(0xc4d6e8);
   scene.fog = new THREE.FogExp2(0xc4d6e8, 0.0105);
 

@@ -11,6 +11,7 @@ import * as THREE from 'three';
 //   flashLights  pooled one-shot VFX flash lights
 export const GFX = {
   cheap: false,
+  direct: false, // no post chain: tone mapping and sRGB are done by the materials themselves
   lights: 12,
   torch: true,
   flashLights: 2,
@@ -18,6 +19,7 @@ export const GFX = {
 
 export function configureGfx(q) {
   GFX.cheap = !!q?.cheapShaders;
+  GFX.direct = q?.post === false;
   GFX.lights = q?.lights ?? 12;
   GFX.torch = GFX.lights >= 12;
   GFX.flashLights = GFX.lights >= 12 ? 2 : 1;
@@ -76,5 +78,46 @@ export const NOISE_TEX_GLSL = /* glsl */`
 uniform sampler2D uNoiseTex;
 vec4 tnz(vec2 p) { return texture2D(uNoiseTex, p * ${(1 / CELLS).toFixed(6)}); }
 // Two-octave stand-in for fbm3() (cloud shadows).
-float cloudN(vec2 p) { return (tnz(p).g * 0.5 + tnz(p * 2.03 + 17.1).b * 0.25) / 0.75; }
+float cloudN(vec2 p) { return ((tnz(p).g * 0.5 + tnz(p * 2.03 + 17.1).b * 0.25) / 0.75 - 0.5) * 0.7 + 0.5; }
 `;
+
+// ---------------------------------------------------------------------------
+// Direct output for custom shaders. Stock materials end with the tone-mapping and
+// colour-space chunks, but this game's ShaderMaterials write gl_FragColor in linear
+// light and rely on the composer's OutputPass. When the scene renders straight to the
+// canvas (GFX.direct), every ShaderMaterial gets the same two chunks appended to its
+// main(), so sky, water, glows and particles are tone mapped like everything else.
+// The accessor returns the original source untouched whenever GFX.direct is false,
+// so desktop presets compile exactly the shaders they always did. Additive shaders are
+// left alone (see the getter).
+const FS = THREE.ShaderMaterial.prototype;
+if (!Object.getOwnPropertyDescriptor(FS, 'fragmentShader')) {
+  Object.defineProperty(FS, 'fragmentShader', {
+    configurable: true,
+    get() {
+      // Additive glows keep their raw output: summing sRGB-encoded values piles up the soft
+      // tails of a halo (the composer sums in linear light instead), and the raw value is a
+      // good stand-in for that sum.
+      if (!GFX.direct || this.blending === THREE.AdditiveBlending) return this._kurFs;
+      if (this._kurFsOut === undefined || this._kurFsOutSrc !== this._kurFs) {
+        this._kurFsOutSrc = this._kurFs;
+        this._kurFsOut = wrapMain(this._kurFs);
+      }
+      return this._kurFsOut;
+    },
+    set(v) { this._kurFs = v; },
+  });
+}
+
+function wrapMain(src) {
+  if (typeof src !== 'string') return src;
+  const m = /void\s+main\s*\(\s*\)/.exec(src);
+  if (!m) return src;
+  return `${src.slice(0, m.index)}void kurMain()${src.slice(m.index + m[0].length)}
+void main() {
+  kurMain();
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}
+`;
+}

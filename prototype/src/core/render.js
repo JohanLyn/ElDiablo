@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import './gfx.js'; // installs the direct-output hook for custom shaders before any is built
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';

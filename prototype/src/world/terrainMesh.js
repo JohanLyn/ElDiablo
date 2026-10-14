@@ -117,9 +117,10 @@ function patchTerrainMaterial(material, env) {
 
         // Painterly breakup at ~8 m and ~1 m.
         col *= 0.9 + 0.2 * n2;
+        ${cheap ? 'col *= 0.86 + 0.28 * tnz(gp * 6.1 + 11.0).r * (1.0 - 0.5 * wT); // stands in for the grass tufts and procedural relief' : ''}
 
         diffuseColor.rgb = col;
-        float cloudSh = 1.0 - uCloud * smoothstep(0.46, 0.72, ${cheap ? 'cloudN(gp * 0.011 + uWind * uTime * 0.012)' : 'fbm3(gp * 0.011 + uWind * uTime * 0.012)'});
+        float cloudSh = 1.0 - ${cheap ? '0.6 * ' : ''}uCloud * smoothstep(0.46, 0.72, ${cheap ? 'cloudN(gp * 0.011 + uWind * uTime * 0.012)' : 'fbm3(gp * 0.011 + uWind * uTime * 0.012)'});
 
         // Ashen cracks that glow violet.
         float crackV = 1.0, crackMask = 0.0, crack = 0.0, crackPulse = 1.0;

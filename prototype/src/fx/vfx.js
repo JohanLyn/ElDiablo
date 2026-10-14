@@ -13,6 +13,7 @@ import { RARITY_FX } from './rarity.js';
 import { CombatFx } from './combat.js';
 import { BossIntro } from './bossIntro.js';
 import { GFX } from '../core/gfx.js';
+import { BlobShadows } from './blobShadows.js';
 
 const _col = new THREE.Color();
 const _v = new THREE.Vector3();
@@ -64,6 +65,7 @@ export class Vfx {
       return l;
     });
     this.lightCursor = 0;
+    this.blobs = GFX.cheap ? new BlobShadows(this.scene) : null; // Mobile: contact shadows instead of shadow maps
 
     // Light pillars.
     this.pillars = [0, 1, 2].map(() => {
@@ -1020,6 +1022,7 @@ export class Vfx {
     this.hitBudget = MAX_HIT_FX;
     this.combat.frame();
     this.ps.q = g.settings.quality.particles;
+    this.blobs?.update(g);
 
     for (let i = this.later.length - 1; i >= 0; i--) {
       const l = this.later[i];
