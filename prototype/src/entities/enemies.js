@@ -38,7 +38,7 @@ const RESPAWN_TIME = 150;
 let nextId = 1;
 
 export class Enemy {
-  constructor(type, { level, elite = null, named = null, camp = null, x, z }, scene) {
+  constructor(type, { level, elite = null, named = null, camp = null, x, z, tint = null }, scene) {
     this.id = nextId++;
     this.type = type;
     this.def = TYPES[type];
@@ -77,7 +77,7 @@ export class Enemy {
     const auraAffix = (named?.affixes ?? elite)?.[0];
     const aura = auraAffix && ELITE_AFFIXES[auraAffix] ? parseInt(ELITE_AFFIXES[auraAffix].color.slice(1), 16) : (elite || named ? 0xf2d24b : 0);
     if (named?.id === 'aqrabu') initAqrabu(this); // burrow phase (entities/aqrabu.js)
-    this.group = makeEnemyModel(type, elite || named ? shade(this.def.color) : this.def.color, { aura: elite || named ? aura : 0 });
+    this.group = makeEnemyModel(type, elite || named ? shade(this.def.color) : tint ?? this.def.color, { aura: elite || named ? aura : 0 });
     this.group.scale.setScalar(this.scale);
     if (this.group.userData.aura) this.group.userData.aura.holder.scale.setScalar(this.def.radius * 1.7);
     this.mat = this.group.userData.mat;
